@@ -155,6 +155,17 @@ export class MonitorTasksController {
     return this.tasksService.toggleTask(userId, id);
   }
 
+  @Post(':id/run-now')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async runNow(
+    @CurrentUser('id') userId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.tasksService.ensureTaskOwnedByUser(userId, id);
+    await this.tasksService.runNow(id);
+    return { message: '已加入采集队列，几秒后查看最新舆情', taskId: id };
+  }
+
   @Get(':id/events')
   async listEvents(
     @CurrentUser('id') userId: number,

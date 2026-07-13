@@ -128,6 +128,11 @@ const menuItems: MenuItem[] = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>',
   },
   {
+    path: '/sms-templates',
+    label: '短信模板',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+  },
+  {
     path: '/config/aliyun-verify',
     label: '三要素认证',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>',
@@ -148,6 +153,7 @@ const META: Record<string, { title: string; subtitle: string }> = {
   '/agents': { title: 'AI 智能体', subtitle: '自定义 AI 智能体与知识库' },
   '/llm-models': { title: 'LLM 模型', subtitle: '管理 6 大厂商与自定义模型' },
   '/config/aliyun-sms': { title: '短信配置', subtitle: '阿里云短信服务接入' },
+  '/sms-templates': { title: '短信模板', subtitle: '7 大场景短信模板管理 + 一键报备' },
   '/config/aliyun-verify': { title: '三要素认证配置', subtitle: '阿里云手机号三要素详细版' },
   '/system-logs': { title: '系统日志', subtitle: 'API 请求与异常记录' },
 };

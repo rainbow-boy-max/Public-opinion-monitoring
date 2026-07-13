@@ -17,6 +17,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AliyunConfigService, UserManagementService } from './services';
+import { VerifyRealnameService } from '../verify/verify-realname.service';
 import { IsString, IsOptional, MinLength, MaxLength, IsIn, Matches } from 'class-validator';
 import { AuthStatus } from '../../database/entities';
 
@@ -43,6 +44,18 @@ class VerifyConfigDto {
 
   @IsString()
   productCode: string;
+
+  @IsOptional()
+  @IsIn(['common', 'beijing', 'shanghai'])
+  endpointType?: 'common' | 'beijing' | 'shanghai';
+
+  @IsOptional()
+  @IsIn(['normal', 'md5', 'sm2'])
+  paramType?: 'normal' | 'md5' | 'sm2';
+
+  @IsOptional()
+  @IsString()
+  region?: string;
 }
 
 class BanActionDto {
@@ -87,6 +100,7 @@ export class AdminController {
   constructor(
     private aliyunConfigService: AliyunConfigService,
     private userManagementService: UserManagementService,
+    private verifyRealnameService: VerifyRealnameService,
   ) {}
 
   @Get('config/aliyun-sms')
@@ -192,5 +206,11 @@ export class AdminController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     await this.userManagementService.deleteUser(id, operatorId);
+  }
+
+  @Post('aliyun-verify/test')
+  @HttpCode(HttpStatus.OK)
+  async testAliyunVerify() {
+    return this.verifyRealnameService.testConnection();
   }
 }

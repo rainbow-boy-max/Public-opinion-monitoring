@@ -44,6 +44,10 @@ const router = createRouter({
           component: () => import('@/pages/LlmModelsManagementPage.vue'),
         },
         {
+          path: 'sms-templates',
+          component: () => import('@/pages/SmsTemplatesPage.vue'),
+        },
+        {
           path: 'config/aliyun-sms',
           component: () => import('@/pages/AliyunSmsConfigPage.vue'),
         },

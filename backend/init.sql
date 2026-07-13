@@ -280,3 +280,7 @@ CREATE TABLE IF NOT EXISTS `user_deleted` (
   INDEX `idx_user_deleted_phone` (`phone`),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+ALTER TABLE aliyun_configs 
+  ADD COLUMN endpoint_type ENUM('common','beijing','shanghai') NOT NULL DEFAULT 'common' AFTER config_type,
+  ADD COLUMN param_type ENUM('normal','md5','sm2') NOT NULL DEFAULT 'md5' AFTER endpoint_type,
+  ADD COLUMN region VARCHAR(64) NULL DEFAULT NULL AFTER param_type;

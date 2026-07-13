@@ -56,6 +56,9 @@ export class AliyunConfigService {
       id: config.id,
       configType: config.configType,
       productCode: config.productCode,
+      endpointType: config.endpointType || 'common',
+      paramType: config.paramType || 'md5',
+      region: config.region,
       accessKey: this.maskSensitive(config.accessKey),
       secretKey: this.maskSensitive(config.secretKey),
     };
@@ -65,6 +68,9 @@ export class AliyunConfigService {
     accessKey: string;
     secretKey: string;
     productCode: string;
+    endpointType?: 'common' | 'beijing' | 'shanghai';
+    paramType?: 'normal' | 'md5' | 'sm2';
+    region?: string;
   }): Promise<void> {
     let config = await this.configRepo.findOne({
       where: { configType: 'real_name_verify' },
@@ -72,9 +78,16 @@ export class AliyunConfigService {
     if (!config) {
       config = this.configRepo.create({ configType: 'real_name_verify' });
     }
-    config.accessKey = CryptoUtil.encrypt(dto.accessKey);
-    config.secretKey = CryptoUtil.encrypt(dto.secretKey);
+    if (dto.accessKey && dto.accessKey !== '********') {
+      config.accessKey = CryptoUtil.encrypt(dto.accessKey);
+    }
+    if (dto.secretKey && dto.secretKey !== '********') {
+      config.secretKey = CryptoUtil.encrypt(dto.secretKey);
+    }
     config.productCode = dto.productCode;
+    if (dto.endpointType) config.endpointType = dto.endpointType;
+    if (dto.paramType) config.paramType = dto.paramType;
+    if (dto.region !== undefined) config.region = dto.region || null;
     await this.configRepo.save(config);
     await this.invalidateCache('real_name_verify');
     this.logger.log('Aliyun real-name verify config updated');

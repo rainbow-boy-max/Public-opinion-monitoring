@@ -418,9 +418,17 @@ async function onUpload(options: any): Promise<void> {
   const form = new FormData();
   form.append('file', file);
   try {
-    const res = await http.post(`/admin/agents/${agentId.value}/knowledge/upload`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // 上传 FormData 时必须让浏览器/axios 自动生成 multipart boundary
+    // 手动设置 Content-Type 会破坏 boundary 导致后端解析失败
+    // 通过 axios 的 transformRequest 标记，不要让 http.ts 拦截器写入 JSON 头
+    const res = await http.post(
+      `/admin/agents/${agentId.value}/knowledge/upload`,
+      form,
+      {
+        transformRequest: (data: any) => data,
+        headers: { 'Content-Type': undefined },
+      },
+    );
     ElMessage.success(res.message || '上传成功');
     onSuccess(res);
     loadKbFiles();

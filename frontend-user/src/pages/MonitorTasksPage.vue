@@ -59,15 +59,23 @@
       </el-table-column>
       <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" @click="goDetail(row)">详情</el-button>
-          <el-button
-            size="small"
-            :type="row.status === 'enabled' ? 'warning' : 'success'"
-            @click="onToggle(row)"
-          >
-            {{ row.status === 'enabled' ? '暂停' : '启用' }}
-          </el-button>
-          <el-button size="small" type="danger" @click="onDelete(row)">删除</el-button>
+        <el-button size="small" @click="goDetail(row)">详情</el-button>
+        <el-button
+          size="small"
+          :type="row.status === 'enabled' ? 'warning' : 'success'"
+          @click="onToggle(row)"
+        >
+          {{ row.status === 'enabled' ? '暂停' : '启用' }}
+        </el-button>
+        <el-button
+          size="small"
+          type="primary"
+          :loading="row._running"
+          @click="onRunNow(row)"
+        >
+          {{ row._running ? '采集中...' : '立即采集' }}
+        </el-button>
+        <el-button size="small" type="danger" @click="onDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -130,6 +138,7 @@ interface TaskRow {
   status: string;
   lastRunAt: string;
   eventCount?: number;
+  _running?: boolean;
 }
 
 const router = useRouter();
@@ -264,6 +273,23 @@ async function onToggle(row: TaskRow): Promise<void> {
     load();
   } catch (err: any) {
     ElMessage.error(err?.message || '操作失败');
+  }
+}
+
+async function onRunNow(row: TaskRow): Promise<void> {
+  if (row.status === 'paused') {
+    ElMessage.warning('请先启用任务');
+    return;
+  }
+  row._running = true;
+  try {
+    await http.post(`/monitor-tasks/${row.id}/run-now`);
+    ElMessage.success('已加入采集队列，几秒后可查看新舆情');
+    setTimeout(() => load(), 6000);
+  } catch (err: any) {
+    ElMessage.error(err?.message || '触发失败');
+  } finally {
+    row._running = false;
   }
 }
 

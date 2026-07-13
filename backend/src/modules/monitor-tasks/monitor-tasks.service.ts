@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import {
   MonitorTaskEntity,
   OpinionEventEntity,
@@ -41,6 +43,7 @@ export class MonitorTasksService {
     private taskRepo: Repository<MonitorTaskEntity>,
     @InjectRepository(OpinionEventEntity)
     private eventRepo: Repository<OpinionEventEntity>,
+    @InjectQueue('task-queue') private taskQueue: Queue,
   ) {}
 
   async createTask(userId: number, dto: CreateMonitorTaskDto): Promise<MonitorTaskEntity> {
@@ -114,6 +117,38 @@ export class MonitorTasksService {
     task.status = task.status === TaskStatus.ENABLED ? TaskStatus.PAUSED : TaskStatus.ENABLED;
     await this.taskRepo.save(task);
     return task;
+  }
+
+  async ensureTaskOwnedByUser(userId: number, taskId: number): Promise<void> {
+    const t = await this.taskRepo.findOne({ where: { id: taskId, userId } });
+    if (!t) throw new NotFoundException('Task not found or access denied');
+  }
+
+  async runNow(taskId: number): Promise<void> {
+    const task = await this.taskRepo.findOne({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Task not found');
+    if (task.status === TaskStatus.PAUSED) {
+      throw new BadRequestException('已暂停的任务不能立即采集，请先启用');
+    }
+    if (task.status === TaskStatus.ERROR) {
+      throw new BadRequestException('任务处于异常状态，请先处理或编辑');
+    }
+
+    await this.taskQueue.add(
+      'collect',
+      {
+        taskId: task.id,
+        userId: task.userId,
+        keywords: JSON.parse(task.keywords || '[]') as string[],
+        excludeKeywords: task.excludeKeywords ? (JSON.parse(task.excludeKeywords) as string[]) : [],
+        platforms: task.platforms,
+        matchMode: task.matchMode === 'exact' ? 'exact' :
+                   task.matchMode === 'fuzzy' ? 'fuzzy' : 'both',
+      },
+      { jobId: `task-${task.id}-manual-${Date.now()}` },
+    );
+    await this.taskRepo.update(taskId, { lastRunAt: new Date() });
+    this.logger.log(`Task ${taskId} manually triggered`);
   }
 
   async listEvents(

@@ -14,6 +14,25 @@ export class AliyunConfigEntity {
   @Column({ name: 'config_type', length: 32 })
   configType: string;
 
+  @Column({
+    name: 'endpoint_type',
+    type: 'enum',
+    enum: ['common', 'beijing', 'shanghai'],
+    default: 'common',
+  })
+  endpointType: 'common' | 'beijing' | 'shanghai';
+
+  @Column({
+    name: 'param_type',
+    type: 'enum',
+    enum: ['normal', 'md5', 'sm2'],
+    default: 'md5',
+  })
+  paramType: 'normal' | 'md5' | 'sm2';
+
+  @Column({ name: 'region', length: 64, nullable: true })
+  region: string | null;
+
   @Column({ name: 'access_key', type: 'text' })
   accessKey: string;
 
