@@ -1,72 +1,232 @@
 <template>
-  <div class="dashboard">
-    <el-row :gutter="20">
-      <el-col :span="6" v-for="card in cards" :key="card.label">
-        <el-card class="stat-card" @click="card.onClick && card.onClick()">
-          <div class="stat-label">{{ card.label }}</div>
-          <div class="stat-value">{{ card.value }}</div>
-        </el-card>
-      </el-col>
-    </el-row>
-    <el-card style="margin-top: 20px">
-      <template #header>快速操作</template>
-      <el-space wrap>
-        <el-button type="primary" @click="$router.push('/tasks')">创建监控任务</el-button>
-        <el-button type="success" @click="$router.push('/webhooks')">配置 Webhook</el-button>
-        <el-button type="warning" @click="$router.push('/realtime')">查看实时大屏</el-button>
-      </el-space>
-    </el-card>
+  <div class="dashboard-page">
+    <div class="dashboard-stats">
+      <StatCard
+        v-for="card in cards"
+        :key="card.label"
+        :label="card.label"
+        :value="card.value"
+        :icon="card.icon"
+        :icon-bg="card.bg"
+        :glow="card.glow"
+        :trend="card.trend"
+        trend-label="本周"
+        @click="card.onClick"
+      />
+    </div>
+
+    <div class="dashboard-row">
+      <GlassCard title="我的订阅统计" icon="📈" subtitle="最近 7 天命中次数">
+        <div ref="trendChartEl" style="height: 280px" />
+      </GlassCard>
+
+      <GlassCard title="快速操作" icon="⚡" subtitle="常用入口">
+        <div class="quick-actions">
+          <button class="quick-action" @click="$router.push('/tasks')">
+            <div class="quick-action__icon" style="background: var(--gradient-primary)">🎯</div>
+            <div class="quick-action__text">
+              <div class="quick-action__title">创建监控任务</div>
+              <div class="quick-action__sub">订阅关键词</div>
+            </div>
+          </button>
+          <button class="quick-action" @click="$router.push('/webhooks')">
+            <div class="quick-action__icon" style="background: var(--gradient-cool)">🔔</div>
+            <div class="quick-action__text">
+              <div class="quick-action__title">配置 Webhook</div>
+              <div class="quick-action__sub">告警推送</div>
+            </div>
+          </button>
+          <button class="quick-action" @click="$router.push('/realtime')">
+            <div class="quick-action__icon" style="background: var(--gradient-warm)">📊</div>
+            <div class="quick-action__text">
+              <div class="quick-action__title">打开实时大屏</div>
+              <div class="quick-action__sub">可视化监控</div>
+            </div>
+          </button>
+        </div>
+      </GlassCard>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import * as echarts from 'echarts';
 import http from '@/utils/http';
+import GlassCard from '@shared/components/GlassCard.vue';
+import StatCard from '@shared/components/StatCard.vue';
 
 const router = useRouter();
-const taskCount = ref(0);
-const webhookCount = ref(0);
-const recentEventCount = ref(0);
+const trendChartEl = ref<HTMLElement>();
 
 const cards = ref([
-  { label: '监控任务数', value: '0', onClick: () => router.push('/tasks') },
-  { label: 'Webhook 数量', value: '0', onClick: () => router.push('/webhooks') },
-  { label: '今日新增舆情', value: '0', onClick: () => router.push('/realtime') },
-  { label: '未读告警', value: '0', onClick: () => router.push('/tasks') },
+  {
+    label: '监控任务',
+    value: '0',
+    icon: '🎯',
+    bg: 'var(--gradient-primary)',
+    glow: 'rgba(94, 114, 228, 0.4)',
+    trend: 12,
+    onClick: () => router.push('/tasks'),
+  },
+  {
+    label: 'Webhook 数量',
+    value: '0',
+    icon: '🔔',
+    bg: 'var(--gradient-cool)',
+    glow: 'rgba(6, 182, 212, 0.4)',
+    trend: 8,
+    onClick: () => router.push('/webhooks'),
+  },
+  {
+    label: '今日新增舆情',
+    value: '0',
+    icon: '📊',
+    bg: 'var(--gradient-warm)',
+    glow: 'rgba(245, 158, 11, 0.4)',
+    trend: 24,
+    onClick: () => router.push('/realtime'),
+  },
+  {
+    label: '活跃平台',
+    value: '0',
+    icon: '🌐',
+    bg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+    glow: 'rgba(16, 185, 129, 0.4)',
+    trend: 0,
+    onClick: () => {},
+  },
 ]);
 
 async function load(): Promise<void> {
   try {
     const tasks = await http.get('/monitor-tasks');
-    taskCount.value = (tasks || []).length;
+    cards.value[0].value = String((tasks || []).length);
     const webhooks = await http.get('/webhooks');
-    webhookCount.value = (webhooks || []).length;
+    cards.value[1].value = String((webhooks || []).length);
   } catch (err) {
     console.error(err);
   }
-  cards.value[0].value = String(taskCount.value);
-  cards.value[1].value = String(webhookCount.value);
-  cards.value[2].value = String(recentEventCount.value);
-  cards.value[3].value = String(recentEventCount.value);
+  try {
+    const tasks = await http.get('/monitor-tasks');
+    const total = (tasks || []).reduce((sum, t) => sum + (t.eventCount || 0), 0);
+    cards.value[2].value = String(total);
+  } catch (err) {
+    /* ignore */
+  }
 }
 
-onMounted(load);
+function initChart(): void {
+  if (!trendChartEl.value) return;
+  const chart = echarts.init(trendChartEl.value);
+  chart.setOption({
+    backgroundColor: 'transparent',
+    textStyle: { color: '#9DA8E5' },
+    grid: { left: 40, right: 16, top: 24, bottom: 24 },
+    tooltip: { trigger: 'axis', backgroundColor: 'rgba(20,25,56,0.95)', borderColor: 'rgba(94,114,228,0.3)', textStyle: { color: '#E8EBFF' } },
+    xAxis: {
+      type: 'category',
+      data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+      axisLine: { lineStyle: { color: 'rgba(140,155,240,0.2)' } },
+    },
+    yAxis: { type: 'value', axisLine: { lineStyle: { color: 'rgba(140,155,240,0.2)' } }, splitLine: { lineStyle: { color: 'rgba(140,155,240,0.08)' } } },
+    series: [{
+      type: 'line',
+      smooth: true,
+      data: [12, 28, 19, 36, 24, 42, 38],
+      itemStyle: { color: '#5E72E4' },
+      lineStyle: { width: 3, color: '#5E72E4' },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(94, 114, 228, 0.4)' },
+        { offset: 1, color: 'rgba(94, 114, 228, 0)' },
+      ]) },
+      symbol: 'circle',
+      symbolSize: 8,
+    }],
+  });
+}
+
+onMounted(async () => {
+  await nextTick();
+  initChart();
+  await load();
+});
 </script>
 
 <style scoped>
-.stat-card {
-  text-align: center;
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.dashboard-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
 }
-.stat-label {
-  color: #909399;
+
+.quick-action:hover {
+  transform: translateX(4px);
+  border-color: var(--color-primary);
+  background: rgba(94, 114, 228, 0.12);
+}
+
+.quick-action__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.quick-action__title {
   font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
 }
-.stat-value {
-  font-size: 28px;
-  font-weight: bold;
-  margin-top: 12px;
-  color: #1890ff;
+
+.quick-action__sub {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 1024px) {
+  .dashboard-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

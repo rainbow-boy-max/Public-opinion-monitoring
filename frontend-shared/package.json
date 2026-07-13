@@ -1,0 +1,16 @@
+{
+  "name": "@shared/frontend-shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./styles/*.css": "./styles/*.css",
+    "./components/*": "./components/*"
+  },
+  "peerDependencies": {
+    "vue": "^3.4.0",
+    "element-plus": "^2.5.0"
+  }
+}

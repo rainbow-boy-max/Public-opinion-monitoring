@@ -1,61 +1,84 @@
 <template>
-  <el-card>
-    <template #header>
-      <div class="header">
-        <span>监控任务</span>
-        <el-button type="primary" @click="openCreate">创建任务</el-button>
-      </div>
+  <GlassCard title="监控任务" icon="🎯" subtitle="关键词 + 平台 + 频率订阅">
+    <template #extra>
+      <el-button type="primary" :icon="Plus" @click="openCreate">创建任务</el-button>
     </template>
-    <el-table :data="tasks" v-loading="loading" stripe>
-      <el-table-column prop="id" label="ID" width="80" />
-      <el-table-column prop="name" label="任务名称" />
-      <el-table-column label="关键词">
+
+    <div class="toolbar">
+      <el-tag
+        v-for="filter in statusFilters"
+        :key="filter.value"
+        :type="filterStatus === filter.value ? 'primary' : 'info'"
+        effect="dark"
+        class="filter-tag"
+        @click="filterStatus = filter.value"
+      >
+        {{ filter.label }} ({{ filter.count }})
+      </el-tag>
+    </div>
+
+    <el-table :data="filteredTasks" v-loading="loading" stripe>
+      <el-table-column prop="id" label="ID" width="80">
         <template #default="{ row }">
-          <el-tag v-for="kw in parseKeywords(row)" :key="kw" size="small" style="margin-right: 4px">
-            {{ kw }}
-          </el-tag>
+          <span class="mono" style="color: var(--text-tertiary)">#{{ row.id }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="平台" width="180">
+      <el-table-column prop="name" label="任务名称" min-width="160">
         <template #default="{ row }">
-          <el-tag
-            v-for="p in row.platforms"
-            :key="p"
-            size="small"
-            type="info"
-            style="margin-right: 4px"
-          >
-            {{ platformLabel(p) }}
-          </el-tag>
+          <div class="task-name">{{ row.name }}</div>
         </template>
       </el-table-column>
-      <el-table-column prop="frequency" label="频率" width="100" />
+      <el-table-column label="关键词" min-width="220">
+        <template #default="{ row }">
+          <div class="keywords-list">
+            <span v-for="kw in parseKeywords(row)" :key="kw" class="keyword-chip">{{ kw }}</span>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="平台" width="200">
+        <template #default="{ row }">
+          <div class="platforms-list">
+            <PlatformTag v-for="p in row.platforms" :key="p" :platform="p" :label="platformLabel(p)" />
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column prop="frequency" label="频率" width="100">
+        <template #default="{ row }">
+          <span class="freq-tag">{{ freqLabel(row.frequency) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">
-          <el-tag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
+          <el-tag :type="getStatusType(row.status)" effect="dark">{{ statusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="lastRunAt" label="最后运行" width="180">
+      <el-table-column prop="lastRunAt" label="最后运行" width="170">
         <template #default="{ row }">
-          {{ row.lastRunAt ? new Date(row.lastRunAt).toLocaleString() : '-' }}
+          <span class="mono" style="color: var(--text-tertiary)">{{ formatDate(row.lastRunAt) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="goDetail(row)">详情</el-button>
-          <el-button size="small" :type="row.status === 'enabled' ? 'warning' : 'success'" @click="onToggle(row)">
+          <el-button
+            size="small"
+            :type="row.status === 'enabled' ? 'warning' : 'success'"
+            @click="onToggle(row)"
+          >
             {{ row.status === 'enabled' ? '暂停' : '启用' }}
           </el-button>
           <el-button size="small" type="danger" @click="onDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
-  </el-card>
 
-  <el-dialog v-model="dialogVisible" title="创建监控任务" width="600px">
+    <el-empty v-if="!loading && filteredTasks.length === 0" description="暂无监控任务" />
+  </GlassCard>
+
+  <el-dialog v-model="dialogVisible" title="创建监控任务" width="640">
     <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
       <el-form-item label="任务名称" prop="name">
-        <el-input v-model="form.name" />
+        <el-input v-model="form.name" placeholder="给任务起一个名字" />
       </el-form-item>
       <el-form-item label="关键词" prop="keywords">
         <el-input
@@ -64,25 +87,22 @@
           :rows="3"
           placeholder="多个关键词用逗号或换行分隔"
         />
+        <div class="form-tip">支持精确匹配、模糊匹配、通配符，三要素认证或订阅词条</div>
       </el-form-item>
       <el-form-item label="监测平台" prop="platforms">
         <el-checkbox-group v-model="form.platforms">
-          <el-checkbox
-            v-for="p in allPlatforms"
-            :key="p.value"
-            :label="p.value"
-          >
+          <el-checkbox v-for="p in allPlatforms" :key="p.value" :label="p.value">
             {{ p.label }}
           </el-checkbox>
         </el-checkbox-group>
       </el-form-item>
-      <el-form-item label="频率" prop="frequency">
-        <el-select v-model="form.frequency">
-          <el-option label="每 5 分钟" value="5min" />
-          <el-option label="每 15 分钟" value="15min" />
-          <el-option label="每 30 分钟" value="30min" />
-          <el-option label="每 60 分钟" value="60min" />
-        </el-select>
+      <el-form-item label="监测频率" prop="frequency">
+        <el-radio-group v-model="form.frequency">
+          <el-radio-button label="5min">5 分钟</el-radio-button>
+          <el-radio-button label="15min">15 分钟</el-radio-button>
+          <el-radio-button label="30min">30 分钟</el-radio-button>
+          <el-radio-button label="60min">60 分钟</el-radio-button>
+        </el-radio-group>
       </el-form-item>
     </el-form>
     <template #footer>
@@ -93,10 +113,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus';
+import { Plus } from '@element-plus/icons-vue';
 import http from '@/utils/http';
+import GlassCard from '@shared/components/GlassCard.vue';
+import PlatformTag from '@shared/components/PlatformTag.vue';
 
 interface TaskRow {
   id: number;
@@ -106,6 +129,7 @@ interface TaskRow {
   frequency: string;
   status: string;
   lastRunAt: string;
+  eventCount?: number;
 }
 
 const router = useRouter();
@@ -114,6 +138,17 @@ const loading = ref(false);
 const dialogVisible = ref(false);
 const creating = ref(false);
 const formRef = ref<FormInstance>();
+const filterStatus = ref('all');
+
+const allPlatforms = [
+  { value: 'weixin', label: '微信公众号' },
+  { value: 'weixin_video', label: '微信视频号' },
+  { value: 'douyin', label: '抖音' },
+  { value: 'xiaohongshu', label: '小红书' },
+  { value: 'kuaishou', label: '快手' },
+  { value: 'weibo', label: '微博' },
+  { value: 'baijiahao', label: '百家号' },
+];
 
 const form = reactive({
   name: '',
@@ -129,16 +164,6 @@ const rules = {
   frequency: [{ required: true, message: '请选择监测频率', trigger: 'change' }],
 };
 
-const allPlatforms = [
-  { value: 'weixin', label: '微信公众号' },
-  { value: 'weixin_video', label: '微信视频号' },
-  { value: 'douyin', label: '抖音' },
-  { value: 'xiaohongshu', label: '小红书' },
-  { value: 'kuaishou', label: '快手' },
-  { value: 'weibo', label: '微博' },
-  { value: 'baijiahao', label: '百家号' },
-];
-
 function platformLabel(v: string): string {
   return allPlatforms.find((p) => p.value === v)?.label || v;
 }
@@ -151,13 +176,34 @@ function parseKeywords(row: TaskRow): string[] {
   }
 }
 
+function freqLabel(f: string): string {
+  return ({ '5min': '5 min', '15min': '15 min', '30min': '30 min', '60min': '60 min' } as any)[f] || f;
+}
+
 function statusLabel(s: string): string {
   return ({ enabled: '运行中', paused: '已暂停', error: '异常' } as Record<string, string>)[s] || s;
 }
 
-function statusTagType(s: string): 'success' | 'warning' | 'danger' {
+function getStatusType(s: string): 'success' | 'warning' | 'danger' {
   return ({ enabled: 'success', paused: 'warning', error: 'danger' } as any)[s] || 'info';
 }
+
+function formatDate(s: string): string {
+  if (!s) return '—';
+  return new Date(s).toLocaleString('zh-CN', { hour12: false });
+}
+
+const filteredTasks = computed(() => {
+  if (filterStatus.value === 'all') return tasks.value;
+  return tasks.value.filter((t) => t.status === filterStatus.value);
+});
+
+const statusFilters = computed(() => ({
+  all: { value: 'all', label: '全部', count: tasks.value.length },
+  enabled: { value: 'enabled', label: '运行中', count: tasks.value.filter((t) => t.status === 'enabled').length },
+  paused: { value: 'paused', label: '已暂停', count: tasks.value.filter((t) => t.status === 'paused').length },
+  error: { value: 'error', label: '异常', count: tasks.value.filter((t) => t.status === 'error').length },
+}));
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -174,7 +220,7 @@ function openCreate(): void {
   Object.assign(form, {
     name: '',
     keywordsText: '',
-    platforms: [],
+    platforms: ['weibo'],
     frequency: '15min',
   });
   dialogVisible.value = true;
@@ -236,9 +282,56 @@ onMounted(load);
 </script>
 
 <style scoped>
-.header {
+.toolbar {
+  margin-bottom: 20px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 8px;
+}
+
+.filter-tag {
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.task-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.keywords-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.keyword-chip {
+  background: rgba(94, 114, 228, 0.18);
+  color: #A78BFA;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.platforms-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.freq-tag {
+  background: rgba(6, 182, 212, 0.15);
+  color: #06B6D4;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.form-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 </style>

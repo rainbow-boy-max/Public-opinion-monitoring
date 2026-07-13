@@ -1,32 +1,43 @@
 <template>
-  <el-card class="auth-card">
-    <h2 class="title">用户注册</h2>
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-      <el-form-item label="用户名" prop="username">
-        <el-input v-model="form.username" />
-      </el-form-item>
-      <el-form-item label="手机号" prop="phone">
-        <el-input v-model="form.phone" />
-      </el-form-item>
-      <el-form-item label="验证码" prop="code">
-        <el-input v-model="form.code" style="max-width: 200px" />
-        <el-button
-          :disabled="countdown > 0"
-          @click="onSendCode"
-          style="margin-left: 10px"
-        >
-          {{ countdown > 0 ? `${countdown}s 后重试` : '获取验证码' }}
-        </el-button>
-      </el-form-item>
-      <el-form-item label="密码" prop="password">
-        <el-input v-model="form.password" type="password" show-password />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" :loading="loading" @click="onRegister">注册</el-button>
-        <el-button @click="$router.push('/login')">返回登录</el-button>
-      </el-form-item>
-    </el-form>
-  </el-card>
+  <div class="register-page">
+    <div class="register-bg" />
+    <div class="register-container">
+      <GlassCard class="register-card">
+        <div class="register-card__brand">
+          <h1 class="register-card__title">创建新账号</h1>
+          <p class="register-card__sub">完成手机号验证，开启舆情监控之旅</p>
+        </div>
+
+        <el-form ref="formRef" :model="form" :rules="rules" label-width="92px">
+          <el-form-item label="用户名" prop="username">
+            <el-input v-model="form.username" placeholder="3-64 字符" />
+          </el-form-item>
+          <el-form-item label="手机号" prop="phone">
+            <el-input v-model="form.phone" placeholder="11 位手机号" />
+          </el-form-item>
+          <el-form-item label="验证码" prop="code">
+            <div class="code-row">
+              <el-input v-model="form.code" maxlength="6" placeholder="6 位验证码" />
+              <el-button :disabled="countdown > 0" @click="onSendCode">
+                {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input v-model="form.password" type="password" show-password placeholder="6-64 字符" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="large" :loading="loading" @click="onRegister" class="register-submit">
+              注册
+            </el-button>
+            <div class="register-actions">
+              <a @click="$router.push('/login')">已有账号，去登录</a>
+            </div>
+          </el-form-item>
+        </el-form>
+      </GlassCard>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -34,6 +45,7 @@ import { ref, reactive, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance } from 'element-plus';
 import { useUserAuthStore } from '@/store/auth';
+import GlassCard from '@shared/components/GlassCard.vue';
 
 const router = useRouter();
 const auth = useUserAuthStore();
@@ -103,12 +115,83 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.auth-card {
-  max-width: 480px;
-  margin: 80px auto;
+.register-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
 }
-.title {
+
+.register-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 70% 30%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 30% 70%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+}
+
+.register-container {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+}
+
+.register-card {
+  padding: 8px 8px 8px 8px;
+}
+
+.register-card__brand {
   text-align: center;
   margin-bottom: 24px;
+}
+
+.register-card__title {
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #FFFFFF 0%, #7C8FE8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 0 6px;
+}
+
+.register-card__sub {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.code-row .el-input {
+  flex: 1;
+}
+
+.register-submit {
+  width: 100%;
+  height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  background: var(--gradient-primary) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(94, 114, 228, 0.4);
+}
+
+.register-actions {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.register-actions a {
+  color: var(--color-primary-light);
+  font-size: 13px;
+  cursor: pointer;
 }
 </style>

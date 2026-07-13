@@ -2,6 +2,8 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
+import '@shared/styles/theme.css';
+import '@shared/styles/element-overrides.css';
 import App from './App.vue';
 import router from './router';
 
