@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 const instance: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://3000-0f293760808061a2.monkeycode-ai.online/api',
   timeout: 15000,
 });
 

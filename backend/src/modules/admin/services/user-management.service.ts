@@ -17,7 +17,7 @@ export class UserManagementService {
     page: number;
     pageSize: number;
     search?: string;
-    status?: AuthStatus;
+    status?: string;
     startDate?: string;
     endDate?: string;
   }): Promise<{ items: Partial<UserEntity>[]; total: number; page: number; pageSize: number }> {

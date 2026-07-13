@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 
 @Module({
@@ -10,10 +9,10 @@ import { BullModule } from '@nestjs/bull';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         redis: {
-          host: config.get<string>('redis.host'),
-          port: config.get<number>('redis.port'),
-          password: config.get<string>('redis.password') || undefined,
-          db: config.get<number>('redis.db'),
+          host: config.get<string>('REDIS_HOST') || process.env.REDIS_HOST || '127.0.0.1',
+          port: parseInt(config.get<string>('REDIS_PORT') || process.env.REDIS_PORT || '6379', 10),
+          password: config.get<string>('REDIS_PASSWORD') || process.env.REDIS_PASSWORD || undefined,
+          db: parseInt(config.get<string>('REDIS_DB') || process.env.REDIS_DB || '0', 10),
         },
       }),
     }),

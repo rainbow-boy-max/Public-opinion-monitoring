@@ -16,8 +16,6 @@ import {
   MonitorTaskEntity,
   OpinionEventEntity,
 } from '../../database/entities';
-import { WebhooksModule } from '../webhooks/webhooks.module';
-import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
   imports: [
@@ -30,8 +28,6 @@ import { RealtimeModule } from '../realtime/realtime.module';
         attempts: 1,
       },
     }),
-    WebhooksModule,
-    RealtimeModule,
   ],
   providers: [
     CollectorService,

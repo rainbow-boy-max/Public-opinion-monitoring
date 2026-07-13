@@ -7,6 +7,6 @@ allowBuilds:
   '@alicloud/openapi-core': set this to true or false
   '@nestjs/core': set this to true or false
   bcrypt: set this to true or false
-  esbuild: set this to true or false
+  esbuild: true
   msgpackr-extract: set this to true or false
   vue-demi: set this to true or false

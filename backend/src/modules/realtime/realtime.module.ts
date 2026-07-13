@@ -4,11 +4,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RealtimeGateway } from './realtime.gateway';
 import { StatsAggregatorService } from './stats-aggregator.service';
-import { OpinionEventEntity } from '../../database/entities';
+import { OpinionEventEntity, MonitorTaskEntity } from '../../database/entities';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([OpinionEventEntity]),
+    TypeOrmModule.forFeature([OpinionEventEntity, MonitorTaskEntity]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -13,10 +13,10 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    const host = this.configService.get<string>('redis.host');
-    const port = this.configService.get<number>('redis.port');
-    const password = this.configService.get<string>('redis.password');
-    const db = this.configService.get<number>('redis.db');
+    const host = this.configService.get<string>('REDIS_HOST') || process.env.REDIS_HOST || '127.0.0.1';
+    const port = parseInt(this.configService.get<string>('REDIS_PORT') || process.env.REDIS_PORT || '6379', 10);
+    const password = this.configService.get<string>('REDIS_PASSWORD') || process.env.REDIS_PASSWORD || '';
+    const db = parseInt(this.configService.get<string>('REDIS_DB') || process.env.REDIS_DB || '0', 10);
 
     const url = `redis://${host}:${port}/${db}`;
     const options: Record<string, unknown> = { url };
@@ -41,7 +41,9 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
   }
 
   async get(key: string): Promise<string | null> {
-    return this.client.get(key);
+    const result = await this.client.get(key);
+    if (result === null || result === undefined) return null;
+    return String(result);
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
@@ -90,7 +92,7 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
 
   async sismember(key: string, member: string): Promise<boolean> {
     const result = await this.client.sIsMember(key, member);
-    return result;
+    return Boolean(result);
   }
 
   async exists(key: string): Promise<boolean> {

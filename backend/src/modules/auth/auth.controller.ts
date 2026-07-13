@@ -12,6 +12,12 @@ import { AuthService } from './auth.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
 
+interface LoginResult {
+  token: string;
+  user: any;
+  passwordChangeRequired?: boolean;
+}
+
 class LoginDto {
   @IsString()
   @MinLength(3)
@@ -92,13 +98,13 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto) {
+  async login(@Body() dto: LoginDto): Promise<LoginResult> {
     return this.authService.login(dto.username, dto.password);
   }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: RegisterDto) {
+  async register(@Body() dto: RegisterDto): Promise<LoginResult> {
     return this.authService.register(dto.phone, dto.password, dto.code, dto.username);
   }
 

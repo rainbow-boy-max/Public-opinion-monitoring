@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { AppDataSource } from './data-source';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { UserEntity, UserRole, AuthStatus } from './entities/user.entity';
 
 async function seed() {
@@ -14,7 +14,7 @@ async function seed() {
     return;
   }
 
-  const passwordHash = await bcrypt.hash('123456', 12);
+  const passwordHash = bcrypt.hashSync('123456', 12);
   const admin = userRepo.create({
     username: 'admin',
     passwordHash,
