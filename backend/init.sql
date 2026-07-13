@@ -153,3 +153,130 @@ CREATE TABLE IF NOT EXISTS `system_logs` (
   INDEX `idx_module_time` (`module`, `created_at`),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 智能体管理模块
+CREATE TABLE IF NOT EXISTS `agents` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(128) NOT NULL,
+  `role_description` VARCHAR(512) NOT NULL,
+  `system_prompt` TEXT NULL,
+  `primary_model_id` BIGINT NOT NULL,
+  `fallback_model_ids` JSON NOT NULL,
+  `temperature` FLOAT NOT NULL DEFAULT 0.7,
+  `max_tokens` INT NOT NULL DEFAULT 2048,
+  `kb_enabled` TINYINT NOT NULL DEFAULT 1,
+  `kb_top_k` INT NOT NULL DEFAULT 4,
+  `status` ENUM('enabled','disabled') NOT NULL DEFAULT 'enabled',
+  `avatar` VARCHAR(128) NULL,
+  `description` TEXT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_agents_status` (`status`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `llm_models` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `provider` VARCHAR(32) NOT NULL,
+  `model` VARCHAR(64) NOT NULL,
+  `display_name` VARCHAR(128) NOT NULL,
+  `base_url` VARCHAR(512) NOT NULL,
+  `api_key_enc` TEXT NOT NULL,
+  `api_version` VARCHAR(16) NOT NULL DEFAULT '1.0',
+  `max_tokens` INT NOT NULL DEFAULT 4096,
+  `is_preset` TINYINT NOT NULL DEFAULT 0,
+  `is_enabled` TINYINT NOT NULL DEFAULT 1,
+  `last_tested_at` DATETIME NULL,
+  `last_test_status` VARCHAR(32) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_llm_models_provider` (`provider`),
+  INDEX `idx_llm_models_enabled` (`is_enabled`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `agent_kb_files` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `agent_id` BIGINT NOT NULL,
+  `filename` VARCHAR(255) NOT NULL,
+  `file_type` VARCHAR(16) NOT NULL,
+  `file_size` INT NOT NULL,
+  `storage_path` VARCHAR(512) NOT NULL,
+  `chunk_count` INT NOT NULL DEFAULT 0,
+  `total_chars` INT NOT NULL DEFAULT 0,
+  `status` ENUM('pending','parsing','ready','failed') NOT NULL DEFAULT 'pending',
+  `error_message` TEXT NULL,
+  `uploaded_by` BIGINT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_agent_kb_files_agent` (`agent_id`),
+  INDEX `idx_agent_kb_files_status` (`status`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `agent_kb_chunks` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `file_id` BIGINT NOT NULL,
+  `agent_id` BIGINT NOT NULL,
+  `chunk_index` INT NOT NULL,
+  `content` TEXT NOT NULL,
+  `char_count` INT NOT NULL,
+  `embedding_b64` MEDIUMTEXT NOT NULL,
+  `metadata` VARCHAR(128) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_agent_kb_chunks_agent` (`agent_id`, `file_id`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pr_reports` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `event_id` BIGINT NULL,
+  `agent_id` BIGINT NULL,
+  `input_snapshot` TEXT NULL,
+  `analysis` MEDIUMTEXT NULL,
+  `strategy` MEDIUMTEXT NULL,
+  `model_used` VARCHAR(128) NULL,
+  `tokens_used` INT NOT NULL DEFAULT 0,
+  `latency_ms` INT NOT NULL DEFAULT 0,
+  `status` ENUM('pending','generating','completed','failed') NOT NULL DEFAULT 'pending',
+  `error_message` TEXT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_pr_reports_user` (`user_id`, `created_at`),
+  INDEX `idx_pr_reports_status` (`status`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 短信模板管理
+CREATE TABLE IF NOT EXISTS `sms_templates` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `scene` ENUM('login','register','reset_password','opinion_alert','ban_notify','unban_notify','generic') NOT NULL,
+  `name` VARCHAR(128) NOT NULL,
+  `sign_name` VARCHAR(64) NOT NULL,
+  `template_code` VARCHAR(64) NULL,
+  `template_content` TEXT NOT NULL,
+  `variables` JSON NULL,
+  `is_default` TINYINT NOT NULL DEFAULT 0,
+  `remark` VARCHAR(256) NULL,
+  `status` ENUM('draft','pending_review','approved','rejected','disabled') NOT NULL DEFAULT 'draft',
+  `reject_reason` VARCHAR(512) NULL,
+  `submitted_at` DATETIME NULL,
+  `approved_at` DATETIME NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_sms_templates_scene` (`scene`),
+  INDEX `idx_sms_templates_default` (`scene`, `is_default`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_deleted` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `original_user_id` BIGINT NOT NULL,
+  `username` VARCHAR(64) NOT NULL,
+  `phone` VARCHAR(20) NOT NULL,
+  `deleted_by` BIGINT NOT NULL,
+  `deleted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_user_deleted_phone` (`phone`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

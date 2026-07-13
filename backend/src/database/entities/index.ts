@@ -18,3 +18,18 @@ export { WebhookTaskBindingEntity } from './webhook-task-binding.entity';
 export { WebhookPushLogEntity } from './webhook-push-log.entity';
 export { SmsLogEntity } from './sms-log.entity';
 export { SystemLogEntity } from './system-log.entity';
+export {
+  LlmModelEntity,
+  LlmProvider,
+  AgentEntity,
+  AgentStatus,
+  AgentKbFileEntity,
+  KbFileStatus,
+  AgentKbChunkEntity,
+  PrReportEntity,
+  PrReportStatus,
+  SmsTemplateEntity,
+  SmsTemplateScene,
+  SmsTemplateStatus,
+  UserDeletedEntity,
+} from './agent.entity';

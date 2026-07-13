@@ -21,6 +21,7 @@ import { CollectorModule } from './modules/collector/collector.module';
 import { SmsModule } from './modules/sms/sms.module';
 import { VerifyModule } from './modules/verify/verify.module';
 import { SystemLogsModule } from './modules/system-logs/system-logs.module';
+import { AgentsModule } from './modules/agents/agents.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { SystemLogsModule } from './modules/system-logs/system-logs.module';
     SmsModule,
     VerifyModule,
     SystemLogsModule,
+    AgentsModule,
   ],
   providers: [
     {
