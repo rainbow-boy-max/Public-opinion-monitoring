@@ -4,6 +4,7 @@ import {
   Put,
   Post,
   Body,
+  Delete,
   Param,
   Query,
   UseGuards,
@@ -16,7 +17,8 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AliyunConfigService, UserManagementService } from './services';
-import { IsString, IsOptional, MinLength, MaxLength } from 'class-validator';
+import { IsString, IsOptional, MinLength, MaxLength, IsIn, Matches } from 'class-validator';
+import { AuthStatus } from '../../database/entities';
 
 class SmsConfigDto {
   @IsString()
@@ -44,6 +46,35 @@ class VerifyConfigDto {
 }
 
 class BanActionDto {
+  @IsString()
+  @IsOptional()
+  reason?: string;
+}
+
+class CreateUserDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(64)
+  username: string;
+
+  @IsString()
+  @Matches(/^1[3-9]\d{9}$/, { message: '手机号格式不正确' })
+  phone: string;
+
+  @IsString()
+  @MinLength(6)
+  @MaxLength(64)
+  password: string;
+
+  @IsOptional()
+  @IsIn(['admin', 'user', 'operator'])
+  role?: string;
+
+  @IsOptional()
+  authStatus?: AuthStatus;
+}
+
+class ResetPasswordDto {
   @IsString()
   @IsOptional()
   reason?: string;
@@ -120,5 +151,46 @@ export class AdminController {
   ) {
     await this.userManagementService.unbanUser(id, operatorId);
     return { message: 'User unbanned successfully' };
+  }
+
+  @Post('users')
+  @HttpCode(HttpStatus.CREATED)
+  async createUser(
+    @CurrentUser('id') operatorId: number,
+    @Body() dto: CreateUserDto,
+  ) {
+    void operatorId;
+    const r = await this.userManagementService.createUser({
+      username: dto.username,
+      phone: dto.phone,
+      password: dto.password,
+      role: (dto.role as any) || 'user',
+      authStatus: (dto.authStatus as any) || AuthStatus.UNVERIFIED,
+    });
+    return r;
+  }
+
+  @Get('users/:id/detail')
+  async getUserDetail(@Param('id', ParseIntPipe) id: number) {
+    return this.userManagementService.getUserDetail(id);
+  }
+
+  @Post('users/:id/reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @CurrentUser('id') operatorId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() _dto: ResetPasswordDto,
+  ) {
+    return this.userManagementService.resetPassword(id, operatorId);
+  }
+
+  @Delete('users/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteUser(
+    @CurrentUser('id') operatorId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.userManagementService.deleteUser(id, operatorId);
   }
 }

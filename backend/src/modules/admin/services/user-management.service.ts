@@ -110,4 +110,105 @@ export class UserManagementService {
     }
     void operatorId;
   }
+
+  async createUser(payload: {
+    username: string;
+    phone: string;
+    password: string;
+    role?: 'admin' | 'user' | 'operator';
+    authStatus?: AuthStatus;
+  }): Promise<any> {
+    if (!payload.username || !payload.phone || !payload.password) {
+      throw new BadRequestException('用户名、手机号、密码必填');
+    }
+    if (payload.password.length < 6) {
+      throw new BadRequestException('密码至少 6 位');
+    }
+    const existing = await this.userRepo.findOne({
+      where: [{ username: payload.username }, { phone: payload.phone }],
+    });
+    if (existing) {
+      throw new BadRequestException('用户名或手机号已存在');
+    }
+    const bcryptjs = await import('bcryptjs');
+    const passwordHash = bcryptjs.hashSync(payload.password, 12);
+    const user = this.userRepo.create({
+      username: payload.username,
+      phone: payload.phone,
+      passwordHash,
+      role: payload.role === 'admin' ? UserRole.ADMIN : UserRole.USER,
+      authStatus: payload.authStatus || AuthStatus.UNVERIFIED,
+      firstLogin: 0,
+      loginAttempts: 0,
+    });
+    const saved = await this.userRepo.save(user);
+    return {
+      id: saved.id,
+      username: saved.username,
+      phone: saved.phone,
+      message: '用户创建成功',
+      tempPassword: payload.password,
+    };
+  }
+
+  async resetPassword(userId: number, operatorId: number): Promise<{ tempPassword: string }> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let tempPassword = '';
+    for (let i = 0; i < 10; i++) {
+      tempPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const bcryptjs = await import('bcryptjs');
+    user.passwordHash = bcryptjs.hashSync(tempPassword, 12);
+    user.firstLogin = 1;
+    user.loginAttempts = 0;
+    user.lockedUntil = null;
+    await this.userRepo.save(user);
+    void operatorId;
+    return { tempPassword };
+  }
+
+  async deleteUser(userId: number, operatorId: number): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role === UserRole.ADMIN) {
+      throw new BadRequestException('不能删除管理员账号');
+    }
+    await this.userRepo.remove(user);
+
+    try {
+      const { UserDeletedEntity } = await import('../../../database/entities/agent.entity');
+      const userDeletedRepo = (this.userRepo.manager.getRepository(UserDeletedEntity));
+      await userDeletedRepo.save({
+        originalUserId: user.id,
+        username: user.username,
+        phone: user.phone,
+        deletedBy: operatorId,
+      });
+    } catch (err) {
+      // ignore audit log error
+    }
+  }
+
+  async getUserDetail(userId: number): Promise<any> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    return {
+      id: user.id,
+      username: user.username,
+      phone: user.phone,
+      realName: user.realName,
+      idCardHash: user.idCardHash ? `${user.idCardHash.substring(0, 8)}...` : null,
+      authStatus: user.authStatus,
+      role: user.role,
+      firstLogin: user.firstLogin === 1,
+      loginAttempts: user.loginAttempts,
+      lockedUntil: user.lockedUntil,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
 }

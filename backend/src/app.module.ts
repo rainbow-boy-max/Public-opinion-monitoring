@@ -19,6 +19,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { CollectorModule } from './modules/collector/collector.module';
 import { SmsModule } from './modules/sms/sms.module';
+import { SmsTemplatesModule } from './modules/sms/sms-templates.module';
 import { VerifyModule } from './modules/verify/verify.module';
 import { SystemLogsModule } from './modules/system-logs/system-logs.module';
 import { AgentsModule } from './modules/agents/agents.module';
@@ -44,6 +45,7 @@ import { AgentsModule } from './modules/agents/agents.module';
     RealtimeModule,
     CollectorModule,
     SmsModule,
+    SmsTemplatesModule,
     VerifyModule,
     SystemLogsModule,
     AgentsModule,

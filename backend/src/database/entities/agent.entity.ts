@@ -289,7 +289,7 @@ export class SmsTemplateEntity {
   @Column({ length: 128 })
   name: string;
 
-  @Column({ length: 64 })
+  @Column({ name: 'sign_name', length: 64 })
   signName: string;
 
   @Column({ name: 'template_code', length: 64, nullable: true })

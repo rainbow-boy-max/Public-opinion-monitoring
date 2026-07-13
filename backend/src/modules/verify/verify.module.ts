@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { VerifyController } from './verify.controller';
+import { VerifyRealnameService } from './verify-realname.service';
 import { VerifyService } from './verify.service';
 import { UserEntity, AliyunConfigEntity, SystemLogEntity } from '../../database/entities';
 
@@ -18,7 +19,7 @@ import { UserEntity, AliyunConfigEntity, SystemLogEntity } from '../../database/
     }),
   ],
   controllers: [VerifyController],
-  providers: [VerifyService],
-  exports: [VerifyService],
+  providers: [VerifyService, VerifyRealnameService],
+  exports: [VerifyService, VerifyRealnameService],
 })
 export class VerifyModule {}
