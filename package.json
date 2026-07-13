@@ -1,0 +1,35 @@
+{
+  "name": "public-opinion-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "全网舆情监测系统 - 管理端和用户端分离架构",
+  "scripts": {
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:admin": "pnpm --filter frontend-admin dev",
+    "dev:user": "pnpm --filter frontend-user dev",
+    "build:backend": "pnpm --filter backend build",
+    "build:admin": "pnpm --filter frontend-admin build",
+    "build:user": "pnpm --filter frontend-user build",
+    "build:all": "pnpm build:backend && pnpm build:admin && pnpm build:user",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,vue,js,jsx}": [
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

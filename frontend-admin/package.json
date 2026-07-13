@@ -1,0 +1,30 @@
+{
+  "name": "frontend-admin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --port 5174",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint \"src/**/*.{ts,vue}\" --fix"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "echarts": "^5.5.0",
+    "element-plus": "^2.5.0",
+    "pinia": "^2.1.7",
+    "socket.io-client": "^4.7.0",
+    "vue": "^3.4.21",
+    "vue-echarts": "^7.0.3",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0",
+    "vue-tsc": "^1.8.27"
+  }
+}

@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: opinion-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_DATABASE:-opinion_monitor}
+      MYSQL_USER: ${DB_USERNAME:-opinion}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-opinionpass}
+      TZ: Asia/Shanghai
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: opinion-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: opinion-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-opinion}
+      DB_PASSWORD: ${DB_PASSWORD:-opinionpass}
+      DB_DATABASE: ${DB_DATABASE:-opinion_monitor}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET}
+      AES_ENCRYPTION_KEY: ${AES_ENCRYPTION_KEY}
+      WEIBO_API_BASE: ${WEIBO_API_BASE:-}
+      WEIBO_API_KEY: ${WEIBO_API_KEY:-}
+      WEIXIN_API_BASE: ${WEIXIN_API_BASE:-}
+      WEIXIN_API_KEY: ${WEIXIN_API_KEY:-}
+      WEIXIN_VIDEO_API_BASE: ${WEIXIN_VIDEO_API_BASE:-}
+      WEIXIN_VIDEO_API_KEY: ${WEIXIN_VIDEO_API_KEY:-}
+      DOUYIN_API_BASE: ${DOUYIN_API_BASE:-}
+      DOUYIN_API_KEY: ${DOUYIN_API_KEY:-}
+      XIAOHONGSHU_API_BASE: ${XIAOHONGSHU_API_BASE:-}
+      XIAOHONGSHU_API_KEY: ${XIAOHONGSHU_API_KEY:-}
+      KUAISHOU_API_BASE: ${KUAISHOU_API_BASE:-}
+      KUAISHOU_API_KEY: ${KUAISHOU_API_KEY:-}
+      BAIJIAHAO_API_BASE: ${BAIJIAHAO_API_BASE:-}
+      BAIJIAHAO_API_KEY: ${BAIJIAHAO_API_KEY:-}
+    ports:
+      - "3000:3000"
+
+  frontend-admin:
+    build:
+      context: ../frontend-admin
+      dockerfile: Dockerfile
+    container_name: opinion-admin
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  frontend-user:
+    build:
+      context: ../frontend-user
+      dockerfile: Dockerfile
+    container_name: opinion-user
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: opinion-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend-admin
+      - frontend-user
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+
+volumes:
+  mysql_data:
+  redis_data:
