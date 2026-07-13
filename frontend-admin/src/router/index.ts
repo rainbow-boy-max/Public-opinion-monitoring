@@ -27,6 +27,23 @@ const router = createRouter({
           component: () => import('@/pages/UserManagementPage.vue'),
         },
         {
+          path: 'agents',
+          component: () => import('@/pages/AgentsPage.vue'),
+        },
+        {
+          path: 'agents/new',
+          name: 'agent-new',
+          component: () => import('@/pages/AgentDetailPage.vue'),
+        },
+        {
+          path: 'agents/:id',
+          component: () => import('@/pages/AgentDetailPage.vue'),
+        },
+        {
+          path: 'llm-models',
+          component: () => import('@/pages/LlmModelsManagementPage.vue'),
+        },
+        {
           path: 'config/aliyun-sms',
           component: () => import('@/pages/AliyunSmsConfigPage.vue'),
         },

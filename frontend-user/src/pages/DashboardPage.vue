@@ -43,6 +43,13 @@
               <div class="quick-action__sub">可视化监控</div>
             </div>
           </button>
+          <button class="quick-action" @click="$router.push('/pr')">
+            <div class="quick-action__icon" style="background: linear-gradient(135deg, #7C3AED, #5E72E4)">🎯</div>
+            <div class="quick-action__text">
+              <div class="quick-action__title">AI 公关</div>
+              <div class="quick-action__sub">智能危机应对</div>
+            </div>
+          </button>
         </div>
       </GlassCard>
     </div>

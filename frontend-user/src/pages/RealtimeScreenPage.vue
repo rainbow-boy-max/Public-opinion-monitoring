@@ -56,6 +56,15 @@
       <div class="rt-chart-title">
         <span class="rt-chart-bar" />实时事件流
         <span class="rt-events-count">{{ events.length }} 条</span>
+        <span style="flex: 1"></span>
+        <el-button
+          size="small"
+          type="warning"
+          :disabled="!firstEventId"
+          @click="onGeneratePR"
+        >
+          🎯 生成公关方案
+        </el-button>
       </div>
       <div class="rt-events-stream">
         <transition-group name="slide-up">
@@ -95,8 +104,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import { io, Socket } from 'socket.io-client';
+import { ElMessage } from 'element-plus';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
 import PlatformTag from '@shared/components/PlatformTag.vue';
@@ -116,6 +127,21 @@ interface EventRow {
 }
 
 const events = ref<EventRow[]>([]);
+const router = useRouter();
+
+const firstEventId = computed(() => (events.value.length > 0 ? events.value[0].id : null));
+
+async function onGeneratePR(): Promise<void> {
+  const evt = events.value[0];
+  if (!evt?.id) return;
+  try {
+    const res = await http.post('/pr/analyze', { eventId: evt.id });
+    ElMessage.success('已生成公关方案，正在跳转...');
+    setTimeout(() => router.push('/pr'), 800);
+  } catch (err: any) {
+    ElMessage.error(err?.message || '提交失败');
+  }
+}
 const wsConnected = ref(false);
 const platformChartEl = ref<HTMLElement>();
 const sentimentChartEl = ref<HTMLElement>();

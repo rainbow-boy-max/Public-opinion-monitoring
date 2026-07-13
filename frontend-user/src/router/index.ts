@@ -45,6 +45,10 @@ const router = createRouter({
           component: () => import('@/pages/RealtimeScreenPage.vue'),
         },
         {
+          path: 'pr',
+          component: () => import('@/pages/PrReportsPage.vue'),
+        },
+        {
           path: 'profile',
           component: () => import('@/pages/ProfilePage.vue'),
         },
