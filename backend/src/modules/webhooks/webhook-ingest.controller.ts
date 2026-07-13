@@ -1,6 +1,5 @@
 import { Controller, Post, Param, Body, NotFoundException } from '@nestjs/common';
 import { WebhooksService } from './webhooks.service';
-import { MonitorTasksService } from '../monitor-tasks/monitor-tasks.service';
 import {
   OpinionEventEntity,
   MonitorTaskEntity,
@@ -26,7 +25,6 @@ interface IngestPayload {
 export class WebhookIngestController {
   constructor(
     private webhooksService: WebhooksService,
-    private monitorTasksService: MonitorTasksService,
     @InjectRepository(MonitorTaskEntity) private taskRepo: Repository<MonitorTaskEntity>,
     @InjectRepository(OpinionEventEntity) private eventRepo: Repository<OpinionEventEntity>,
   ) {}
@@ -81,7 +79,7 @@ export class WebhookIngestController {
       const saved = await this.eventRepo.save(event);
       savedEvents.push(saved);
 
-      await this.monitorTasksService.updateLastRun(task.id);
+      await this.taskRepo.update(task.id, { lastRunAt: new Date() });
     }
 
     return { message: 'Ingested successfully', eventsCount: savedEvents.length };

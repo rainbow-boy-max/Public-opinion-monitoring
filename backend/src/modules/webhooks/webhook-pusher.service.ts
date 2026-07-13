@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -10,13 +10,16 @@ import {
 } from '../../database/entities';
 import { WebhooksService } from './webhooks.service';
 import { PayloadTemplateService } from './payload-template.service';
+import { RedisService } from '../../redis/redis.service';
 
 const RETRY_DELAYS = [5000, 15000, 45000];
 const MAX_RETRIES = 3;
+const OPINION_CHANNEL = 'pubsub:opinion:new';
 
 @Injectable()
-export class WebhookPusherService {
+export class WebhookPusherService implements OnModuleInit {
   private readonly logger = new Logger(WebhookPusherService.name);
+  private subscriberRegistered = false;
 
   constructor(
     @InjectRepository(WebhookPushLogEntity)
@@ -27,7 +30,37 @@ export class WebhookPusherService {
     private eventRepo: Repository<OpinionEventEntity>,
     private webhooksService: WebhooksService,
     private payloadTemplateService: PayloadTemplateService,
+    private redisService: RedisService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    if (this.subscriberRegistered) return;
+    this.subscriberRegistered = true;
+    try {
+      await this.redisService.subscribe(OPINION_CHANNEL, (message: string) => {
+        this.handleOpinionMessage(message).catch((err) =>
+          this.logger.error('Handle opinion message failed', err as Error),
+        );
+      });
+      this.logger.log(`WebhookPusher subscribed to ${OPINION_CHANNEL}`);
+    } catch (err) {
+      this.logger.error(`Failed to subscribe to ${OPINION_CHANNEL}`, err as Error);
+    }
+  }
+
+  private async handleOpinionMessage(message: string): Promise<void> {
+    try {
+      const parsed = JSON.parse(message) as {
+        userId: number;
+        taskId: number;
+        eventId: number;
+      };
+      if (!parsed.taskId || !parsed.eventId) return;
+      await this.pushEventForTask(parsed.taskId, parsed.eventId);
+    } catch (err) {
+      this.logger.warn(`Bad opinion message: ${(err as Error).message}`);
+    }
+  }
 
   async pushEventForTask(taskId: number, eventId: number): Promise<void> {
     const event = await this.eventRepo.findOne({ where: { id: eventId } });
@@ -78,10 +111,9 @@ export class WebhookPusherService {
       events: events.map((e) => this.payloadTemplateService.toTemplateEvent(e)),
     };
 
+    const startTime = Date.now();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
-    const startTime = Date.now();
-
     try {
       const response = await fetch(webhook.url, {
         method: 'POST',
@@ -89,13 +121,15 @@ export class WebhookPusherService {
         body: JSON.stringify(summary),
         signal: controller.signal,
       });
+      clearTimeout(timer);
       const duration = Date.now() - startTime;
+      const text = await response.text();
 
       await this.logRepo.save({
         webhookId: webhook.id,
         eventId: null,
         httpStatus: response.status,
-        responseBody: await response.text(),
+        responseBody: text,
         retryCount: 0,
         result: response.ok ? 'success' : 'failed',
         durationMs: duration,
@@ -111,8 +145,8 @@ export class WebhookPusherService {
       const errorMsg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Periodic push failed for webhook ${webhook.id}: ${errorMsg}`);
       await this.webhooksService.setStatus(webhook.id, WebhookStatus.ERROR);
-      void controller;
     }
+    void userId;
   }
 
   private async pushToWebhook(webhook: WebhookEntity, event: OpinionEventEntity): Promise<void> {

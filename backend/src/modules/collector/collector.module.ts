@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ConfigModule } from '@nestjs/config';
 import { CollectorService } from './collector.service';
+import { CollectorProcessor } from './collector.processor';
 import { KeywordMatcherService } from './keyword-matcher.service';
 import { OpinionNormalizerService } from './opinion-normalizer.service';
 import { AdapterRegistry } from './adapters/adapter-registry';
@@ -28,9 +31,12 @@ import {
         attempts: 1,
       },
     }),
+    ScheduleModule.forRoot(),
+    ConfigModule,
   ],
   providers: [
     CollectorService,
+    CollectorProcessor,
     KeywordMatcherService,
     OpinionNormalizerService,
     AdapterRegistry,
@@ -42,6 +48,6 @@ import {
     BaijiahaoAdapter,
     WeixinVideoAdapter,
   ],
-  exports: [CollectorService, KeywordMatcherService],
+  exports: [CollectorService, KeywordMatcherService, AdapterRegistry],
 })
 export class CollectorModule {}

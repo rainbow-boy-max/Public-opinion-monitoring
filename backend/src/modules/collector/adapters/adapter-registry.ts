@@ -1,21 +1,48 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BaseAdapter } from './base.adapter';
 import {
   PlatformAdapter,
   RawOpinionEvent,
   FetchOptions,
   HealthStatus,
 } from './platform-adapter.interface';
+import { WeiboAdapter } from './weibo.adapter';
+import { WeixinAdapter } from './weixin.adapter';
+import { DouyinAdapter } from './douyin.adapter';
+import { XiaohongshuAdapter } from './xiaohongshu.adapter';
+import { KuaishouAdapter } from './kuaishou.adapter';
+import { BaijiahaoAdapter } from './baijiahao.adapter';
+import { WeixinVideoAdapter } from './weixin-video.adapter';
 
 export const PLATFORM_DECORATOR = Symbol.for('platform.adapter');
 
 @Injectable()
-export class AdapterRegistry {
+export class AdapterRegistry implements OnModuleInit {
+  private readonly logger = new Logger(AdapterRegistry.name);
   private adapters = new Map<string, PlatformAdapter>();
   private healthCounters = new Map<string, { failures: number; healthy: boolean }>();
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private weibo: WeiboAdapter,
+    private weixin: WeixinAdapter,
+    private weixinVideo: WeixinVideoAdapter,
+    private douyin: DouyinAdapter,
+    private xiaohongshu: XiaohongshuAdapter,
+    private kuaishou: KuaishouAdapter,
+    private baijiahao: BaijiahaoAdapter,
+  ) {}
+
+  onModuleInit(): void {
+    this.register(this.weibo);
+    this.register(this.weixin);
+    this.register(this.weixinVideo);
+    this.register(this.douyin);
+    this.register(this.xiaohongshu);
+    this.register(this.kuaishou);
+    this.register(this.baijiahao);
+    this.logger.log(`Registered ${this.adapters.size} platform adapters`);
+  }
 
   register(adapter: PlatformAdapter): void {
     this.adapters.set(adapter.platform, adapter);

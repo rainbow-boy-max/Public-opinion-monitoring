@@ -13,7 +13,6 @@ import { KeywordMatcherService } from './keyword-matcher.service';
 import { OpinionNormalizerService } from './opinion-normalizer.service';
 import { AdapterRegistry } from './adapters/adapter-registry';
 import { RedisService } from '../../redis/redis.service';
-import { WebhookPusherService } from '../webhooks/webhook-pusher.service';
 import { TaskFrequency } from '../../database/entities';
 
 interface TaskJobData {
@@ -38,11 +37,9 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
     private keywordMatcher: KeywordMatcherService,
     private normalizer: OpinionNormalizerService,
     private redisService: RedisService,
-    private webhookPusher: WebhookPusherService,
   ) {}
 
   async onModuleInit(): Promise<void> {
-    this.registerAdaptersFromDiContainer();
     setTimeout(() => this.loadAndScheduleTasks(), 5000);
   }
 
@@ -50,14 +47,11 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
     for (const handle of this.timerHandles.values()) {
       clearInterval(handle);
     }
-    await this.taskQueue.close();
-  }
-
-  private registeredAdaptersFromContainer = false;
-
-  private registerAdaptersFromDiContainer(): void {
-    if (this.registeredAdaptersFromContainer) return;
-    this.registeredAdaptersFromContainer = true;
+    try {
+      await this.taskQueue.close();
+    } catch (err) {
+      // ignore
+    }
   }
 
   async loadAndScheduleTasks(): Promise<void> {
@@ -151,7 +145,7 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
     }
 
     let savedCount = 0;
-    for (const { platform: _platform, raw } of allRaw) {
+    for (const { raw } of allRaw) {
       const text = (raw.title || '') + ' ' + (raw.content || '');
       const matchResult = this.keywordMatcher.match({
         text,
@@ -189,6 +183,7 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
     const payload = {
       userId,
       taskId,
+      eventId: event.id,
       eventData: {
         id: event.id,
         platform: event.platform,
@@ -206,12 +201,6 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
     };
 
     await this.redisService.publish('pubsub:opinion:new', JSON.stringify(payload));
-
-    try {
-      await this.webhookPusher.pushEventForTask(taskId, event.id);
-    } catch (err) {
-      this.logger.warn(`Webhook push failed for event ${event.id}: ${(err as Error).message}`);
-    }
   }
 
   private parseTaskKeywords(task: MonitorTaskEntity): {

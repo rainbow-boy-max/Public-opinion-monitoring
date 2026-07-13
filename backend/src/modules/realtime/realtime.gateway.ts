@@ -6,6 +6,7 @@ import {
   OnGatewayDisconnect,
   ConnectedSocket,
   MessageBody,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
@@ -23,22 +24,62 @@ interface JwtPayload {
 interface ConnectionContext {
   userId: number;
   taskIds: Set<number>;
-  subscribedChannel: boolean;
 }
 
 @WebSocketGateway({
   cors: { origin: true, credentials: true },
   path: '/socket.io',
 })
-export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class RealtimeGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(RealtimeGateway.name);
   private connections = new Map<string, ConnectionContext>();
+  private subscriberInit = false;
 
   constructor(
     private jwtService: JwtService,
     private redisService: RedisService,
   ) {}
+
+  async afterInit(): Promise<void> {
+    if (this.subscriberInit) return;
+    this.subscriberInit = true;
+    try {
+      await this.redisService.subscribe(OPINION_CHANNEL, async (message: string) => {
+        try {
+          const event = JSON.parse(message) as {
+            userId: number;
+            taskId: number;
+            eventData: Record<string, unknown>;
+            publishedAt: string;
+          };
+
+          const sockets = await this.server.fetchSockets();
+          for (const sock of sockets) {
+            const ctx = this.connections.get(sock.id);
+            if (!ctx) continue;
+            if (ctx.userId !== event.userId) continue;
+            if (ctx.taskIds.size > 0 && !ctx.taskIds.has(event.taskId)) continue;
+            sock.emit('opinion:new', {
+              ...event.eventData,
+              taskId: event.taskId,
+              publishedAt: event.publishedAt,
+            });
+          }
+        } catch (err) {
+          this.logger.error(
+            'Failed to handle opinion pubsub message',
+            err as Error,
+          );
+        }
+      });
+      this.logger.log(`RealtimeGateway subscribed to ${OPINION_CHANNEL}`);
+    } catch (err) {
+      this.logger.error('Realtime subscription failed', err as Error);
+    }
+  }
 
   async handleConnection(socket: Socket): Promise<void> {
     const token =
@@ -63,7 +104,6 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const ctx: ConnectionContext = {
       userId: payload.sub,
       taskIds: new Set<number>(),
-      subscribedChannel: false,
     };
     this.connections.set(socket.id, ctx);
     socket.data.userId = payload.sub;
@@ -72,14 +112,6 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   async handleDisconnect(socket: Socket): Promise<void> {
-    const ctx = this.connections.get(socket.id);
-    if (ctx?.subscribedChannel) {
-      try {
-        await this.redisService.unsubscribe(OPINION_CHANNEL);
-      } catch (err) {
-        this.logger.error('Failed to unsubscribe from Redis channel', err as Error);
-      }
-    }
     this.connections.delete(socket.id);
     this.logger.log(`WS disconnected: socketId=${socket.id}`);
   }
@@ -93,11 +125,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (!ctx) return { event: 'subscribe:tasks', data: { success: false } };
 
     for (const id of data.taskIds || []) ctx.taskIds.add(id);
-    if (!ctx.subscribedChannel) {
-      await this.subscribeAndFanOut();
-      ctx.subscribedChannel = true;
-    }
-    return { event: 'subscribe:tasks', data: { subscribedTaskIds: Array.from(ctx.taskIds) } };
+    return {
+      event: 'subscribe:tasks',
+      data: { subscribedTaskIds: Array.from(ctx.taskIds) },
+    };
   }
 
   @SubscribeMessage('unsubscribe:tasks')
@@ -109,40 +140,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (!ctx) return { event: 'unsubscribe:tasks', data: { success: false } };
 
     for (const id of data.taskIds || []) ctx.taskIds.delete(id);
-    return { event: 'unsubscribe:tasks', data: { remainingTaskIds: Array.from(ctx.taskIds) } };
-  }
-
-  private subscriberRef: { count: number } = { count: 0 };
-
-  private async subscribeAndFanOut(): Promise<void> {
-    this.subscriberRef.count++;
-    if (this.subscriberRef.count > 1) return;
-
-    await this.redisService.subscribe(OPINION_CHANNEL, async (message: string) => {
-      try {
-        const event = JSON.parse(message) as {
-          userId: number;
-          taskId: number;
-          eventData: Record<string, unknown>;
-          publishedAt: string;
-        };
-
-        const sockets = await this.server.fetchSockets();
-        for (const sock of sockets) {
-          const ctx = this.connections.get(sock.id);
-          if (!ctx) continue;
-          if (ctx.userId !== event.userId) continue;
-          if (ctx.taskIds.size > 0 && !ctx.taskIds.has(event.taskId)) continue;
-          sock.emit('opinion:new', {
-            ...event.eventData,
-            taskId: event.taskId,
-            publishedAt: event.publishedAt,
-          });
-        }
-      } catch (err) {
-        this.logger.error('Failed to handle opinion pubsub message', err as Error);
-      }
-    });
+    return {
+      event: 'unsubscribe:tasks',
+      data: { remainingTaskIds: Array.from(ctx.taskIds) },
+    };
   }
 
   async broadcastStats(userId: number, stats: unknown): Promise<void> {

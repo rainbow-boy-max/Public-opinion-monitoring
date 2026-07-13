@@ -4,11 +4,18 @@ import { createClient, RedisClientType, RedisModules, RedisFunctions, RedisScrip
 
 type RedisClient = RedisClientType<RedisModules, RedisFunctions, RedisScripts>;
 
+interface SubscriberEntry {
+  client: RedisClient;
+  channels: Set<string>;
+  callbacks: Map<string, Set<(message: string) => void>>;
+}
+
 @Injectable()
 export class RedisService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(RedisService.name);
   public client: RedisClient;
-  private subscriber: RedisClient;
+  private subscribers: SubscriberEntry[] = [];
+  private counter = 0;
 
   constructor(private configService: ConfigService) {}
 
@@ -25,19 +32,70 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
     }
 
     this.client = createClient(options) as RedisClient;
-    this.subscriber = this.client.duplicate();
-
     this.client.on('error', (err) => this.logger.error('Redis client error', err));
-    this.subscriber.on('error', (err) => this.logger.error('Redis subscriber error', err));
 
     await this.client.connect();
-    await this.subscriber.connect();
     this.logger.log(`Connected to Redis at ${host}:${port}`);
   }
 
   async onApplicationShutdown() {
-    if (this.client) await this.client.quit();
-    if (this.subscriber) await this.subscriber.quit();
+    if (this.client) {
+      try { await this.client.quit(); } catch (err) { /* ignore */ }
+    }
+    for (const sub of this.subscribers) {
+      try { await sub.client.quit(); } catch (err) { /* ignore */ }
+    }
+  }
+
+  private async getOrCreateSubscriber(): Promise<SubscriberEntry> {
+    let entry = this.subscribers.find((s) => s.channels.size === 0);
+    if (!entry) {
+      const newClient = this.client.duplicate();
+      newClient.on('error', (err) => this.logger.error('Redis sub error', err));
+      await newClient.connect();
+      entry = {
+        client: newClient,
+        channels: new Set(),
+        callbacks: new Map(),
+      };
+      this.subscribers.push(entry);
+    }
+    return entry;
+  }
+
+  async subscribe(channel: string, callback: (message: string) => void): Promise<void> {
+    const sub = await this.getOrCreateSubscriber();
+    sub.channels.add(channel);
+    if (!sub.callbacks.has(channel)) {
+      sub.callbacks.set(channel, new Set());
+      await sub.client.subscribe(channel, (message: string) => {
+        const callbacks = sub.callbacks.get(channel);
+        if (!callbacks) return;
+        for (const cb of callbacks) {
+          try {
+            cb(message);
+          } catch (err) {
+            this.logger.error(`Subscriber callback error: ${(err as Error).message}`);
+          }
+        }
+      });
+    }
+    sub.callbacks.get(channel)!.add(callback);
+    void this.counter++;
+  }
+
+  async unsubscribe(channel: string): Promise<void> {
+    for (const sub of this.subscribers) {
+      if (sub.channels.has(channel)) {
+        sub.channels.delete(channel);
+        sub.callbacks.delete(channel);
+        try {
+          await sub.client.unsubscribe(channel);
+        } catch (err) {
+          this.logger.warn('Unsubscribe error', (err as Error).message);
+        }
+      }
+    }
   }
 
   async get(key: string): Promise<string | null> {
@@ -68,14 +126,6 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
 
   async publish(channel: string, message: string): Promise<void> {
     await this.client.publish(channel, message);
-  }
-
-  async subscribe(channel: string, callback: (message: string) => void): Promise<void> {
-    await this.subscriber.subscribe(channel, callback);
-  }
-
-  async unsubscribe(channel: string): Promise<void> {
-    await this.subscriber.unsubscribe(channel);
   }
 
   async sadd(key: string, member: string): Promise<void> {
