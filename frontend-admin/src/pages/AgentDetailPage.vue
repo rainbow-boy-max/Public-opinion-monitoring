@@ -461,7 +461,12 @@ async function loadModels(): Promise<void> {
 async function loadAllKbs(): Promise<void> {
   try {
     const list = (await http.get('/admin/knowledge/available')) as Array<Record<string, unknown>>;
-    allKbs.value = (list || []).map((kb) => ({ ...kb, id: Number(kb.id) }));
+    allKbs.value = (list || []).map((kb) => ({
+      ...kb,
+      id: Number(kb.id),
+      fileCount: Number(kb.fileCount ?? 0),
+      aiScore: kb.aiScore == null ? null : Number(kb.aiScore),
+    }));
   } catch (err) {
     console.error(err);
   }
@@ -471,7 +476,9 @@ async function loadAgentKbBindings(): Promise<void> {
   if (isNew.value) return;
   try {
     const ids = (await http.get(`/admin/agents/${agentId.value}/knowledge-bases`)) as Array<unknown>;
-    form.knowledgeBaseIds = Array.isArray(ids) ? ids.map((n) => Number(n)) : [];
+    form.knowledgeBaseIds = (Array.isArray(ids) ? ids : []).map((n) => Number(n)).filter(
+      (n) => Number.isFinite(n) && n > 0,
+    );
   } catch (err) {
     form.knowledgeBaseIds = [];
   }

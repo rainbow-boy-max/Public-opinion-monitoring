@@ -66,6 +66,9 @@ export class LlmModelEntity {
   })
   capabilities: { vision: boolean; reasoning: boolean; webSearch: boolean } | null;
 
+  @Column({ name: 'tool_supported', type: 'json', nullable: true })
+  toolSupported: { webSearch?: boolean } | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

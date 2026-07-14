@@ -13,15 +13,27 @@ export interface ActivityItem {
 }
 
 const RECONNECT_DELAY = 5000;
+const MAX_RECONNECT_DELAY = 30000;
+
+function getStoredToken(): string {
+  try {
+    return localStorage.getItem('admin_token') || '';
+  } catch {
+    return '';
+  }
+}
 
 export function useRecentActivities(limit = 20) {
   const items = ref<ActivityItem[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const connected = ref(false);
+  const unauthorized = ref(false);
 
   let es: EventSource | null = null;
   let reconnectTimer: number | undefined;
+  let reconnectAttempts = 0;
+  let manualClose = false;
 
   async function fetchInitial(): Promise<void> {
     loading.value = true;
@@ -38,36 +50,84 @@ export function useRecentActivities(limit = 20) {
     }
   }
 
+  function teardown(): void {
+    if (es) {
+      manualClose = true;
+      try {
+        es.close();
+      } catch {
+        /* ignore */
+      }
+      es = null;
+    }
+  }
+
   function connect(): void {
     if (es) return;
+    if (unauthorized.value) return;
+    const token = getStoredToken();
+    const url =
+      '/api/admin/dashboard/recent-activities/stream' +
+      (token ? `?token=${encodeURIComponent(token)}` : '');
     try {
-      es = new EventSource('/api/admin/dashboard/recent-activities/stream', {
-        withCredentials: true,
-      });
-      es.addEventListener('open', () => {
+      const source = new EventSource(url, { withCredentials: true });
+      source.addEventListener('open', () => {
         connected.value = true;
+        reconnectAttempts = 0;
+        error.value = null;
       });
-      es.addEventListener('error', () => {
+      source.addEventListener('error', () => {
         connected.value = false;
-        if (es) {
-          es.close();
-          es = null;
+        // EventSource 在浏览器关闭或鉴权失败时不会给出 httpStatus，区分方式：
+        // - readyState === CLOSED 时一般服务端关闭（鉴权失败或正常 close）
+        // - 否则是网络抖动，可重连
+        const closed = source.readyState === EventSource.CLOSED;
+        try {
+          source.close();
+        } catch {
+          /* ignore */
         }
+        if (manualClose) {
+          manualClose = false;
+          return;
+        }
+        es = null;
+        if (closed) {
+          // 鉴权失败 / 服务端主动断开：直接停止重连并标记错误。
+          error.value = '实时连接已断开，可能未登录或登录已失效';
+          unauthorized.value = true;
+          return;
+        }
+        // 网络抖动：5s / 10s / 20s / 30s 退避
+        const delay = Math.min(MAX_RECONNECT_DELAY, RECONNECT_DELAY * 2 ** reconnectAttempts);
+        reconnectAttempts++;
         if (reconnectTimer) window.clearTimeout(reconnectTimer);
-        reconnectTimer = window.setTimeout(connect, RECONNECT_DELAY);
+        reconnectTimer = window.setTimeout(connect, delay);
       });
-      es.addEventListener('activity', (event: MessageEvent) => {
+      source.addEventListener('activity', (event: MessageEvent) => {
         try {
           const payload = JSON.parse(event.data) as ActivityItem;
-          items.value = [payload, ...items.value.filter((x) => x.id !== payload.id)].slice(0, limit);
+          items.value = [payload, ...items.value.filter((x) => x.id !== payload.id)].slice(
+            0,
+            limit,
+          );
         } catch {
           /* ignore */
         }
       });
+      source.addEventListener('ping', () => {
+        connected.value = true;
+      });
+      es = source;
     } catch (err: any) {
       connected.value = false;
       error.value = err?.message || 'sse connect failed';
     }
+  }
+
+  function reconnect(): void {
+    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    reconnectTimer = window.setTimeout(connect, RECONNECT_DELAY);
   }
 
   function disconnect(): void {
@@ -75,11 +135,16 @@ export function useRecentActivities(limit = 20) {
       window.clearTimeout(reconnectTimer);
       reconnectTimer = undefined;
     }
-    if (es) {
-      es.close();
-      es = null;
-    }
+    teardown();
     connected.value = false;
+  }
+
+  function manualReconnect(): void {
+    reconnectAttempts = 0;
+    unauthorized.value = false;
+    error.value = null;
+    teardown();
+    connect();
   }
 
   onMounted(() => {
@@ -91,5 +156,5 @@ export function useRecentActivities(limit = 20) {
     disconnect();
   });
 
-  return { items, loading, error, connected };
+  return { items, loading, error, connected, unauthorized, reconnect: manualReconnect };
 }

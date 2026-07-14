@@ -5,15 +5,24 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type WebSearchProvider = 'duckduckgo' | 'brave';
+export type WebSearchProvider =
+  | 'duckduckgo'
+  | 'brave'
+  | 'baidu_qianfan'
+  | 'alibaba_dashscope'
+  | 'volcengine_ark'
+  | 'deepseek_web'
+  | 'boshu_chinese'
+  | 'metaso_wenshu'
+  | 'tavily';
 
 @Entity('web_search_configs')
 export class WebSearchConfigEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: number;
 
-  @Column({ type: 'enum', enum: ['duckduckgo', 'brave'], default: 'duckduckgo' })
-  provider: WebSearchProvider;
+  @Column({ type: 'varchar', length: 32, default: 'duckduckgo' })
+  provider: string;
 
   @Column({ name: 'api_key_enc', type: 'text', nullable: true })
   apiKeyEnc: string | null;

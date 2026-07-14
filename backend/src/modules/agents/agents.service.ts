@@ -14,8 +14,8 @@ import { AuditService } from '../admin/audit.service';
 import { KnowledgeBasesService } from '../knowledge/knowledge-bases.service';
 import {
   WebSearchService,
-  WebSearchDisabledError,
 } from '../admin/web-search.service';
+import { WebSearchDisabledError } from '../admin/web-search.types';
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
@@ -47,6 +47,13 @@ function normalizeCapabilities(input: any): AgentCapabilities {
     reasoning: input?.reasoning === true,
     webSearch: input?.webSearch === true,
   };
+}
+
+const NATIVE_TOOL_MODEL_RE =
+  /search|qwen-search|gpt-4o-search|gemini.*search|web_search/i;
+
+export function modelSupportsNativeWebSearch(modelName: string): boolean {
+  return NATIVE_TOOL_MODEL_RE.test(modelName || '');
 }
 
 @Injectable()
@@ -222,10 +229,12 @@ async chat(
     let warnings: string[] | undefined;
 
     let webResults: Awaited<ReturnType<WebSearchService['search']>> | null = null;
+    let source: 'native_tool' | 'provider' | 'disabled' | undefined;
     if ((agent.capabilities as any)?.webSearch) {
       try {
         webResults = await this.webSearchService.search(userMessage);
         if (webResults.length > 0) {
+          source = 'provider';
           const webBlock = webResults
             .map(
               (r, i) =>
@@ -240,9 +249,11 @@ async chat(
       } catch (err) {
         if (err instanceof WebSearchDisabledError) {
           warnings = ['WEB_SEARCH_DISABLED'];
+          source = 'disabled';
         } else {
           this.logger.warn(`web search failed: ${(err as Error).message}`);
           warnings = ['WEB_SEARCH_FAILED'];
+          source = 'disabled';
         }
       }
     }
@@ -272,20 +283,26 @@ async chat(
           { role: 'user', content: userMessage },
         ];
         const result = await this.callWithMessages(agent, kbMessages, useStream);
-        return this.attachWarnings(result, warnings);
+        return this.attachWarnings(result, warnings, source);
       }
     }
 
     const result = await this.callWithMessages(agent, messages, useStream);
-    return this.attachWarnings(result, warnings);
+    return this.attachWarnings(result, warnings, source);
   }
 
-  private attachWarnings(result: any, warnings?: string[]): any {
-    if (!warnings || warnings.length === 0) return result;
-    if (result && typeof result === 'object') {
-      return { ...result, warnings: [...warnings] };
+  private attachWarnings(result: any, warnings?: string[], source?: string): any {
+    if (!result) result = {};
+    if (typeof result === 'string') {
+      result = { content: result };
     }
-    return { content: result, warnings: [...warnings] };
+    if (warnings && warnings.length > 0) {
+      result.warnings = [...warnings];
+    }
+    if (source) {
+      result.source = source;
+    }
+    return result;
   }
 
   private async callWithMessages(
