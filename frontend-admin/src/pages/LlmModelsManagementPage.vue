@@ -129,8 +129,7 @@
         <div class="base-url-row">
           <el-input
             v-model="editForm.baseUrl"
-            :disabled="!!editForm.id"
-            placeholder="如：https://api.deepseek.com/v1"
+            placeholder="如：https://api.minimaxi.com/v1"
           />
           <el-button
             v-if="!editForm.id && editForm.baseUrl"
@@ -142,7 +141,8 @@
           </el-button>
         </div>
         <div class="form-tip">
-          apiStyle=anthropic 时 Base URL 应为根路径（不含 /v1/messages），如 <code>https://api.minimax.io/anthropic</code>
+          <strong>系统预置 Base URL 仅是默认参考</strong>，可改为自建代理（如 micro-one-api）或官方端点。
+          apiStyle=anthropic 时 Base URL 应为根路径（不含 /v1/messages），如 <code>https://api.minimaxi.com/anthropic</code>
         </div>
       </el-form-item>
 

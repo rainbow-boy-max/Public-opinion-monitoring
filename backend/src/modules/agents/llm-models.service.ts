@@ -101,8 +101,8 @@ const PRESET_PROVIDERS: Array<{
   },
   {
     provider: 'minimax',
-    displayName: 'MiniMax',
-    baseUrl: 'https://api.minimax.io/v1',
+    displayName: 'MiniMax（国内 minimaxi.com）',
+    baseUrl: 'https://api.minimaxi.com/v1',
     apiStyle: 'openai',
     models: [
       { model: 'MiniMax-M3', displayName: 'MiniMax-M3 (1M context · 多模态)' },
@@ -117,8 +117,8 @@ const PRESET_PROVIDERS: Array<{
   },
   {
     provider: 'minimax_anthropic',
-    displayName: 'MiniMax (Anthropic 兼容)',
-    baseUrl: 'https://api.minimax.io/anthropic',
+    displayName: 'MiniMax Anthropic 兼容（国内 minimaxi.com）',
+    baseUrl: 'https://api.minimaxi.com/anthropic',
     apiStyle: 'anthropic',
     models: [
       { model: 'MiniMax-M3', displayName: 'MiniMax-M3 (Anthropic · vision+reasoning)' },
