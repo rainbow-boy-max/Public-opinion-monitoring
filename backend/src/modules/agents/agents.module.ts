@@ -20,6 +20,7 @@ import { AgentKbUploadController } from './agent-kb-upload.controller';
 import { PrReportsController } from './pr-reports.controller';
 import { PrReportsService } from './pr-reports.service';
 import { LlmModule } from './llm.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { LlmModule } from './llm.module';
       },
     }),
     LlmModule,
+    AdminModule,
   ],
   controllers: [
     AgentsController,

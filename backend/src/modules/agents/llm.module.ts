@@ -8,6 +8,7 @@ import { LlmRouterService } from './llm-router.service';
 import { LlmModelsController } from './llm-models.controller';
 import { LlmModelsService } from './llm-models.service';
 import { LlmEmbeddingsService } from './llm-embeddings.service';
+import { AdminModule } from '../admin/admin.module';
 
 @Global()
 @Module({
@@ -20,6 +21,7 @@ import { LlmEmbeddingsService } from './llm-embeddings.service';
         secret: config.get<string>('JWT_SECRET') || process.env.JWT_SECRET || 'default',
       }),
     }),
+    AdminModule,
   ],
   controllers: [LlmModelsController],
   providers: [LlmService, LlmRouterService, LlmModelsService, LlmEmbeddingsService],

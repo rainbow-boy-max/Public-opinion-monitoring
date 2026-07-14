@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -18,6 +19,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AliyunConfigService, UserManagementService } from './services';
 import { VerifyRealnameService } from '../verify/verify-realname.service';
+import { SystemLogsService } from '../system-logs/system-logs.service';
 import { IsString, IsOptional, MinLength, MaxLength, IsIn, Matches } from 'class-validator';
 import { AuthStatus } from '../../database/entities';
 
@@ -101,6 +103,7 @@ export class AdminController {
     private aliyunConfigService: AliyunConfigService,
     private userManagementService: UserManagementService,
     private verifyRealnameService: VerifyRealnameService,
+    private systemLogsService: SystemLogsService,
   ) {}
 
   @Get('config/aliyun-sms')
@@ -212,5 +215,35 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   async testAliyunVerify() {
     return this.verifyRealnameService.testConnection();
+  }
+
+  @Post('front-metrics')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async frontMetrics(
+    @Body() body: { name?: string; durationMs?: number; page?: string; extra?: any; ts?: number },
+    @CurrentUser('id') operatorId: number,
+    @Req() req: any,
+  ): Promise<void> {
+    const safeName = (body?.name || 'unknown').toString().slice(0, 64);
+    const detail = JSON.stringify({
+      durationMs: typeof body?.durationMs === 'number' ? body.durationMs : null,
+      page: body?.page || null,
+      extra: body?.extra || null,
+      ts: body?.ts || Date.now(),
+    });
+    const xff = req?.headers?.['x-forwarded-for'];
+    const ip =
+      typeof xff === 'string'
+        ? xff.split(',')[0].trim()
+        : req?.ip || req?.socket?.remoteAddress || null;
+    await this.systemLogsService.log(
+      'info',
+      'frontend',
+      `metric:${safeName}`,
+      detail,
+      operatorId,
+      ip || undefined,
+    );
+    return;
   }
 }

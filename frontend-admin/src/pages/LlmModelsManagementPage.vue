@@ -1,21 +1,43 @@
 <template>
   <GlassCard title="LLM 大模型管理" icon="🧠" subtitle="内置 6 家厂商 + 自定义，OpenAI 协议一键接入">
     <template #extra>
+      <el-input
+        v-model="search"
+        placeholder="搜索显示名/模型/厂商"
+        clearable
+        style="width: 240px; margin-right: 12px;"
+        :prefix-icon="Search"
+        @input="onSearchInput"
+      />
       <el-button type="primary" :icon="Refresh" @click="loadData">刷新</el-button>
     </template>
 
-    <el-tabs v-model="activeProvider" class="provider-tabs">
+    <el-tabs v-model="activeProvider" :lazy="true" class="provider-tabs" @tab-change="onTabChange">
       <el-tab-pane label="全部" name="">
-        <ModelsTable :items="tableData" @test="onTest" @edit="onEdit" @delete="onDelete" />
+        <ModelsTable
+          :items="paginatedItems"
+          @test="onTest"
+          @edit="onEdit"
+          @delete="onDelete"
+        />
+        <el-pagination
+          v-if="filteredTotal > 0"
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          layout="prev, pager, next, total"
+          :total="filteredTotal"
+          background
+          style="margin-top: 16px; justify-content: flex-end;"
+        />
       </el-tab-pane>
       <el-tab-pane
         v-for="p in providers"
         :key="p.provider"
-        :label="`${p.displayName} (${countByProvider(p.provider)})`"
+        :label="`${p.displayName} (${byProvider.value[p.provider]?.length || 0})`"
         :name="p.provider"
       >
         <ModelsTable
-          :items="tableData.filter((m) => m.provider === p.provider)"
+          :items="byProvider.value[p.provider] || []"
           @test="onTest"
           @edit="onEdit"
           @delete="onDelete"
@@ -118,9 +140,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+defineOptions({ name: 'LlmModelsManagementPage' });
+import { ref, reactive, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus';
-import { Refresh } from '@element-plus/icons-vue';
+import { Refresh, Search } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import ModelsTable from './ModelsTable.vue';
@@ -152,6 +175,10 @@ interface Provider {
 const tableData = ref<LlmModel[]>([]);
 const providers = ref<Provider[]>([]);
 const activeProvider = ref('');
+
+const page = ref(1);
+const pageSize = ref(20);
+const search = ref('');
 
 const editVisible = ref(false);
 const editFormRef = ref<FormInstance>();
@@ -195,13 +222,58 @@ const PRESET_BASE_URLS: Record<string, string> = {
   custom: '',
 };
 
-function countByProvider(p: string): number {
-  return tableData.value.filter((m) => m.provider === p).length;
+const byProvider = computed<Record<string, LlmModel[]>>(() => {
+  const grouped: Record<string, LlmModel[]> = {};
+  for (const m of tableData.value) {
+    if (!grouped[m.provider]) grouped[m.provider] = [];
+    grouped[m.provider].push(m);
+  }
+  return grouped;
+});
+
+const filteredTotal = computed(() => {
+  if (!search.value) return tableData.value.length;
+  const q = search.value.toLowerCase();
+  return tableData.value.filter(
+    (m) =>
+      m.displayName.toLowerCase().includes(q) ||
+      m.model.toLowerCase().includes(q) ||
+      m.provider.toLowerCase().includes(q),
+  ).length;
+});
+
+const paginatedItems = computed(() => {
+  let list = tableData.value;
+  if (search.value) {
+    const q = search.value.toLowerCase();
+    list = list.filter(
+      (m) =>
+        m.displayName.toLowerCase().includes(q) ||
+        m.model.toLowerCase().includes(q) ||
+        m.provider.toLowerCase().includes(q),
+    );
+  }
+  const start = (page.value - 1) * pageSize.value;
+  return list.slice(start, start + pageSize.value);
+});
+
+let searchDebounceTimer: number | undefined;
+function onSearchInput(): void {
+  if (searchDebounceTimer) window.clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = window.setTimeout(() => {
+    page.value = 1;
+  }, 300);
+}
+
+function onTabChange(): void {
+  /* tab 切换不再重拉数据，仅切换显示 */
 }
 
 async function loadData(): Promise<void> {
   try {
-    const res = await http.get('/admin/llm-models', { params: { page: 1, pageSize: 100 } });
+    const res = await http.get('/admin/llm-models', {
+      params: { page: 1, pageSize: 100 },
+    });
     tableData.value = res.items;
     providers.value = await http.get('/admin/llm-models/presets');
   } catch (err) {

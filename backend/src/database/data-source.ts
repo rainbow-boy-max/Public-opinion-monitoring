@@ -9,6 +9,7 @@ import { WebhookTaskBindingEntity } from './entities/webhook-task-binding.entity
 import { WebhookPushLogEntity } from './entities/webhook-push-log.entity';
 import { SmsLogEntity } from './entities/sms-log.entity';
 import { SystemLogEntity } from './entities/system-log.entity';
+import { AuditEventEntity } from './entities/audit-event.entity';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
@@ -27,6 +28,7 @@ export const AppDataSource = new DataSource({
     WebhookPushLogEntity,
     SmsLogEntity,
     SystemLogEntity,
+    AuditEventEntity,
   ],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   timezone: '+08:00',

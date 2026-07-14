@@ -25,15 +25,26 @@
       </GlassCard>
     </div>
 
-    <GlassCard title="最近活动" icon="⚡" subtitle="系统最新动态">
-      <el-timeline>
+    <GlassCard
+      title="最近活动"
+      icon="⚡"
+      :subtitle="activities.connected.value ? '实时已连接 · 后端正在推送' : '实时连接断开，每 5 秒自动重连'"
+    >
+      <el-empty v-if="!activities.loading.value && activities.items.value.length === 0" description="暂无活动" />
+      <el-timeline v-else>
         <el-timeline-item
-          v-for="(activity, idx) in recentActivities"
-          :key="idx"
-          :timestamp="activity.time"
+          v-for="activity in activities.items.value"
+          :key="activity.id"
+          :timestamp="formatTime(activity.createdAt)"
           :type="activity.type"
         >
-          {{ activity.content }}
+          <span style="font-weight: 500">{{ activity.title }}</span>
+          <span
+            v-if="activity.content"
+            style="margin-left: 8px; color: var(--text-tertiary); font-size: 12px;"
+          >
+            {{ activity.content }}
+          </span>
         </el-timeline-item>
       </el-timeline>
     </GlassCard>
@@ -41,13 +52,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
+import { defineOptions } from 'vue';
+defineOptions({ name: 'DashboardPage' });
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
-import * as echarts from 'echarts';
+import { echarts, type EChartsOption } from '@/utils/echarts';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import StatCard from '@shared/components/StatCard.vue';
+import { useRecentActivities } from '@/composables/useRecentActivities';
+import { startMark, endMark } from '@/utils/perf-metrics';
 
 const router = useRouter();
 const trendChartEl = ref<HTMLElement>();
@@ -55,51 +69,24 @@ const platformChartEl = ref<HTMLElement>();
 let trendChart: echarts.ECharts | null = null;
 let platformChart: echarts.ECharts | null = null;
 
+interface DashboardKpis {
+  usersTotal: number;
+  monitorTasks: number;
+  todaySentiment: number;
+  pendingAlerts: number;
+  activeAgents: number;
+}
+
 const cards = ref([
-  {
-    label: '总用户数',
-    value: '-',
-    icon: '👥',
-    bg: 'var(--gradient-primary)',
-    glow: 'rgba(94, 114, 228, 0.4)',
-    trend: 12.5,
-    onClick: () => router.push('/users'),
-  },
-  {
-    label: '监控任务',
-    value: '-',
-    icon: '🎯',
-    bg: 'var(--gradient-cool)',
-    glow: 'rgba(6, 182, 212, 0.4)',
-    trend: 8.3,
-    onClick: () => {},
-  },
-  {
-    label: '今日舆情',
-    value: '-',
-    icon: '📊',
-    bg: 'var(--gradient-warm)',
-    glow: 'rgba(245, 158, 11, 0.4)',
-    trend: 24.7,
-    onClick: () => {},
-  },
-  {
-    label: '系统告警',
-    value: '0',
-    icon: '⚠️',
-    bg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-    glow: 'rgba(16, 185, 129, 0.4)',
-    trend: 0,
-    onClick: () => {},
-  },
+  { label: '总用户数', value: '-', icon: '👥', bg: 'var(--gradient-primary)', glow: 'rgba(94, 114, 228, 0.4)', trend: 0, onClick: () => router.push('/users') },
+  { label: '监控任务', value: '-', icon: '🎯', bg: 'var(--gradient-cool)', glow: 'rgba(6, 182, 212, 0.4)', trend: 0, onClick: () => {} },
+  { label: '今日舆情', value: '-', icon: '📊', bg: 'var(--gradient-warm)', glow: 'rgba(245, 158, 11, 0.4)', trend: 0, onClick: () => {} },
+  { label: '未处理告警', value: '0', icon: '⚠️', bg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', glow: 'rgba(16, 185, 129, 0.4)', trend: 0, onClick: () => {} },
 ]);
 
-const recentActivities = ref([
-  { time: '刚刚', type: 'primary', content: '系统启动完成，12 个业务模块已就绪' },
-  { time: '2 分钟前', type: 'success', content: '管理员 admin 登录成功' },
-  { time: '5 分钟前', type: 'info', content: '定时任务加载完成，已调度 0 个监控任务' },
-  { time: '10 分钟前', type: 'warning', content: 'WebSocket 网关启动并订阅 Redis Pub/Sub 通道' },
-]);
+const activities = useRecentActivities(20);
+
+let refreshTimer: number | undefined;
 
 const ECHART_BASE = {
   backgroundColor: 'transparent',
@@ -107,50 +94,65 @@ const ECHART_BASE = {
   grid: { left: 40, right: 24, top: 32, bottom: 32 },
 };
 
-function initCharts(): void {
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const now = Date.now();
+  const diff = Math.max(0, now - d.getTime());
+  const min = Math.floor(diff / 60_000);
+  if (min < 1) return '刚刚';
+  if (min < 60) return `${min} 分钟前`;
+  if (min < 60 * 24) return `${Math.floor(min / 60)} 小时前`;
+  return d.toLocaleString('zh-CN', { hour12: false });
+}
+
+function initCharts(overview?: any): void {
+  if (!trendChartEl.value && !platformChartEl.value) return;
+  const trendData =
+    overview?.trend7d && Array.isArray(overview.trend7d) && overview.trend7d.length > 0
+      ? {
+          sentiment: overview.trend7d.map((p: any) => p.sentiment),
+          alerts: overview.trend7d.map((p: any) => p.alerts),
+          dates: overview.trend7d.map((p: any) => p.date?.slice(5) || ''),
+        }
+      : {
+          sentiment: [120, 200, 150, 280, 220, 350, 290],
+          alerts: [12, 18, 8, 22, 15, 28, 19],
+          dates: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        };
+  const platformData =
+    overview?.platformDistribution && overview.platformDistribution.length > 0
+      ? overview.platformDistribution.map((p: any) => ({
+          value: p.count,
+          name: p.platform,
+        }))
+      : [
+          { value: 1048, name: '微博' },
+          { value: 735, name: '微信公众号' },
+          { value: 580, name: '抖音' },
+          { value: 484, name: '小红书' },
+        ];
   if (trendChartEl.value) {
-    trendChart = echarts.init(trendChartEl.value);
+    if (!trendChart) trendChart = echarts.init(trendChartEl.value);
     trendChart.setOption({
       ...ECHART_BASE,
       tooltip: { trigger: 'axis', backgroundColor: 'rgba(20,25,56,0.95)', borderColor: 'rgba(94,114,228,0.3)', textStyle: { color: '#E8EBFF' } },
-      xAxis: {
-        type: 'category',
-        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        axisLine: { lineStyle: { color: 'rgba(140,155,240,0.2)' } },
-      },
+      xAxis: { type: 'category', data: trendData.dates, axisLine: { lineStyle: { color: 'rgba(140,155,240,0.2)' } } },
       yAxis: { type: 'value', axisLine: { lineStyle: { color: 'rgba(140,155,240,0.2)' } }, splitLine: { lineStyle: { color: 'rgba(140,155,240,0.08)' } } },
       series: [
-        {
-          name: '舆情数',
-          type: 'line',
-          smooth: true,
-          data: [120, 200, 150, 280, 220, 350, 290],
-          symbolSize: 8,
-          itemStyle: { color: '#5E72E4' },
-          lineStyle: { width: 3, color: '#5E72E4' },
-          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(94, 114, 228, 0.4)' },
-            { offset: 1, color: 'rgba(94, 114, 228, 0)' },
-          ]) },
-        },
-        {
-          name: '告警数',
-          type: 'line',
-          smooth: true,
-          data: [12, 18, 8, 22, 15, 28, 19],
-          symbolSize: 8,
-          itemStyle: { color: '#10B981' },
-          lineStyle: { width: 3, color: '#10B981' },
-          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
-            { offset: 1, color: 'rgba(16, 185, 129, 0)' },
-          ]) },
-        },
+        { name: '舆情数', type: 'line', smooth: true, data: trendData.sentiment, symbolSize: 8, itemStyle: { color: '#5E72E4' }, lineStyle: { width: 3, color: '#5E72E4' }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(94, 114, 228, 0.4)' },
+          { offset: 1, color: 'rgba(94, 114, 228, 0)' },
+        ]) } },
+        { name: '告警数', type: 'line', smooth: true, data: trendData.alerts, symbolSize: 8, itemStyle: { color: '#10B981' }, lineStyle: { width: 3, color: '#10B981' }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
+          { offset: 1, color: 'rgba(16, 185, 129, 0)' },
+        ]) } },
       ],
     });
   }
   if (platformChartEl.value) {
-    platformChart = echarts.init(platformChartEl.value);
+    if (!platformChart) platformChart = echarts.init(platformChartEl.value);
     platformChart.setOption({
       ...ECHART_BASE,
       tooltip: { trigger: 'item', backgroundColor: 'rgba(20,25,56,0.95)', borderColor: 'rgba(94,114,228,0.3)', textStyle: { color: '#E8EBFF' } },
@@ -163,34 +165,55 @@ function initCharts(): void {
           avoidLabelOverlap: true,
           itemStyle: { borderRadius: 8, borderColor: 'rgba(20,25,56,0.6)', borderWidth: 2 },
           label: { color: '#E8EBFF', fontSize: 12 },
-          data: [
-            { value: 1048, name: '微博', itemStyle: { color: '#FF5C5C' } },
-            { value: 735, name: '微信公众号', itemStyle: { color: '#10B981' } },
-            { value: 580, name: '抖音', itemStyle: { color: '#EF4444' } },
-            { value: 484, name: '小红书', itemStyle: { color: '#EC4899' } },
-            { value: 300, name: '百家号', itemStyle: { color: '#3B82F6' } },
-            { value: 250, name: '视频号', itemStyle: { color: '#34D399' } },
-            { value: 200, name: '快手', itemStyle: { color: '#F59E0B' } },
-          ],
+          data: platformData,
         },
       ],
     });
   }
 }
 
-async function loadStats(): Promise<void> {
+async function loadOverview(): Promise<void> {
   try {
-    const res = await http.get('/admin/users', { params: { page: 1, pageSize: 1 } });
-    if (res?.total !== undefined) cards.value[0].value = String(res.total);
-  } catch (err) {
-    /* ignore */
+    const res = await http.get('/admin/dashboard/overview');
+    applyOverview(res);
+  } catch {
+    /* silent */
   }
 }
 
+function applyOverview(overview: any): void {
+  const kpis: DashboardKpis = overview.kpis || {};
+  cards.value[0].value = String(kpis.usersTotal ?? 0);
+  cards.value[1].value = String(kpis.monitorTasks ?? 0);
+  cards.value[2].value = String(kpis.todaySentiment ?? 0);
+  cards.value[3].value = String(kpis.pendingAlerts ?? 0);
+  initCharts(overview);
+}
+
+const onResize = (): void => {
+  trendChart?.resize();
+  platformChart?.resize();
+};
+
 onMounted(async () => {
   await nextTick();
+  startMark('dashboard-mount');
+  await loadOverview();
+  startMark('echarts-init');
   initCharts();
-  loadStats();
+  endMark('echarts-init', { charts: ['trend', 'platform'] });
+  endMark('dashboard-mount');
+  refreshTimer = window.setInterval(loadOverview, 60_000);
+  window.addEventListener('resize', onResize);
+});
+
+onUnmounted(() => {
+  if (refreshTimer) window.clearInterval(refreshTimer);
+  window.removeEventListener('resize', onResize);
+  if (trendChart) trendChart.dispose();
+  if (platformChart) platformChart.dispose();
+  trendChart = null;
+  platformChart = null;
 });
 </script>
 

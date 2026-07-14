@@ -2,18 +2,40 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import {
+  AliyunConfigEntity,
+  UserEntity,
+  SystemLogEntity,
+  AuditEventEntity,
+  LlmModelEntity,
+  AgentEntity,
+  MonitorTaskEntity,
+  OpinionEventEntity,
+} from '../../database/entities';
 import { AdminController } from './admin.controller';
 import {
   AliyunConfigService,
   UserManagementService,
 } from './services';
-import { AliyunConfigEntity, UserEntity, SystemLogEntity } from '../../database/entities';
-import { SmsModule } from '../sms/sms.module';
 import { VerifyRealnameService } from '../verify/verify-realname.service';
+import { AuditService } from './audit.service';
+import { AuditController } from './audit.controller';
+import { DashboardService } from './dashboard.service';
+import { DashboardController } from './dashboard.controller';
+import { SystemLogsModule } from '../system-logs/system-logs.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AliyunConfigEntity, UserEntity, SystemLogEntity]),
+    TypeOrmModule.forFeature([
+      AliyunConfigEntity,
+      UserEntity,
+      SystemLogEntity,
+      AuditEventEntity,
+      LlmModelEntity,
+      AgentEntity,
+      MonitorTaskEntity,
+      OpinionEventEntity,
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -21,10 +43,22 @@ import { VerifyRealnameService } from '../verify/verify-realname.service';
         secret: config.get<string>('JWT_SECRET') || process.env.JWT_SECRET || 'default',
       }),
     }),
-    SmsModule,
+    SystemLogsModule,
   ],
-  controllers: [AdminController],
-  providers: [AliyunConfigService, UserManagementService, VerifyRealnameService],
-  exports: [AliyunConfigService, UserManagementService, VerifyRealnameService],
+  controllers: [AdminController, AuditController, DashboardController],
+  providers: [
+    AliyunConfigService,
+    UserManagementService,
+    VerifyRealnameService,
+    AuditService,
+    DashboardService,
+  ],
+  exports: [
+    AliyunConfigService,
+    UserManagementService,
+    VerifyRealnameService,
+    AuditService,
+    DashboardService,
+  ],
 })
 export class AdminModule {}

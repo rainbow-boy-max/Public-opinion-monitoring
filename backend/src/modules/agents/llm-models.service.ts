@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { LlmModelEntity } from '../../database/entities';
 import { CryptoUtil } from '../../utils/crypto.util';
 import { LlmService, ChatMessage } from './llm.service';
+import { AuditService } from '../admin/audit.service';
 
 const PRESET_PROVIDERS = [
   {
@@ -82,6 +83,7 @@ export class LlmModelsService implements OnModuleInit {
     @InjectRepository(LlmModelEntity)
     private repo: Repository<LlmModelEntity>,
     private llmService: LlmService,
+    private auditService: AuditService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -118,10 +120,15 @@ export class LlmModelsService implements OnModuleInit {
     page: number;
     pageSize: number;
     provider?: string;
+    search?: string;
   }): Promise<{ items: any[]; total: number; page: number; pageSize: number }> {
-    const { page, pageSize, provider } = params;
+    const { page, pageSize, provider, search } = params;
     const qb = this.repo.createQueryBuilder('m');
     if (provider) qb.andWhere('m.provider = :provider', { provider });
+    if (search) {
+      const q = `%${search}%`;
+      qb.andWhere('(m.display_name LIKE :q OR m.model LIKE :q OR m.provider LIKE :q)', { q });
+    }
     qb.orderBy('m.isPreset', 'DESC')
       .addOrderBy('m.provider', 'ASC')
       .addOrderBy('m.id', 'ASC')
@@ -187,6 +194,14 @@ export class LlmModelsService implements OnModuleInit {
     }
     const saved = await this.repo.save(entity);
     const apiKeyPlain = dto.apiKey;
+    await this.auditService.record({
+      actorType: 'admin',
+      module: 'llm-models',
+      action: existing ? 'update' : 'create',
+      resourceType: 'llm-model',
+      resourceId: saved.id,
+      title: `${existing ? '更新' : '创建'}模型：${saved.provider}/${saved.model}`,
+    });
     return {
       id: saved.id,
       provider: saved.provider,
@@ -201,6 +216,14 @@ export class LlmModelsService implements OnModuleInit {
     if (!m) throw new NotFoundException('模型不存在');
     this.applyDto(m, dto);
     await this.repo.save(m);
+    await this.auditService.record({
+      actorType: 'admin',
+      module: 'llm-models',
+      action: 'update',
+      resourceType: 'llm-model',
+      resourceId: m.id,
+      title: `更新模型配置：${m.provider}/${m.model}`,
+    });
     return { id: m.id, message: '更新成功' };
   }
 
@@ -211,6 +234,14 @@ export class LlmModelsService implements OnModuleInit {
       throw new BadRequestException('预置模型不可删除，但可禁用或更新 API Key');
     }
     await this.repo.remove(m);
+    await this.auditService.record({
+      actorType: 'admin',
+      module: 'llm-models',
+      action: 'delete',
+      resourceType: 'llm-model',
+      resourceId: id,
+      title: `删除模型：${m.provider}/${m.model}`,
+    });
   }
 
   async testConnection(id: number, prompt?: string): Promise<{
@@ -244,6 +275,14 @@ export class LlmModelsService implements OnModuleInit {
       m.lastTestedAt = new Date();
       m.lastTestStatus = 'success';
       await this.repo.save(m);
+      await this.auditService.record({
+        actorType: 'admin',
+        module: 'llm-models',
+        action: 'test-success',
+        resourceType: 'llm-model',
+        resourceId: m.id,
+        title: `测试模型成功：${m.provider}/${m.model}（${latencyMs}ms）`,
+      });
       return {
         ok: true,
         message: '连接成功',
@@ -256,6 +295,15 @@ export class LlmModelsService implements OnModuleInit {
       m.lastTestStatus = 'failed';
       await this.repo.save(m);
       const msg = err instanceof Error ? err.message : String(err);
+      await this.auditService.record({
+        actorType: 'admin',
+        module: 'llm-models',
+        action: 'test-fail',
+        resourceType: 'llm-model',
+        resourceId: m.id,
+        title: `测试模型失败：${m.provider}/${m.model}`,
+        content: msg,
+      });
       return {
         ok: false,
         message: '连接失败',

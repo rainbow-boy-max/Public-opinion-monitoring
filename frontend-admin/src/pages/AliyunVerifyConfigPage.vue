@@ -84,6 +84,7 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'AliyunVerifyConfigPage' });
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, type FormInstance } from 'element-plus';
 import http from '@/utils/http';

@@ -10,6 +10,7 @@ import {
 } from '../../database/entities';
 import { AgentKbService } from './agent-kb.service';
 import { LlmRouterService } from './llm-router.service';
+import { AuditService } from '../admin/audit.service';
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
@@ -40,6 +41,7 @@ export class AgentsService {
     private eventRepo: Repository<OpinionEventEntity>,
     private agentKbService: AgentKbService,
     private llmRouterService: LlmRouterService,
+    private auditService: AuditService,
   ) {}
 
   async list(params: {
@@ -85,6 +87,15 @@ export class AgentsService {
       description: dto.description || null,
     });
     const saved = await this.agentRepo.save(a);
+    await this.auditService.record({
+      actorType: 'admin',
+      module: 'agents',
+      action: 'create',
+      resourceType: 'agent',
+      resourceId: saved.id,
+      title: `创建智能体：${saved.name}`,
+      content: `管理员创建了智能体 ${saved.name}`,
+    });
     return this.serialize(saved);
   }
 
@@ -106,6 +117,14 @@ export class AgentsService {
     if (dto.avatar !== undefined) a.avatar = dto.avatar;
     if (dto.description !== undefined) a.description = dto.description;
     await this.agentRepo.save(a);
+    await this.auditService.record({
+      actorType: 'admin',
+      module: 'agents',
+      action: 'update',
+      resourceType: 'agent',
+      resourceId: a.id,
+      title: `更新智能体：${a.name}`,
+    });
     return this.serialize(a);
   }
 
@@ -113,6 +132,14 @@ export class AgentsService {
     const a = await this.agentRepo.findOne({ where: { id } });
     if (!a) throw new NotFoundException('智能体不存在');
     await this.agentRepo.remove(a);
+    await this.auditService.record({
+      actorType: 'admin',
+      module: 'agents',
+      action: 'delete',
+      resourceType: 'agent',
+      resourceId: id,
+      title: `删除智能体：${a.name}`,
+    });
   }
 
   async chat(

@@ -1,23 +1,30 @@
 <template>
-  <el-table :data="items" v-loading="loading" stripe>
-    <el-table-column prop="provider" label="提供商" width="110">
+  <el-table
+    :data="items"
+    v-loading="loading"
+    :row-key="(row: any) => row.id"
+    stripe
+    border
+    style="width: 100%"
+  >
+    <el-table-column prop="provider" label="提供商" width="130">
       <template #default="{ row }">
         <el-tag :type="providerColor(row.provider)" effect="dark" size="small">
           {{ row.provider }}
         </el-tag>
       </template>
     </el-table-column>
-    <el-table-column prop="displayName" label="显示名">
+    <el-table-column prop="displayName" label="显示名" min-width="160">
       <template #default="{ row }">
         <strong>{{ row.displayName }}</strong>
       </template>
     </el-table-column>
-    <el-table-column label="模型 ID">
+    <el-table-column label="模型 ID" min-width="200">
       <template #default="{ row }">
         <code style="font-size: 12px; color: var(--text-secondary)">{{ row.model }}</code>
       </template>
     </el-table-column>
-    <el-table-column label="API Key">
+    <el-table-column label="API Key" min-width="180">
       <template #default="{ row }">
         <span v-if="row.apiKeyConfigured" class="api-key-ok">
           <span class="dot dot--ok" />已配置
@@ -36,7 +43,7 @@
         />
       </template>
     </el-table-column>
-    <el-table-column label="最近测试" width="140">
+    <el-table-column label="最近测试" width="170">
       <template #default="{ row }">
         <span v-if="row.lastTestedAt" :class="['test-status', row.lastTestStatus]">
           {{ row.lastTestStatus === 'success' ? '✓ 成功' : '✗ 失败' }}
@@ -47,17 +54,24 @@
         </div>
       </template>
     </el-table-column>
-    <el-table-column label="操作" width="280" fixed="right">
+    <el-table-column label="操作" width="120" fixed="right">
       <template #default="{ row }">
-        <el-button size="small" @click="$emit('test', row)">测试</el-button>
-        <el-button size="small" @click="$emit('edit', row)">配置</el-button>
-        <el-button
-          v-if="!row.isPreset"
-          size="small"
-          type="danger"
-          @click="$emit('delete', row)"
-        >删除</el-button>
-        <el-tag v-else size="small" type="info" effect="dark">预置</el-tag>
+        <el-dropdown trigger="click" @command="(cmd) => onCommand(cmd, row)">
+          <el-button size="small">
+            操作
+            <el-icon style="margin-left: 4px"><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="test">测试连接</el-dropdown-item>
+              <el-dropdown-item command="edit">编辑配置</el-dropdown-item>
+              <el-dropdown-item v-if="!row.isPreset" command="delete" divided>
+                <span style="color: var(--color-danger)">删除模型</span>
+              </el-dropdown-item>
+              <el-dropdown-item v-else disabled>预置不可删除</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </template>
     </el-table-column>
   </el-table>
@@ -66,6 +80,7 @@
 <script setup lang="ts">
 import http from '@/utils/http';
 import { ElMessage } from 'element-plus';
+import { ArrowDown } from '@element-plus/icons-vue';
 
 defineProps<{ items: any[]; loading?: boolean }>();
 const emit = defineEmits<{
@@ -85,6 +100,12 @@ function providerColor(p: string): 'primary' | 'success' | 'warning' | 'info' | 
     custom: 'info',
   };
   return map[p] || 'info';
+}
+
+function onCommand(cmd: string, row: any): void {
+  if (cmd === 'test') emit('test', row);
+  else if (cmd === 'edit') emit('edit', row);
+  else if (cmd === 'delete') emit('delete', row);
 }
 
 async function onToggle(row: any, v: boolean): Promise<void> {
@@ -147,3 +168,4 @@ void emit;
 .test-status.test-status.none,
 .test-none { color: var(--text-tertiary); }
 </style>
+

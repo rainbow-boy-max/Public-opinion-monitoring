@@ -36,6 +36,7 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'AliyunSmsConfigPage' });
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, type FormInstance } from 'element-plus';
 import http from '@/utils/http';

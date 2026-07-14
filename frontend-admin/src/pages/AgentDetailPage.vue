@@ -2,7 +2,10 @@
   <div class="agent-detail">
     <GlassCard :title="agent?.name ? `${agent.name} - 智能体详情` : '创建新智能体'" :icon="agent ? '🤖' : '✨'">
       <template #extra>
-        <el-button v-if="!isNew" @click="$router.push('/agents')">返回列表</el-button>
+        <el-button type="primary" plain :loading="savingAll" :disabled="isNew && !formRef" @click="onSaveAll">
+          保存全部
+        </el-button>
+        <el-button v-if="!isNew" @click="$router.push('/agents')" style="margin-left: 8px;">返回列表</el-button>
       </template>
 
       <el-tabs
@@ -167,29 +170,26 @@
           </div>
 
           <div v-else class="kb-select-grid">
-            <label
-              v-for="kb in allKbs"
-              :key="kb.id"
-              class="kb-select-card"
-              :class="{ 'kb-select-card--selected': form.knowledgeBaseIds.includes(kb.id) }"
-            >
-              <el-checkbox
-                v-model="form.knowledgeBaseIds"
-                :value="kb.id"
-                @change="onKbSelectChange"
-                size="large"
-              />
-              <div class="kb-select-card__icon" :style="{ background: domainColor(kb.domain) }">
-                <span>{{ domainIcon(kb.domain) }}</span>
-              </div>
-              <div class="kb-select-card__content">
-                <div class="kb-select-card__name">{{ kb.name }}</div>
-                <div class="kb-select-card__meta">
-                  <span>📁 {{ kb.fileCount }}</span>
-                  <span style="margin-left: 8px">⭐ {{ kb.aiScore !== null ? Math.round(kb.aiScore) : '—' }}</span>
+            <el-checkbox-group v-model="form.knowledgeBaseIds" @change="onKbSelectChange">
+              <label
+                v-for="kb in allKbs"
+                :key="kb.id"
+                class="kb-select-card"
+                :class="{ 'kb-select-card--selected': form.knowledgeBaseIds.includes(kb.id) }"
+              >
+                <el-checkbox :value="kb.id" size="large" />
+                <div class="kb-select-card__icon" :style="{ background: domainColor(kb.domain) }">
+                  <span>{{ domainIcon(kb.domain) }}</span>
                 </div>
-              </div>
-            </label>
+                <div class="kb-select-card__content">
+                  <div class="kb-select-card__name">{{ kb.name }}</div>
+                  <div class="kb-select-card__meta">
+                    <span>📁 {{ kb.fileCount }}</span>
+                    <span style="margin-left: 8px">⭐ {{ kb.aiScore !== null ? Math.round(kb.aiScore) : '—' }}</span>
+                  </div>
+                </div>
+              </label>
+            </el-checkbox-group>
           </div>
 
           <div v-if="form.knowledgeBaseIds.length > 0" class="kb-summary">
@@ -248,6 +248,7 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'AgentDetailPage' });
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus';
@@ -443,8 +444,12 @@ async function onSave(): Promise<void> {
       };
       if (isNew.value) {
         const r = await http.post('/agents', payload);
+        const newId = r?.id ?? r?.agentId ?? r?.data?.id;
+        if (!newId) {
+          throw new Error('创建成功但未返回 id');
+        }
         ElMessage.success('创建成功');
-        router.push(`/agents/${r.id}`);
+        router.push(`/agents/${newId}`);
       } else {
         await http.put(`/agents/${agentId.value}`, payload);
         ElMessage.success('已保存');
@@ -456,6 +461,86 @@ async function onSave(): Promise<void> {
       saving.value = false;
     }
   });
+}
+
+const savingAll = ref(false);
+
+async function onSaveAll(): Promise<void> {
+  if (!formRef.value) return;
+  const validated = await new Promise<boolean>((resolve) => {
+    formRef.value!.validate((valid) => resolve(!!valid));
+  });
+  if (!validated) {
+    ElMessage.error('基础配置校验未通过，请先完善');
+    return;
+  }
+
+  const steps: Array<{ name: string; run: () => Promise<void> }> = [
+    {
+      name: '基础配置',
+      run: async () => {
+        const payload = { ...form, status: enabledSwitch.value ? 'enabled' : 'disabled' };
+        if (isNew.value) {
+          const r = await http.post('/agents', payload);
+          const newId = r?.id ?? r?.agentId ?? r?.data?.id;
+          if (!newId) throw new Error('创建成功但未返回 id');
+          router.push(`/agents/${newId}`);
+        } else {
+          await http.put(`/agents/${agentId.value}`, payload);
+        }
+      },
+    },
+  ];
+  if (!isNew.value) {
+    steps.push({
+      name: '模型设置',
+      run: () => http.put(`/agents/${agentId.value}`, {
+        primaryModelId: form.primaryModelId,
+        fallbackModelIds: form.fallbackModelIds,
+      }) as unknown as Promise<void>,
+    });
+    steps.push({
+      name: '知识库设置',
+      run: () => http.put(`/agents/${agentId.value}`, {
+        kbEnabled: form.kbEnabled ? 1 : 0,
+        kbTopK: form.kbTopK,
+      }) as unknown as Promise<void>,
+    });
+    steps.push({
+      name: '知识库关联',
+      run: () => http.post(`/admin/agents/${agentId.value}/knowledge-bases`, {
+        kbIds: form.knowledgeBaseIds,
+      }) as unknown as Promise<void>,
+    });
+  }
+
+  savingAll.value = true;
+  const results: Array<{ name: string; ok: boolean; message?: string }> = [];
+  for (const step of steps) {
+    try {
+      await step.run();
+      results.push({ name: step.name, ok: true });
+    } catch (err: any) {
+      results.push({ name: step.name, ok: false, message: err?.message || err?.message || '失败' });
+    }
+  }
+  savingAll.value = false;
+
+  const okCount = results.filter((r) => r.ok).length;
+  const failed = results.filter((r) => !r.ok);
+  if (failed.length === 0) {
+    ElMessage.success(`已保存全部（${results.length} 项）`);
+    if (!isNew.value) loadAgent();
+  } else if (okCount === 0) {
+    ElMessage.error(
+      `保存全部失败：${failed.map((r) => `${r.name} ${r.message || ''}`).join('；')}`,
+    );
+  } else {
+    ElMessage.warning(
+      `部分保存成功（${okCount}/${results.length}），失败：${failed.map((r) => `${r.name} ${r.message || ''}`).join('；')}`,
+    );
+    if (!isNew.value) loadAgent();
+  }
 }
 
 async function onSaveModels(): Promise<void> {
@@ -481,7 +566,6 @@ async function onSaveKb(): Promise<void> {
   } catch (err: any) {
     ElMessage.error(err?.message || '保存失败');
   }
-}
 }
 
 function beforeUpload(file: any): boolean {

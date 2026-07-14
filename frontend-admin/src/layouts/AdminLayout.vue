@@ -1,7 +1,7 @@
 <template>
   <el-container class="admin-layout">
-    <el-aside width="240px" class="admin-aside">
-      <div class="admin-aside__brand">
+    <el-aside :width="isCollapsed ? '64px' : '240px'" class="admin-aside" :class="{ 'admin-aside--collapsed': isCollapsed }">
+      <div class="admin-aside__brand" v-show="!isCollapsed">
         <div class="admin-aside__logo">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
             <defs>
@@ -22,22 +22,20 @@
       </div>
 
       <nav class="admin-aside__nav">
-        <router-link
+        <div
           v-for="item in menuItems"
           :key="item.path"
-          :to="item.path"
-          custom
-          v-slot="{ navigate, isActive }"
+          class="menu-item"
+          :class="{ 'menu-item--active': isMenuActive(item.path) }"
+          @click="navigateTo(item.path)"
         >
-          <div class="menu-item" :class="{ 'menu-item--active': isActive }" @click="navigate">
-            <span class="menu-item__icon" :innerHTML="item.icon" />
-            <span class="menu-item__text">{{ item.label }}</span>
-            <span v-if="item.badge" class="menu-item__badge">{{ item.badge }}</span>
-          </div>
-        </router-link>
+          <span class="menu-item__icon" :innerHTML="item.icon" />
+          <span class="menu-item__text" v-show="!isCollapsed">{{ item.label }}</span>
+          <span v-if="item.badge" class="menu-item__badge" v-show="!isCollapsed">{{ item.badge }}</span>
+        </div>
       </nav>
 
-      <div class="admin-aside__footer">
+      <div class="admin-aside__footer" v-show="!isCollapsed">
         <div class="admin-aside__user-card">
           <div class="admin-aside__avatar">
             {{ (auth.user?.username || 'A').charAt(0).toUpperCase() }}
@@ -53,7 +51,10 @@
     <el-main class="admin-main">
       <header class="admin-topbar">
         <div class="admin-topbar__left">
-          <el-icon class="admin-topbar__toggle"><Expand v-if="false" /><Fold v-else /></el-icon>
+          <el-icon class="admin-topbar__toggle" @click="isCollapsed = !isCollapsed">
+            <Fold v-if="!isCollapsed" />
+            <Expand v-else />
+          </el-icon>
           <PageHeader gradient :title="currentTitle" :subtitle="currentSubtitle" />
         </div>
         <div class="admin-topbar__right">
@@ -77,7 +78,11 @@
       </header>
 
       <div class="admin-content fade-in">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <keep-alive :include="keepAliveIncludes">
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </div>
     </el-main>
   </el-container>
@@ -151,6 +156,7 @@ const menuItems: MenuItem[] = [
 
 const currentTime = ref('');
 let timer: number | undefined;
+const isCollapsed = ref(false);
 
 const META: Record<string, { title: string; subtitle: string }> = {
   '/dashboard': { title: '概览', subtitle: '系统关键指标与状态' },
@@ -166,6 +172,18 @@ const META: Record<string, { title: string; subtitle: string }> = {
 
 const currentTitle = computed(() => META[route.path]?.title || '舆情监测管理端');
 const currentSubtitle = computed(() => META[route.path]?.subtitle || '');
+
+function isMenuActive(path: string): boolean {
+  if (!path) return false;
+  return route.path === path || route.path.startsWith(path + '/');
+}
+
+function navigateTo(path: string): void {
+  if (!path) return;
+  if (path !== route.path && !route.path.startsWith(path + '/')) {
+    router.push(path);
+  }
+}
 
 function updateTime(): void {
   const now = new Date();
@@ -185,6 +203,20 @@ function onCommand(cmd: string): void {
   }
 }
 
+const keepAliveIncludes = [
+  'DashboardPage',
+  'AgentsPage',
+  'AgentDetailPage',
+  'LlmModelsManagementPage',
+  'KnowledgeBasesPage',
+  'KnowledgeBaseDetailPage',
+  'SystemLogsPage',
+  'UserManagementPage',
+  'SmsTemplatesPage',
+  'AliyunSmsConfigPage',
+  'AliyunVerifyConfigPage',
+];
+
 onMounted(() => {
   updateTime();
   timer = window.setInterval(updateTime, 1000);
@@ -203,7 +235,6 @@ onUnmounted(() => {
 
 .admin-aside {
   background: rgba(20, 25, 56, 0.7) !important;
-  backdrop-filter: blur(20px);
   border-right: 1px solid var(--border-medium) !important;
   display: flex;
   flex-direction: column;
@@ -211,6 +242,13 @@ onUnmounted(() => {
   top: 0;
   height: 100vh;
   padding: 0;
+  backdrop-filter: none;
+  will-change: auto;
+}
+
+.menu-item:hover {
+  background: rgba(94, 114, 228, 0.12);
+  backdrop-filter: blur(6px);
 }
 
 .admin-aside__brand {

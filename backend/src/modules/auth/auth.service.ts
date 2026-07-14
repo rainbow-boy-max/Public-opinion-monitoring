@@ -11,6 +11,7 @@ import { UserEntity, UserRole, AuthStatus } from '../../database/entities';
 import { RedisService } from '../../redis/redis.service';
 import { SmsService } from '../sms/sms.service';
 import { throwBusiness } from '../../common/errors/business.exception';
+import { AuditService } from '../admin/audit.service';
 
 interface LoginResult {
   token: string;
@@ -29,6 +30,7 @@ export class AuthService {
     private jwtService: JwtService,
     private redisService: RedisService,
     private smsService: SmsService,
+    private auditService: AuditService,
   ) {}
 
   async login(username: string, password: string): Promise<LoginResult> {
@@ -65,6 +67,15 @@ export class AuthService {
     await this.userRepo.save(user);
 
     const token = await this.issueToken(user);
+    await this.auditService.record({
+      actorId: user.id,
+      actorType: user.role === UserRole.ADMIN ? 'admin' : 'user',
+      module: 'auth',
+      action: 'login',
+      resourceType: 'user',
+      resourceId: user.id,
+      title: `${user.username} 登录成功`,
+    });
     return {
       token,
       user: {
@@ -171,6 +182,14 @@ export class AuthService {
     await this.userRepo.save(user);
 
     const token = await this.issueToken(user);
+    await this.auditService.record({
+      actorType: 'user',
+      module: 'auth',
+      action: 'register',
+      resourceType: 'user',
+      resourceId: user.id,
+      title: `新用户注册：${username}`,
+    });
     return {
       token,
       user: {

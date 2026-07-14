@@ -185,6 +185,7 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'KnowledgeBaseDetailPage' });
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';

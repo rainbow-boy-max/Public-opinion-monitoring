@@ -65,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'SystemLogsPage' });
 import { ref, onMounted } from 'vue';
 import { Refresh } from '@element-plus/icons-vue';
 import http from '@/utils/http';

@@ -51,5 +51,19 @@ export default defineConfig({
     target: 'es2020',
     sourcemap: false,
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-element-plus': ['element-plus'],
+          'vendor-echarts': [
+            'echarts/core',
+            'echarts/charts',
+            'echarts/components',
+            'echarts/renderers',
+          ],
+        },
+      },
+    },
   },
 });

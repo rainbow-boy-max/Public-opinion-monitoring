@@ -77,10 +77,16 @@ export class LlmModelsController {
   @Get()
   async list(
     @Query('page') page = 1,
-    @Query('pageSize') pageSize = 50,
+    @Query('pageSize') pageSize = 20,
     @Query('provider') provider?: string,
+    @Query('search') search?: string,
   ) {
-    return this.service.list({ page, pageSize, provider });
+    return this.service.list({
+      page: Number(page),
+      pageSize: Math.min(100, Math.max(1, Number(pageSize) || 20)),
+      provider,
+      search,
+    });
   }
 
   @Get('presets')

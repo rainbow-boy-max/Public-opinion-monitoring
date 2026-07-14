@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { UserEntity, AuthStatus, UserRole } from '../../../database/entities';
 import { RedisService } from '../../../redis/redis.service';
 import { SmsService } from '../../sms/sms.service';
+import { AuditService } from '../audit.service';
 
 @Injectable()
 export class UserManagementService {
@@ -11,6 +12,7 @@ export class UserManagementService {
     @InjectRepository(UserEntity) private userRepo: Repository<UserEntity>,
     private redisService: RedisService,
     private smsService: SmsService,
+    private auditService: AuditService,
   ) {}
 
   async listUsers(params: {
@@ -81,6 +83,15 @@ export class UserManagementService {
     } catch (err) {
       // SMS notification failure should not block the ban operation
     }
+    await this.auditService.record({
+      actorType: 'admin',
+      actorId: operatorId,
+      module: 'users',
+      action: 'ban',
+      resourceType: 'user',
+      resourceId: user.id,
+      title: `封禁用户：${user.username}`,
+    });
     void operatorId;
   }
 
@@ -108,6 +119,15 @@ export class UserManagementService {
     } catch (err) {
       // SMS notification failure should not block the unban operation
     }
+    await this.auditService.record({
+      actorType: 'admin',
+      actorId: operatorId,
+      module: 'users',
+      action: 'unban',
+      resourceType: 'user',
+      resourceId: user.id,
+      title: `解封用户：${user.username}`,
+    });
     void operatorId;
   }
 
@@ -142,6 +162,14 @@ export class UserManagementService {
       loginAttempts: 0,
     });
     const saved = await this.userRepo.save(user);
+    await this.auditService.record({
+      actorType: 'admin',
+      module: 'users',
+      action: 'create',
+      resourceType: 'user',
+      resourceId: saved.id,
+      title: `创建用户：${saved.username}`,
+    });
     return {
       id: saved.id,
       username: saved.username,
@@ -166,6 +194,15 @@ export class UserManagementService {
     user.loginAttempts = 0;
     user.lockedUntil = null;
     await this.userRepo.save(user);
+    await this.auditService.record({
+      actorType: 'admin',
+      actorId: operatorId,
+      module: 'users',
+      action: 'reset-password',
+      resourceType: 'user',
+      resourceId: user.id,
+      title: `重置用户密码：${user.username}`,
+    });
     void operatorId;
     return { tempPassword };
   }
@@ -190,6 +227,15 @@ export class UserManagementService {
     } catch (err) {
       // ignore audit log error
     }
+    await this.auditService.record({
+      actorType: 'admin',
+      actorId: operatorId,
+      module: 'users',
+      action: 'delete',
+      resourceType: 'user',
+      resourceId: user.id,
+      title: `删除用户：${user.username}`,
+    });
   }
 
   async getUserDetail(userId: number): Promise<any> {

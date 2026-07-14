@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UserEntity } from '../../database/entities';
 import { SmsModule } from '../sms/sms.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { SmsModule } from '../sms/sms.module';
       }),
     }),
     SmsModule,
+    AdminModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

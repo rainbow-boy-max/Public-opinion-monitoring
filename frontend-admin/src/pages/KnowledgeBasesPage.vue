@@ -111,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'KnowledgeBasesPage' });
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance } from 'element-plus';

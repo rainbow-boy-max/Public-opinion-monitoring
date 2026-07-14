@@ -169,6 +169,7 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'UserManagementPage' });
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus';
 import { Refresh, Plus } from '@element-plus/icons-vue';
