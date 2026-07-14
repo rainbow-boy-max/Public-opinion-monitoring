@@ -23,6 +23,7 @@ import { AuditController } from './audit.controller';
 import { DashboardService } from './dashboard.service';
 import { DashboardController } from './dashboard.controller';
 import { SystemLogsModule } from '../system-logs/system-logs.module';
+import { SmsModule } from '../sms/sms.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { SystemLogsModule } from '../system-logs/system-logs.module';
       }),
     }),
     SystemLogsModule,
+    SmsModule,
   ],
   controllers: [AdminController, AuditController, DashboardController],
   providers: [
