@@ -3,7 +3,7 @@
  * 用于仪表盘的关键指标展示，支持图标、趋势、点击
  */
 <template>
-  <div class="stat-card" :class="{ 'stat-card--glow': glow }" @click="$emit('click')">
+  <div class="stat-card" :class="{ 'stat-card--glow': glow, 'stat-card--flash': flash }" @click="$emit('click')">
     <div class="stat-card__icon" :style="{ background: iconBg }">
       <span>{{ icon }}</span>
     </div>
@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 interface Props {
   label: string;
@@ -60,6 +60,21 @@ const trendClass = computed(() => {
   if (props.trend === undefined) return '';
   return props.trend >= 0 ? 'trend-up' : 'trend-down';
 });
+
+const flash = ref(false);
+let flashTimer: number | undefined;
+watch(
+  () => props.value,
+  (newVal, oldVal) => {
+    if (newVal !== oldVal && oldVal !== undefined) {
+      flash.value = true;
+      if (flashTimer) window.clearTimeout(flashTimer);
+      flashTimer = window.setTimeout(() => {
+        flash.value = false;
+      }, 800);
+    }
+  },
+);
 </script>
 
 <style scoped>
@@ -78,6 +93,21 @@ const trendClass = computed(() => {
   cursor: pointer;
   overflow: hidden;
   animation: fade-in 250ms ease-out both;
+}
+
+.stat-card--flash {
+  animation: stat-flash 800ms ease-out;
+}
+
+@keyframes stat-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(94, 114, 228, 0.55), var(--glass-shadow);
+    border-color: var(--color-primary);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgba(94, 114, 228, 0), var(--glass-shadow);
+    border-color: var(--glass-border);
+  }
 }
 
 .stat-card:hover {
