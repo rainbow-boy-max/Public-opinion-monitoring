@@ -127,22 +127,40 @@
 import { ElTag, ElTooltip } from 'element-plus';
 import { ArrowDown } from '@element-plus/icons-vue';
 
-defineProps<{
-  items: any[];
+interface LlmRow {
+  id: number;
+  provider: string;
+  model: string;
+  displayName: string;
+  baseUrl: string;
+  apiVersion: string;
+  maxTokens: number;
+  isPreset: boolean;
+  isEnabled: boolean;
+  effectiveState: 'enabled' | 'disabled' | 'disabled_pending_key' | 'enabled_force';
+  apiKeyConfigured: boolean;
+  apiKeyMasked: string;
+  capabilities: { vision: boolean; reasoning: boolean; webSearch: boolean };
+  apiStyle: 'openai' | 'anthropic';
+  sortOrder: number;
+}
+
+const props = defineProps<{
+  items: LlmRow[];
   loading?: boolean;
-  totalList?: any[]; // 同一完整列表用于上下移动的边界判断
+  totalList?: LlmRow[];
 }>();
 
 const emit = defineEmits<{
-  test: [row: any];
-  edit: [row: any];
-  delete: [row: any];
-  moveUp: [row: any];
-  moveDown: [row: any];
-  selectionChange: [rows: any[]];
+  test: [row: LlmRow];
+  edit: [row: LlmRow];
+  delete: [row: LlmRow];
+  moveUp: [row: LlmRow];
+  moveDown: [row: LlmRow];
+  selectionChange: [rows: LlmRow[]];
 }>();
 
-function onSelectionChange(rows: any[]): void {
+function onSelectionChange(rows: LlmRow[]): void {
   emit('selectionChange', rows);
 }
 
@@ -162,7 +180,7 @@ function providerColor(p: string): 'primary' | 'success' | 'warning' | 'info' | 
   return map[p] || 'info';
 }
 
-function stateLabel(row: any): string {
+function stateLabel(row: LlmRow): string {
   switch (row.effectiveState) {
     case 'enabled':
       return '已启用';
@@ -177,7 +195,7 @@ function stateLabel(row: any): string {
   }
 }
 
-function stateType(row: any): 'success' | 'info' | 'warning' | 'danger' {
+function stateType(row: LlmRow): 'success' | 'info' | 'warning' | 'danger' {
   switch (row.effectiveState) {
     case 'enabled':
       return 'success';
@@ -192,7 +210,7 @@ function stateType(row: any): 'success' | 'info' | 'warning' | 'danger' {
   }
 }
 
-function stateTooltip(row: any): string {
+function stateTooltip(row: LlmRow): string {
   if (row.effectiveState === 'disabled_pending_key') {
     return '未配置 API Key，配置后自动启用';
   }
@@ -202,19 +220,17 @@ function stateTooltip(row: any): string {
   return row.effectiveState;
 }
 
-function canMoveUp(row: any): boolean {
-  const props = (defineProps as any) || {};
-  const list = (props as any).totalList || [];
+function canMoveUp(row: LlmRow): boolean {
+  const list = props.totalList || [];
   if (list.length === 0) return false;
-  const idx = list.findIndex((x: any) => x.id === row.id);
+  const idx = list.findIndex((x) => x.id === row.id);
   return idx > 0;
 }
 
-function canMoveDown(row: any): boolean {
-  const props = (defineProps as any) || {};
-  const list = (props as any).totalList || [];
+function canMoveDown(row: LlmRow): boolean {
+  const list = props.totalList || [];
   if (list.length === 0) return false;
-  const idx = list.findIndex((x: any) => x.id === row.id);
+  const idx = list.findIndex((x) => x.id === row.id);
   return idx >= 0 && idx < list.length - 1;
 }
 

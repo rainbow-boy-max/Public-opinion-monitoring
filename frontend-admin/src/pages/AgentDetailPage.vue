@@ -206,7 +206,7 @@
             <el-checkbox-group v-model="form.knowledgeBaseIds" @change="onKbSelectChange">
               <label
                 v-for="kb in allKbs"
-                :key="kb.id"
+                :key="kb.__key"
                 class="kb-select-card"
                 :class="{ 'kb-select-card--selected': form.knowledgeBaseIds.includes(kb.id) }"
               >
@@ -215,7 +215,15 @@
                   <span>{{ domainIcon(kb.domain) }}</span>
                 </div>
                 <div class="kb-select-card__content">
-                  <div class="kb-select-card__name">{{ kb.name }}</div>
+                  <div
+                    v-if="kb.name"
+                    class="kb-select-card__name"
+                  >{{ kb.name }}</div>
+                  <div
+                    v-else
+                    class="kb-select-card__name"
+                    style="color: var(--text-tertiary); font-weight: 400"
+                  >（未命名知识库 #{{ kb.id }}）</div>
                   <div class="kb-select-card__meta">
                     <span>📁 {{ kb.fileCount }}</span>
                     <span style="margin-left: 8px">⭐ {{ kb.aiScore !== null ? Math.round(kb.aiScore) : '—' }}</span>
@@ -494,11 +502,14 @@ async function loadModels(): Promise<void> {
 async function loadAllKbs(): Promise<void> {
   try {
     const list = (await http.get('/admin/knowledge/available')) as Array<Record<string, unknown>>;
-    allKbs.value = (list || []).map((kb) => ({
+    // 每次 load 都用全新引用 + 带 __key 强制 v-for 重建（避免 keep-alive 缓存下
+    // 旧 DOM 节点 textContent 残留为 undefined 的 bug）
+    allKbs.value = (list || []).map((kb, idx) => ({
       ...kb,
       id: Number(kb.id),
       fileCount: Number(kb.fileCount ?? 0),
       aiScore: kb.aiScore == null ? null : Number(kb.aiScore),
+      __key: `${Date.now()}-${idx}-${kb.id}-${kb.name || 'unknown'}`,
     }));
   } catch (err) {
     console.error(err);
@@ -900,6 +911,9 @@ async function onRunTest(): Promise<void> {
 }
 
 async function reloadAll(): Promise<void> {
+  // keep-alive 缓存命中：先清空 allKbs（避免旧 undefined 残留在 DOM），
+  // 强制 v-for 重建。reactive 写入后 v-for 触发 re-render。
+  allKbs.value = [];
   if (isNew.value) {
     loadModels();
     loadAllKbs();
@@ -1090,9 +1104,9 @@ async function onSaveCaps(): Promise<void> {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.4;
 }
 
 .kb-select-card__meta {
