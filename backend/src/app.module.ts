@@ -23,6 +23,7 @@ import { SmsTemplatesModule } from './modules/sms/sms-templates.module';
 import { VerifyModule } from './modules/verify/verify.module';
 import { SystemLogsModule } from './modules/system-logs/system-logs.module';
 import { AgentsModule } from './modules/agents/agents.module';
+import { KnowledgeBasesModule } from './modules/knowledge/knowledge-bases.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { AgentsModule } from './modules/agents/agents.module';
     VerifyModule,
     SystemLogsModule,
     AgentsModule,
+    KnowledgeBasesModule,
   ],
   providers: [
     {

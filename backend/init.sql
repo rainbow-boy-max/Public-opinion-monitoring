@@ -284,3 +284,74 @@ ALTER TABLE aliyun_configs
   ADD COLUMN endpoint_type ENUM('common','beijing','shanghai') NOT NULL DEFAULT 'common' AFTER config_type,
   ADD COLUMN param_type ENUM('normal','md5','sm2') NOT NULL DEFAULT 'md5' AFTER endpoint_type,
   ADD COLUMN region VARCHAR(64) NULL DEFAULT NULL AFTER param_type;
+
+-- 独立 AI 知识库模块
+CREATE TABLE IF NOT EXISTS `knowledge_bases` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(128) NOT NULL,
+  `description` VARCHAR(512) NULL,
+  `domain` VARCHAR(64) NULL COMMENT '行业领域: technology/finance/medical 等',
+  `tags` JSON NULL,
+  `file_count` INT NOT NULL DEFAULT 0,
+  `chunk_count` INT NOT NULL DEFAULT 0,
+  `total_chars` BIGINT NOT NULL DEFAULT 0,
+  `ai_score` FLOAT NULL COMMENT 'LLM 知识库质量评分 0-100',
+  `ai_summary` VARCHAR(512) NULL COMMENT 'AI 对整个知识库的简要总结',
+  `status` ENUM('draft','processing','ready','disabled') NOT NULL DEFAULT 'draft',
+  `created_by` BIGINT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_knowledge_bases_status` (`status`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `knowledge_base_files` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `kb_id` BIGINT NOT NULL,
+  `filename` VARCHAR(255) NOT NULL,
+  `file_type` VARCHAR(16) NOT NULL,
+  `file_size` INT NOT NULL,
+  `storage_path` VARCHAR(512) NOT NULL,
+  `parsed_text` LONGTEXT NULL COMMENT '完整解析后的文本（用于 AI 读取）',
+  `parsed_summary` TEXT NULL COMMENT 'AI 提取的摘要',
+  `parsed_topics` JSON NULL COMMENT 'AI 提取的章节主题列表',
+  `qa_pairs` JSON NULL COMMENT 'AI 自动生成的 Q&A 对',
+  `chunk_count` INT NOT NULL DEFAULT 0,
+  `total_chars` INT NOT NULL DEFAULT 0,
+  `ai_score` FLOAT NULL,
+  `status` ENUM('pending','parsing','parsed','embedding','ready','failed') NOT NULL DEFAULT 'pending',
+  `error_message` TEXT NULL,
+  `uploaded_by` BIGINT NULL,
+  `uploaded_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `parsed_at` DATETIME NULL,
+  INDEX `idx_kb_files_kb` (`kb_id`),
+  INDEX `idx_kb_files_status` (`status`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `knowledge_base_chunks` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `kb_id` BIGINT NOT NULL,
+  `file_id` BIGINT NOT NULL,
+  `chunk_index` INT NOT NULL,
+  `content` MEDIUMTEXT NOT NULL,
+  `char_count` INT NOT NULL,
+  `embedding_b64` MEDIUMTEXT NOT NULL,
+  `qa_pairs` JSON NULL,
+  `metadata` JSON NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_kb_chunks_kb` (`kb_id`, `file_id`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `agent_knowledge_bindings` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `agent_id` BIGINT NOT NULL,
+  `kb_id` BIGINT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE INDEX `uniq_agent_kb` (`agent_id`, `kb_id`),
+  INDEX `idx_agent_kb_bindings` (`agent_id`),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 删除旧的 agent_kb_files 字段冗余（agent 内嵌知识库字段保留作为兼容）

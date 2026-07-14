@@ -24,6 +24,10 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      '/knowledge': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
       '/pr': {
         target: 'http://localhost:3000',
         changeOrigin: true,

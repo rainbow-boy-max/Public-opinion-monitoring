@@ -5,9 +5,13 @@
         <el-button v-if="!isNew" @click="$router.push('/agents')">返回列表</el-button>
       </template>
 
-      <el-tabs v-model="activeTab" class="detail-tabs">
+      <el-tabs
+        v-model="activeTab"
+        class="detail-tabs"
+        @tab-click="onTabClick"
+      >
         <!-- Tab 1: 基础配置 -->
-        <el-tab-pane label="基础配置" name="basic">
+        <el-tab-pane label="基础配置" name="basic" :key="'t-basic'">
           <el-form :model="form" :rules="rules" label-width="140px" ref="formRef">
             <el-form-item label="智能体名称" prop="name">
               <el-input v-model="form.name" placeholder="如：舆情危机公关顾问" />
@@ -47,7 +51,7 @@
         </el-tab-pane>
 
         <!-- Tab 2: 模型选择 -->
-        <el-tab-pane label="大模型选择" name="models">
+        <el-tab-pane label="大模型选择" name="models" :key="'t-models'">
           <el-form label-width="140px">
             <el-form-item label="主用大模型">
               <el-select
@@ -110,8 +114,23 @@
           </el-alert>
         </el-tab-pane>
 
-        <!-- Tab 3: 知识库 -->
-        <el-tab-pane label="知识库" name="kb" :disabled="isNew">
+        <!-- Tab 3: 知识库关联 -->
+        <el-tab-pane label="知识库" name="kb" :disabled="isNew" :key="'t-kb'">
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 16px"
+          >
+            <template #title>智能体 ↔ 知识库多对多关联</template>
+            从下方列表勾选已就绪的知识库，AI 会在对话时同时检索所有关联知识库。
+            <el-link
+              type="primary"
+              @click="$router.push('/knowledge')"
+              style="margin-left: 8px"
+            >去管理知识库 →</el-link>
+          </el-alert>
+
           <el-form label-width="120px">
             <el-form-item label="启用知识库">
               <el-switch v-model="form.kbEnabled" />
@@ -120,7 +139,7 @@
             <el-form-item label="检索 Top K">
               <el-input-number v-model="form.kbTopK" :min="1" :max="10" />
               <span style="margin-left: 12px; color: var(--text-tertiary)">
-                默认 4，数值越大参考内容越多
+                每个知识库返回的分块数
               </span>
             </el-form-item>
             <el-form-item>
@@ -131,64 +150,68 @@
           <el-divider />
 
           <h3 style="color: var(--text-primary); font-size: 16px; margin: 16px 0">
-            📚 文档文件
+            📚 已就绪知识库（多选）
           </h3>
 
-          <el-upload
-            v-if="!isNew"
-            :show-file-list="false"
-            :before-upload="beforeUpload"
-            :http-request="onUpload"
-            accept=".pdf,.docx,.pptx,.ppt,.txt,.md"
-            :data="{ agentId }"
-            drag
-            class="kb-uploader"
-          >
-            <div class="upload-zone">
-              <div class="upload-icon">📥</div>
-              <div class="upload-text">点击或拖拽文件到此处上传</div>
-              <div class="upload-hint">
-                支持 PDF / Word (.docx) / PowerPoint (.pptx, .ppt) / TXT / Markdown
-              </div>
-              <div class="upload-hint">单个文件不超过 50 MB</div>
-            </div>
-          </el-upload>
+          <div v-if="allKbs.length === 0" class="kb-empty">
+            <div class="kb-empty__icon">📭</div>
+            <div>还没有可用的知识库</div>
+            <el-button
+              type="primary"
+              size="small"
+              style="margin-top: 12px"
+              @click="$router.push('/knowledge')"
+            >
+              去创建知识库
+            </el-button>
+          </div>
 
-          <el-table :data="kbFiles" v-loading="kbLoading" style="margin-top: 20px" stripe>
-            <el-table-column prop="filename" label="文件名" />
-            <el-table-column prop="fileType" label="类型" width="80">
-              <template #default="{ row }">
-                <el-tag size="small">{{ row.fileType }}</el-tag>
+          <div v-else class="kb-select-grid">
+            <label
+              v-for="kb in allKbs"
+              :key="kb.id"
+              class="kb-select-card"
+              :class="{ 'kb-select-card--selected': form.knowledgeBaseIds.includes(kb.id) }"
+            >
+              <el-checkbox
+                v-model="form.knowledgeBaseIds"
+                :value="kb.id"
+                @change="onKbSelectChange"
+                size="large"
+              />
+              <div class="kb-select-card__icon" :style="{ background: domainColor(kb.domain) }">
+                <span>{{ domainIcon(kb.domain) }}</span>
+              </div>
+              <div class="kb-select-card__content">
+                <div class="kb-select-card__name">{{ kb.name }}</div>
+                <div class="kb-select-card__meta">
+                  <span>📁 {{ kb.fileCount }}</span>
+                  <span style="margin-left: 8px">⭐ {{ kb.aiScore !== null ? Math.round(kb.aiScore) : '—' }}</span>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <div v-if="form.knowledgeBaseIds.length > 0" class="kb-summary">
+            <el-alert type="success" :closable="false" show-icon>
+              <template #title>
+                已选择 {{ form.knowledgeBaseIds.length }} 个知识库
               </template>
-            </el-table-column>
-            <el-table-column prop="fileSize" label="大小" width="100">
-              <template #default="{ row }">
-                {{ (row.fileSize / 1024).toFixed(1) }} KB
-              </template>
-            </el-table-column>
-            <el-table-column prop="chunkCount" label="分块数" width="100" />
-            <el-table-column prop="status" label="状态" width="120">
-              <template #default="{ row }">
-                <el-tag :type="statusType(row.status)" effect="dark" size="small">
-                  {{ statusLabel(row.status) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="createdAt" label="上传时间" width="170">
-              <template #default="{ row }">
-                {{ new Date(row.createdAt).toLocaleString('zh-CN') }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="100" fixed="right">
-              <template #default="{ row }">
-                <el-button size="small" type="danger" @click="onDeleteFile(row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+              <el-button
+                type="primary"
+                size="small"
+                style="margin-top: 8px"
+                :loading="savingKbBindings"
+                @click="onSaveKbBindings"
+              >
+                保存关联
+              </el-button>
+            </el-alert>
+          </div>
         </el-tab-pane>
 
         <!-- Tab 4: 测试运行 -->
-        <el-tab-pane label="测试运行" name="test" :disabled="isNew">
+        <el-tab-pane label="测试运行" name="test" :disabled="isNew" :key="'t-test'">
           <el-form label-width="100px">
             <el-form-item label="测试输入">
               <el-input
@@ -251,11 +274,14 @@ const form = reactive({
   maxTokens: 2048,
   kbEnabled: true,
   kbTopK: 4,
+  knowledgeBaseIds: [] as number[],
   status: 'enabled',
 });
 const enabledSwitch = ref(true);
 
 const allModels = ref<any[]>([]);
+const allKbs = ref<any[]>([]);
+const savingKbBindings = ref(false);
 
 const configuredProviders = computed(() => {
   const grouped: Record<string, { label: string; models: any[] }> = {};
@@ -335,15 +361,73 @@ async function loadModels(): Promise<void> {
   }
 }
 
-async function loadKbFiles(): Promise<void> {
-  if (isNew.value) return;
-  kbLoading.value = true;
+async function loadAllKbs(): Promise<void> {
   try {
-    kbFiles.value = await http.get(`/admin/agents/${agentId.value}/knowledge/files`);
+    allKbs.value = await http.get('/admin/knowledge/available');
   } catch (err) {
     console.error(err);
+  }
+}
+
+async function loadAgentKbBindings(): Promise<void> {
+  if (isNew.value) return;
+  try {
+    const ids = await http.get(`/admin/agents/${agentId.value}/knowledge-bases`);
+    form.knowledgeBaseIds = Array.isArray(ids) ? ids : [];
+  } catch (err) {
+    form.knowledgeBaseIds = [];
+  }
+}
+
+function domainIcon(d: string | null | undefined): string {
+  const m: Record<string, string> = {
+    technology: '💻', finance: '💰', medical: '🏥', legal: '⚖️',
+    education: '📚', media: '📺', general: '🌐',
+  };
+  return m[d || 'general'] || '📁';
+}
+
+function domainColor(d: string | null | undefined): string {
+  const m: Record<string, string> = {
+    technology: 'linear-gradient(135deg, #5E72E4, #7C3AED)',
+    finance: 'linear-gradient(135deg, #10B981, #059669)',
+    medical: 'linear-gradient(135deg, #EF4444, #DC2626)',
+    legal: 'linear-gradient(135deg, #6366F1, #4F46E5)',
+    education: 'linear-gradient(135deg, #F59E0B, #D97706)',
+    media: 'linear-gradient(135deg, #EC4899, #BE185D)',
+    general: 'linear-gradient(135deg, #6B7280, #4B5563)',
+  };
+  return m[d || 'general'];
+}
+
+function onKbSelectChange(): void { /* 实时同步到 form */ }
+
+async function onSaveKbBindings(): Promise<void> {
+  savingKbBindings.value = true;
+  try {
+    await http.post(`/admin/agents/${agentId.value}/knowledge-bases`, {
+      kbIds: form.knowledgeBaseIds,
+    });
+    ElMessage.success(`已保存 ${form.knowledgeBaseIds.length} 个知识库关联`);
+  } catch (err: any) {
+    ElMessage.error(err?.message || '保存失败');
   } finally {
-    kbLoading.value = false;
+    savingKbBindings.value = false;
+  }
+}
+
+function onTabClick(tab: any): void {
+  // 强制同步 activeTab（防止 Element Plus 在某种情况下吞掉切换事件）
+  if (tab && tab.props && tab.props.name) {
+    activeTab.value = tab.props.name;
+  }
+  // KB Tab 切到时按需加载
+  if (tab.props.name === 'kb' && allKbs.value.length === 0) {
+    loadAllKbs();
+  }
+  // 跳转新智能体时强制重置
+  if (tab.props.name === 'kb' && !isNew.value) {
+    loadAgentKbBindings();
   }
 }
 
@@ -397,6 +481,7 @@ async function onSaveKb(): Promise<void> {
   } catch (err: any) {
     ElMessage.error(err?.message || '保存失败');
   }
+}
 }
 
 function beforeUpload(file: any): boolean {
@@ -522,7 +607,10 @@ async function onRunTest(): Promise<void> {
 onMounted(() => {
   loadAgent();
   loadModels();
-  loadKbFiles();
+  loadAllKbs();
+  if (!isNew.value) {
+    loadAgentKbBindings();
+  }
 });
 </script>
 

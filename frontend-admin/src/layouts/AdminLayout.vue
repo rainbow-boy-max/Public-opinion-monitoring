@@ -123,6 +123,11 @@ const menuItems: MenuItem[] = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>',
   },
   {
+    path: '/knowledge',
+    label: 'AI 知识库',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>',
+  },
+  {
     path: '/config/aliyun-sms',
     label: '短信配置',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>',
@@ -152,6 +157,7 @@ const META: Record<string, { title: string; subtitle: string }> = {
   '/users': { title: '用户管理', subtitle: '注册用户与权限控制' },
   '/agents': { title: 'AI 智能体', subtitle: '自定义 AI 智能体与知识库' },
   '/llm-models': { title: 'LLM 模型', subtitle: '管理 6 大厂商与自定义模型' },
+  '/knowledge': { title: 'AI 知识库', subtitle: '独立知识库 · AI 解析 · AI 打分 · AI 增强' },
   '/config/aliyun-sms': { title: '短信配置', subtitle: '阿里云短信服务接入' },
   '/sms-templates': { title: '短信模板', subtitle: '7 大场景短信模板管理 + 一键报备' },
   '/config/aliyun-verify': { title: '三要素认证配置', subtitle: '阿里云手机号三要素详细版' },
@@ -257,6 +263,39 @@ onUnmounted(() => {
   color: var(--text-secondary);
   transition: all var(--transition-fast);
   position: relative;
+  white-space: nowrap;
+  min-height: 42px;
+}
+
+.menu-item__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.menu-item__icon :deep(svg) {
+  width: 18px !important;
+  height: 18px !important;
+  display: block;
+}
+
+.menu-item__text {
+  flex: 1;
+  display: inline-block !important;
+  color: inherit !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-item__badge {
+  flex-shrink: 0;
+  display: inline-block;
 }
 
 .menu-item:hover {
@@ -270,17 +309,6 @@ onUnmounted(() => {
   color: #fff !important;
   font-weight: 600;
   box-shadow: 0 4px 16px rgba(94, 114, 228, 0.35);
-}
-
-.menu-item__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.menu-item__text {
-  flex: 1;
 }
 
 .menu-item__badge {

@@ -33,3 +33,12 @@ export {
   SmsTemplateStatus,
   UserDeletedEntity,
 } from './agent.entity';
+
+export {
+  KnowledgeBaseEntity,
+  KnowledgeBaseStatus,
+  KnowledgeBaseFileEntity,
+  KnowledgeFileStatus,
+  KnowledgeBaseChunkEntity,
+  AgentKnowledgeBindingEntity,
+} from './knowledge-base.entity';

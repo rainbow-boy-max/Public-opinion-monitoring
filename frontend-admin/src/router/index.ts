@@ -44,6 +44,14 @@ const router = createRouter({
           component: () => import('@/pages/LlmModelsManagementPage.vue'),
         },
         {
+          path: 'knowledge',
+          component: () => import('@/pages/KnowledgeBasesPage.vue'),
+        },
+        {
+          path: 'knowledge/:id',
+          component: () => import('@/pages/KnowledgeBaseDetailPage.vue'),
+        },
+        {
           path: 'sms-templates',
           component: () => import('@/pages/SmsTemplatesPage.vue'),
         },
