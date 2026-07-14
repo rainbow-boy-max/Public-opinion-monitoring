@@ -42,6 +42,7 @@ import {
   ElTableColumn,
   ElTabs,
   ElTag,
+  ElTextarea,
   ElTimeline,
   ElTimelineItem,
   ElTooltip,
@@ -50,6 +51,7 @@ import {
   ElMessageBox,
   ElNotification,
 } from 'element-plus';
+import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
 import '@shared/styles/theme.css';
 import '@shared/styles/element-overrides.css';
