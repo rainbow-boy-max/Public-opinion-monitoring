@@ -52,8 +52,8 @@
 </template>
 
 <script setup lang="ts">
-import { defineOptions } from 'vue';
 defineOptions({ name: 'DashboardPage' });
+
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { echarts, type EChartsOption } from '@/utils/echarts';
