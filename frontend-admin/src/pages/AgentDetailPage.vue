@@ -342,7 +342,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'AgentDetailPage' });
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, onActivated, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus';
 import http from '@/utils/http';
@@ -558,7 +558,15 @@ function onPrimaryModelChange(): void {
   const m = allModels.value.find((x: any) => x.id === form.primaryModelId);
   if (!m) return;
   const caps = m.capabilities || {};
-  if (caps.webSearch || caps.vision || caps.reasoning) return;
+  if (caps.webSearch || caps.vision || caps.reasoning) {
+    // 模型声明了能力：把 form.capabilities 同步到 model 声明
+    form.capabilities = {
+      vision: caps.vision === true,
+      reasoning: caps.reasoning === true,
+      webSearch: caps.webSearch === true,
+    };
+    return;
+  }
   // 模型未声明任何能力；提示用户去"模型能力"Tab 手动勾选
   ElMessageBox.confirm(
     '该模型未声明任何能力（vision/reasoning/webSearch 全 false）。是否跳转到「模型能力」Tab 手动勾选？',
@@ -891,30 +899,26 @@ async function onRunTest(): Promise<void> {
   }
 }
 
-onMounted(() => {
+async function reloadAll(): Promise<void> {
+  if (isNew.value) {
+    loadModels();
+    loadAllKbs();
+    return;
+  }
   loadAgent();
   loadModels();
   loadAllKbs();
-  if (!isNew.value) {
-    loadAgentKbBindings();
-  }
+  loadAgentKbBindings();
+}
+
+onMounted(() => {
+  reloadAll();
 });
 
-watch(
-  () => form.primaryModelId,
-  async (newId) => {
-    if (!newId) return;
-    if (allModels.value.length === 0) await loadModels();
-    const m = allModels.value.find((x: any) => x.id === newId);
-    const caps = m?.capabilities;
-    if (!caps) return;
-    form.capabilities = {
-      vision: caps.vision === true,
-      reasoning: caps.reasoning === true,
-      webSearch: caps.webSearch === true,
-    };
-  },
-);
+onActivated(() => {
+  // keep-alive 激活时（用户从其它 tab 切回）重新拉数据，确保看到最新能力与 KB 绑定
+  reloadAll();
+});
 
 async function onSaveCaps(): Promise<void> {
   savingCaps.value = true;
