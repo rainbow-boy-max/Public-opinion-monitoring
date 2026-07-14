@@ -121,10 +121,63 @@
   - 保存时携带 `capabilities` 字段
   - 关联：REQ-5.4 / REQ-5.5
 
-## 25. 最终
+## 25. REQ-5.8~5.11 — 实际接通外部 Web Search
 
-- [ ] 25. 跑 migration + 重启 backend（已开 watch 自动 reload）
-- [ ] 26. production build `pnpm --filter frontend-admin build` 验证无编译错误
-- [ ] 27. 全部 8 条 Correctness Properties（CP-1 ~ CP-8）回归
-- [ ] 28. git commit & 推 spec
-- [ ]* 28.1 写 e2e smoke（可选）
+- [ ] 25. 新建 `backend/src/database/entities/web-search-config.entity.ts`
+  - `WebSearchConfigEntity { id, provider, apiKeyEnc, maxResults, isEnabled, updatedAt, updatedBy }`
+  - `apiKeyEnc` 使用既有 `CryptoUtil.encrypt()`
+  - 关联：REQ-5.10 / CP-10
+
+- [ ] 26. migration `1700000051000-CreateWebSearchConfig.ts`
+  - 单条配置表；初始 `isEnabled=false, provider='duckduckgo', maxResults=5`
+
+- [ ] 27. 新建 `backend/src/modules/admin/web-search.providers/duckduckgo.provider.ts`
+  - POST `https://html.duckduckgo.com/html/?q=<query>` (form-urlencoded)，User-Agent 不为空
+  - HTML 解析（cheerio 或 regex）抽取 `.result__title > a`、`result__snippet`、`result__url`
+  - 5s timeout；3 次重试
+  - 关联：REQ-5.10
+
+- [ ] 28. 新建 `backend/src/modules/admin/web-search.providers/brave.provider.ts`
+  - GET `https://api.search.brave.com/res/v1/web/search?q=<query>&count=N`，`X-Subscription-Token: <apiKey>`
+  - JSON 解析 `web.results[]` 的 title/url/description
+  - 5s timeout
+  - 关联：REQ-5.10
+
+- [ ] 29. 新建 `backend/src/modules/admin/web-search.service.ts`
+  - 读 `isEnabled=false` → 抛 `WEB_SEARCH_DISABLED`
+  - 根据 `provider` 选对应 provider
+  - 缓存：Redis key `web-search:result:<sha256(query)>` TTL 300s
+  - 关联：REQ-5.8 / CP-9
+
+- [ ] 30. 新建 `backend/src/modules/admin/web-search.controller.ts`
+  - `GET /api/admin/web-search/config` → 返回单条配置（apiKey 字段掩码 `***`）
+  - `PUT /api/admin/web-search/config` → 写入加密
+  - 关联：REQ-5.11
+
+- [ ] 31. 后端：`AgentsService.chat` 注入 web search
+  - 在 `chat(agentId, message, stream)` 读 `agent.capabilities?.webSearch` 
+  - true → `await this.webSearchService.search(message)`
+  - 命中后把结果拼为系统消息插入 messages
+  - 失败 / 关闭 → `warnings: ['WEB_SEARCH_DISABLED']`
+  - 关联：REQ-5.8 / CP-9
+
+- [ ] 32. 前端：`WebSearchConfigPage.vue` 新页面
+  - 表单：provider select (duckduckgo|brave) / apiKey 密码框 / maxResults number / isEnabled switch
+  - 保存调 `PUT /api/admin/web-search/config`
+  - 关联：REQ-5.11
+
+- [ ] 33. 前端：路由与菜单
+  - `router/index.ts` 加 `/config/web-search`
+  - `AdminLayout.vue` 加 menuItems 一项
+  - 关联：REQ-5.11
+
+- [ ] 34. 前端：`AgentDetailPage.vue` 测试运行结果显示 warnings
+  - chat 返回 `warnings` 渲染为 `ElAlert info`
+
+## 35. 最终
+
+- [ ] 35. 跑 migration + 重启 backend（已开 watch 自动 reload）
+- [ ] 36. production build `pnpm --filter frontend-admin build` 验证无编译错误
+- [ ] 37. 全部 10 条 Correctness Properties（CP-1 ~ CP-10）回归
+- [ ] 38. git commit & 推 spec
+- [ ]* 38.1 写 e2e smoke（可选）

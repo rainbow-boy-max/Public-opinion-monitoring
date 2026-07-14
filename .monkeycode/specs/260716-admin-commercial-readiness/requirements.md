@@ -126,18 +126,25 @@ Date: 2026-07-14
 5. IF 选中的模型 `capabilities` 三项均为 `false`，THE 前端 SHALL 通过 `ElMessageBox.confirm` 弹框"该模型未声明能力，请确认是否手动勾选"，提供"打开高级设置"按钮 → 切到智能体能力 Tab。
 6. THE 后端 SHALL 在 `agents` 表新增 `capabilities` JSON 字段，与 llm_models 同结构，保存时允许覆盖。
 7. WHEN 智能体被运行时调用, THE 后端 SHALL 在 prompt 注入"能力提示"（如 vision=true 时告知 LLM 当前支持图片输入）。
+8. WHEN 智能体 `webSearch=true` 且后端 `web_search_configs.is_enabled=true` 且 provider 配置可用, THE 后端 SHALL 在调用大模型前自动调 `WebSearchService.search(query=userMessage)`，把 Top N 条结果的 title/url/snippet 拼入 system message，再发 LLM。
+9. WHEN 智能体 `webSearch=true` 但 web_search_configs 未启用 / key 缺失 / provider 异常, THE 后端 SHALL 在响应体中返回 `warnings: ['WEB_SEARCH_DISABLED']`，前端 SHALL 在测试运行结果区附加一行提示。
+10. THE 后端 SHALL 支持两种搜索 provider：
+   - `duckduckgo`：免 key 的 HTML 端点 `https://html.duckduckgo.com/html/`，无需配置可用，但有 rate-limit；
+   - `brave`：Brave Search API `https://api.search.brave.com/res/v1/web/search`，需要 API Key。
+11. THE 管理端 SHALL 在 `/config/web-search` 提供表单（provider / apiKey / maxResults / isEnabled），保存后立刻生效。
 
 **Correctness Properties**：
 - CP-7：选择 1 个有声明能力的预置模型（如 `qwen-vl-max`），前端 SHALL 立即把 `vision:true` 写入草稿，不弹框。
 - CP-8：选 `custom:custom-foo`（自定义无能力），前端 SHALL 弹 ElMessageBox。
+- CP-9：开启 `webSearch=true` 且配置 Brave key 时，chat 接口响应 ≤ 8 s 返回，且结果的 system message 包含至少 1 条 `Web Search Result:` 行。
 
 ---
 
 ## 4. Out-of-Scope（明确不做）
 
-1. **联网搜索的真实下游对接**：本期仅记录能力声明与前端提示，不实际接通外部搜索引擎。`webSearch=true` 仅作为标记位。
-2. **多模态输入（图片 / 文件上传）前端**：本期不实现 UI，仅在 prompt 注入能力声明。
-3. **能力权限控制**：本期不区分角色可见的能力；任何管理员都能勾选任意能力（避免复杂度）。
+1. **多模态输入（图片 / 文件上传）前端**：本期不实现 UI，仅在 prompt 注入能力声明。
+2. **能力权限控制**：本期不区分角色可见的能力；任何管理员都能勾选任意能力（避免复杂度）。
+3. **多 provider 切换的运行时切换**：本次仅支持 admin 一次性配置 provider，全局唯一；不做 model 级别 provider override。
 
 ---
 

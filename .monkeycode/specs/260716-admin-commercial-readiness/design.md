@@ -126,16 +126,22 @@ return kbs.map((k) => ({
 |---|---|---|
 | `backend/src/database/entities/agent.entity.ts` | `LlmModelEntity` | 加 `capabilities` JSON 列 |
 | `backend/src/database/entities/agent.entity.ts` | `AgentEntity` | 加 `capabilities` JSON 列 |
-| `backend/src/database/migrations/1700000050000-AddCapabilities.ts` | migration | 新增 |
+| `backend/src/database/entities/web-search-config.entity.ts` | `WebSearchConfigEntity` | 新表 |
+| `backend/src/database/migrations/1700000050000-AddCapabilities.ts` | migration | 加 capabilities JSON |
+| `backend/src/database/migrations/1700000051000-CreateWebSearchConfig.ts` | migration | 新建 web_search_configs 表 |
 | `backend/src/modules/agents/llm-models.service.ts` | `LlmModelsService` | `inferCapabilities(model)`；save/update 接受 capabilities；preset seed 写入能力 |
-| `backend/src/modules/agents/agents.service.ts` | `AgentsService.create/update` | 校验 KB ≥ 1；返回 capabilities 字段 |
+| `backend/src/modules/agents/agents.service.ts` | `AgentsService.create/update` | 校验 KB ≥ 1；返回 capabilities 字段；chat 时按 webSearch 调 WebSearchService |
 | `backend/src/modules/agents/llm-models.controller.ts` | `LlmModelsController.save/update` DTO | 加 `IsBoolean() @IsOptional() vision/reasoning/webSearch` |
 | `backend/src/modules/admin/services/user-management.service.ts` | `UserManagementService.listUsers` | 接受 `role? string`，空字符串返回全角色 |
 | `backend/src/modules/admin/admin.controller.ts` | `AdminController.listUsers` DTO | `role` 显式可选 |
-| `backend/src/modules/admin/dashboard.service.ts` | `DashboardService.getOverview` | 接受 `roleFilter`，缓存 key 区分；usersTotal 走 user-management-service 的同一行 SQL 条件 |
+| `backend/src/modules/admin/dashboard.service.ts` | `DashboardService.getOverview` | 接受 `roleFilter`，缓存 key 区分；usersTotal 与 user-mgmt-service 同一口径 |
 | `backend/src/modules/admin/dashboard.controller.ts` | `AdminDashboardController.overview` | `@Query('roleFilter') roleFilter?: string` |
 | `backend/src/modules/knowledge/knowledge-bases.service.ts` | `listAvailableKbs` | `id: Number(k.id)` |
-| `backend/src/modules/admin/admin.module.ts` | imports | DashboardService 复用 UserManagementService 避免 SQL 重复 |
+| `backend/src/modules/admin/web-search.service.ts` | `WebSearchService` 新模块 | `search(query)` 抽象 provider；redismem cache 5min |
+| `backend/src/modules/admin/web-search.providers/` | BraveProvider / DuckDuckGoProvider | 实现 `search(query): Promise<SearchResult[]>`, 自带超时与重试 |
+| `backend/src/modules/admin/web-search.controller.ts` | `AdminWebSearchController` | GET/PUT `/api/admin/web-search/config` |
+| `backend/src/modules/admin/admin.module.ts` | imports | 注册 WebSearch 模块；DashboardService 复用 UserManagementService |
+| `backend/src/modules/agents/agents.module.ts` | imports | WebSearchModule 导入；AgentsService.chat 调用 WebSearchService.search |
 
 ### 4.2 前端
 
@@ -147,24 +153,45 @@ return kbs.map((k) => ({
 | `frontend-admin/src/pages/LlmModelsManagementPage.vue` | Models | 删除 `el-tabs :lazy`（避免 el-dropdown unmount/restore race） |
 | `frontend-admin/src/pages/LlmModelsManagementPage.vue` | EditModelDialog | 加 capabilities 3 个 el-checkbox |
 | `frontend-admin/src/pages/AgentDetailPage.vue` | AgentDetail | `knowledgeBaseIds` 类型 `number[]`；`loadAllKbs` 用 `id: Number(kb.id)`；保存校验 KB ≥ 1；能力引导 |
+| `frontend-admin/src/pages/WebSearchConfigPage.vue` | 新页面 | provider / apiKey / maxResults / isEnabled 表单 |
 | `frontend-admin/src/composables/useAgentCapabilities.ts` | 新增 composable | 处理 modelId 变化时同步 capabilitiesDraft |
+| `frontend-admin/src/router/index.ts` | route | 加 `/config/web-search` |
+| `frontend-admin/src/layouts/AdminLayout.vue` | menu | "Web 搜索配置"入口 |
 
-### 4.3 接口契约（新增 / 修改）
+### 4.3 Web Search 模块
+
+- `web_search_configs` 单条配置：provider / apiKey (encrypted) / maxResults / isEnabled / updatedAt / updatedBy
+- `WebSearchService.search(query)`：
+  - 读 `isEnabled=false` → 抛 `WEB_SEARCH_DISABLED`
+  - provider=duckduckgo → DuckDuckGoProvider.fetch (HTML scrape, 5s timeout, 解析 title/snippet/url)
+  - provider=brave → BraveProvider.fetch (HTTP GET `Authorization: Bearer <key>`)
+  - 缓存：key = `web-search:result:<sha256(query)>` TTL 300s
+- 注入到 chat：system message 形如：
+
+```
+[Web Search Results]
+1. <title>
+   <url>
+   <snippet>
+
+2. <title>
+   ...
+```
+
+### 4.4 接口契约（新增 / 修改）
 
 `GET /api/admin/dashboard/overview?roleFilter=user|admin|operator|`
 - roleFilter：默认 `user`；传空字符串或缺省 → 全部
-- 返回：`{ kpis: { usersTotal, ... }, ... }`
+- 返回：`{ kpis: { ..., usersTotal }, ... }`
 
 `GET /api/admin/users?role=`：role 可空，列表默认全角色
 
-`POST /api/admin/llm-models`
+`GET /api/admin/web-search/config`
+- 返回：单条配置（apiKey 掩码为 `***`）
+
+`PUT /api/admin/web-search/config`
 ```json
-{
-  ...existing,
-  "vision": true,
-  "reasoning": false,
-  "webSearch": false
-}
+{ "provider":"brave", "apiKey":"BSA...", "maxResults":5, "isEnabled":true }
 ```
 
 `POST /api/agents`
@@ -177,6 +204,8 @@ return kbs.map((k) => ({
 ```
 
 `PUT /api/agents/:id` 接受相同可选字段。
+
+`POST /api/agents/:id/chat` 返回体增加 `warnings?: string[]`，其中 `WEB_SEARCH_DISABLED` 表示 web_search 被配置关/未配置时调用。
 
 ---
 
@@ -191,6 +220,8 @@ return kbs.map((k) => ({
 | CP-5 | KB=0 保存被前后端同时拒绝 | UI 校验 + 后端 422 |
 | CP-6 | 选 qwen-vl-max 时 draft.capabilities.vision=true | 浏览器手测 |
 | CP-7 | 选 custom:custom-foo 弹 ElMessageBox | 浏览器手测 |
+| CP-9 | webSearch=true + 配置 Brave key 时 chat ≤ 8 s 返回且 system 含 `Web Search Result` 块 | curl `/api/agents/:id/chat` 并 grep 返回体 |
+| CP-10 | web_search_config.apiKey AES-256-CBC 加密落库，读出掩码为 `***` | 后端 review + 检查 DB |
 
 ---
 
