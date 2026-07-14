@@ -109,6 +109,26 @@
       </template>
     </el-table-column>
 
+    <el-table-column label="最近测试" width="170">
+      <template #default="{ row }">
+        <el-tooltip
+          v-if="row.lastTestedAt"
+          :content="`结果：${lastTestStatusLabel(row.lastTestStatus)} ｜ 模型：${row.model}`"
+          placement="top"
+        >
+          <div class="last-test">
+            <el-tag
+              :type="row.lastTestStatus === 'success' ? 'success' : 'danger'"
+              size="small"
+              effect="plain"
+            >{{ lastTestStatusLabel(row.lastTestStatus) }}</el-tag>
+            <span class="last-test__time">{{ formatRelativeTime(row.lastTestedAt) }}</span>
+          </div>
+        </el-tooltip>
+        <span v-else style="color: var(--text-tertiary); font-size: 12px">未测试</span>
+      </template>
+    </el-table-column>
+
     <el-table-column label="操作" width="180" fixed="right">
       <template #default="{ row }">
         <el-button size="small" @click="$emit('test', row)">测试</el-button>
@@ -220,6 +240,28 @@ function stateTooltip(row: LlmRow): string {
   return row.effectiveState;
 }
 
+function lastTestStatusLabel(s: string | null | undefined): string {
+  if (s === 'success') return '✓ 成功';
+  if (s === 'failed') return '✗ 失败';
+  return s ? s : '未知';
+}
+
+function formatRelativeTime(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return iso;
+  const diff = Date.now() - t;
+  if (diff < 0) return '刚刚';
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return `${sec} 秒前`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} 分钟前`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} 小时前`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day} 天前`;
+  return new Date(t).toLocaleString('zh-CN', { hour12: false });
+}
+
 function canMoveUp(row: LlmRow): boolean {
   const list = props.totalList || [];
   if (list.length === 0) return false;
@@ -264,5 +306,16 @@ void ArrowDown;
   color: var(--text-tertiary);
   font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
   font-size: 11px;
+}
+
+.last-test {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.last-test__time {
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 </style>
