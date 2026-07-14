@@ -190,4 +190,16 @@ export class LlmModelsController {
     await this.service.reorder({ id, sortOrder: dto.sortOrder });
     return { ok: true };
   }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    await this.service.remove(id);
+  }
+
+  @Post(':id/test')
+  @HttpCode(HttpStatus.OK)
+  async test(@Param('id', ParseIntPipe) id: number, @Body() dto: TestModelDto) {
+    return this.service.testConnection(id, dto.prompt);
+  }
 }
