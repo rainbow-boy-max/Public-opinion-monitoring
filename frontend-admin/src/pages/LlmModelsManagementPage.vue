@@ -97,6 +97,16 @@
       <el-form-item label="最大输出 Token">
         <el-input-number v-model="editForm.maxTokens" :min="256" :max="200000" :step="256" />
       </el-form-item>
+      <el-form-item label="能力">
+        <el-checkbox v-model="editForm.vision">📷 图片理解 (vision)</el-checkbox>
+        <el-checkbox v-model="editForm.reasoning">🧠 推理/思考 (reasoning)</el-checkbox>
+        <el-checkbox v-model="editForm.webSearch">🔍 联网搜索 (webSearch)</el-checkbox>
+        <div class="form-tip">
+          未勾选任何能力将关闭该模型的能力声明；联网搜索需要在
+          <el-link type="primary" @click="$router.push('/config/web-search')">「Web 搜索配置」</el-link>
+          配置 Provider
+        </div>
+      </el-form-item>
       <el-form-item>
         <el-switch v-model="editForm.isEnabled" />
         <span style="margin-left: 8px">启用</span>
@@ -192,6 +202,9 @@ const editForm = reactive({
   apiKey: '',
   maxTokens: 4096,
   isEnabled: true,
+  vision: false,
+  reasoning: false,
+  webSearch: false,
 });
 
 const fetching = ref(false);
@@ -327,6 +340,9 @@ function onEdit(m: LlmModel): void {
     apiKey: '',
     maxTokens: m.maxTokens,
     isEnabled: m.isEnabled,
+    vision: !!(m.capabilities && m.capabilities.vision),
+    reasoning: !!(m.capabilities && m.capabilities.reasoning),
+    webSearch: !!(m.capabilities && m.capabilities.webSearch),
   });
   availableModels.value = [];
   editVisible.value = true;
@@ -345,6 +361,9 @@ async function onSave(): Promise<void> {
         baseUrl: editForm.baseUrl,
         maxTokens: editForm.maxTokens,
         isEnabled: editForm.isEnabled ? true : false,
+        vision: !!editForm.vision,
+        reasoning: !!editForm.reasoning,
+        webSearch: !!editForm.webSearch,
       };
       if (editForm.apiKey) payload.apiKey = editForm.apiKey;
       if (editForm.id) {

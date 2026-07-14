@@ -210,7 +210,67 @@
           </div>
         </el-tab-pane>
 
-        <!-- Tab 4: 测试运行 -->
+        <!-- Tab 4: 模型能力 -->
+        <el-tab-pane label="模型能力" name="caps" :disabled="isNew" :key="'t-caps'">
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 16px"
+          >
+            <template #title>能力声明 / Capability Flags</template>
+            选择主用大模型后系统会自动推断并写入；如模型未声明能力，请手动勾选。
+          </el-alert>
+
+          <el-form label-width="140px">
+            <el-form-item label="选中的模型能力">
+              <el-tag
+                v-if="!selectedModelCapability"
+                type="info"
+                effect="dark"
+              >模型未配置</el-tag>
+              <template v-else>
+                <el-tag v-if="selectedModelCapability.vision" type="success" effect="dark" style="margin-right: 6px">📷 图片理解</el-tag>
+                <el-tag v-if="selectedModelCapability.reasoning" type="warning" effect="dark" style="margin-right: 6px">🧠 推理/思考</el-tag>
+                <el-tag v-if="selectedModelCapability.webSearch" type="primary" effect="dark" style="margin-right: 6px">🔍 联网搜索</el-tag>
+                <span v-if="!selectedModelCapability.vision && !selectedModelCapability.reasoning && !selectedModelCapability.webSearch" style="color: var(--text-tertiary)">该模型未声明能力，需手动勾选下方</span>
+              </template>
+            </el-form-item>
+
+            <el-form-item label="图片理解">
+              <el-switch
+                :model-value="form.capabilities.vision"
+                @update:model-value="(v) => (form.capabilities.vision = v)"
+              />
+              <span style="margin-left: 8px; color: var(--text-tertiary)">vision: {{ form.capabilities.vision }}</span>
+            </el-form-item>
+            <el-form-item label="推理/思考">
+              <el-switch
+                :model-value="form.capabilities.reasoning"
+                @update:model-value="(v) => (form.capabilities.reasoning = v)"
+              />
+              <span style="margin-left: 8px; color: var(--text-tertiary)">reasoning: {{ form.capabilities.reasoning }}</span>
+            </el-form-item>
+            <el-form-item label="联网搜索">
+              <el-switch
+                :model-value="form.capabilities.webSearch"
+                @update:model-value="(v) => (form.capabilities.webSearch = v)"
+              />
+              <span style="margin-left: 8px; color: var(--text-tertiary)">webSearch: {{ form.capabilities.webSearch }}</span>
+              <div v-if="form.capabilities.webSearch" style="font-size: 12px; color: var(--color-warning); margin-top: 4px">
+                提示：请到
+                <el-link type="primary" @click="$router.push('/config/web-search')">「Web 搜索配置」</el-link>
+                启用 Provider（默认 DuckDuckGo 免 key）
+              </div>
+            </el-form-item>
+
+            <el-form-item>
+              <el-button type="primary" :loading="savingCaps" @click="onSaveCaps">保存能力</el-button>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <!-- Tab 5: 测试运行 -->
         <el-tab-pane label="测试运行" name="test" :disabled="isNew" :key="'t-test'">
           <el-form label-width="100px">
             <el-form-item label="测试输入">
@@ -249,7 +309,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'AgentDetailPage' });
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus';
 import http from '@/utils/http';
@@ -278,8 +338,15 @@ const form = reactive({
   kbTopK: 4,
   knowledgeBaseIds: [] as number[],
   status: 'enabled',
+  capabilities: { vision: false, reasoning: false, webSearch: false },
 });
 const enabledSwitch = ref(true);
+const savingCaps = ref(false);
+
+const selectedModelCapability = computed(() => {
+  const m = allModels.value.find((x: any) => x.id === form.primaryModelId);
+  return m?.capabilities ?? null;
+});
 
 const allModels = ref<any[]>([]);
 const allKbs = ref<any[]>([]);
@@ -370,6 +437,11 @@ async function loadAgent(): Promise<void> {
       kbEnabled: a.kbEnabled === 1,
       kbTopK: a.kbTopK,
       status: a.status,
+      capabilities: {
+        vision: !!(a.capabilities && a.capabilities.vision),
+        reasoning: !!(a.capabilities && a.capabilities.reasoning),
+        webSearch: !!(a.capabilities && a.capabilities.webSearch),
+      },
     });
     enabledSwitch.value = a.status === 'enabled';
   } catch (err) {
@@ -506,7 +578,15 @@ async function onSaveAll(): Promise<void> {
     {
       name: '基础配置',
       run: async () => {
-        const payload = { ...form, status: enabledSwitch.value ? 'enabled' : 'disabled' };
+        const payload: Record<string, unknown> = {
+          ...form,
+          status: enabledSwitch.value ? 'enabled' : 'disabled',
+          capabilities: {
+            vision: !!form.capabilities.vision,
+            reasoning: !!form.capabilities.reasoning,
+            webSearch: !!form.capabilities.webSearch,
+          },
+        };
         if (isNew.value) {
           const r = await http.post('/agents', payload);
           const newId = r?.id ?? r?.agentId ?? r?.data?.id;
@@ -724,6 +804,41 @@ onMounted(() => {
     loadAgentKbBindings();
   }
 });
+
+watch(
+  () => form.primaryModelId,
+  async (newId) => {
+    if (!newId) return;
+    if (allModels.value.length === 0) await loadModels();
+    const m = allModels.value.find((x: any) => x.id === newId);
+    const caps = m?.capabilities;
+    if (!caps) return;
+    form.capabilities = {
+      vision: caps.vision === true,
+      reasoning: caps.reasoning === true,
+      webSearch: caps.webSearch === true,
+    };
+  },
+);
+
+async function onSaveCaps(): Promise<void> {
+  savingCaps.value = true;
+  try {
+    await http.put(`/agents/${agentId.value}`, {
+      capabilities: {
+        vision: !!form.capabilities.vision,
+        reasoning: !!form.capabilities.reasoning,
+        webSearch: !!form.capabilities.webSearch,
+      },
+    });
+    ElMessage.success('能力已保存');
+    loadAgent();
+  } catch (err: any) {
+    ElMessage.error(err?.message || '保存失败');
+  } finally {
+    savingCaps.value = false;
+  }
+}
 </script>
 
 <style scoped>

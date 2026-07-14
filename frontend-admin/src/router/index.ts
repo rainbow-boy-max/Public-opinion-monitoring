@@ -64,6 +64,10 @@ const router = createRouter({
           component: () => import('@/pages/AliyunVerifyConfigPage.vue'),
         },
         {
+          path: 'config/web-search',
+          component: () => import('@/pages/WebSearchConfigPage.vue'),
+        },
+        {
           path: 'system-logs',
           component: () => import('@/pages/SystemLogsPage.vue'),
         },
