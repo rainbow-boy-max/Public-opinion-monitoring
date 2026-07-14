@@ -33,11 +33,11 @@
       <el-tab-pane
         v-for="p in providers"
         :key="p.provider"
-        :label="`${p.displayName} (${byProvider.value[p.provider]?.length || 0})`"
+        :label="`${p.displayName} (${byProvider[p.provider]?.length || 0})`"
         :name="p.provider"
       >
         <ModelsTable
-          :items="byProvider.value[p.provider] || []"
+          :items="byProvider[p.provider] || []"
           @test="onTest"
           @edit="onEdit"
           @delete="onDelete"

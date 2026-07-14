@@ -1020,4 +1020,87 @@ async function onSaveCaps(): Promise<void> {
   font-size: 13px;
   color: var(--text-secondary);
 }
+
+.kb-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.kb-empty__icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.kb-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.kb-select-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.kb-select-card:hover {
+  border-color: var(--color-primary);
+  background: rgba(94, 114, 228, 0.08);
+}
+
+.kb-select-card--selected {
+  border-color: var(--color-primary);
+  background: rgba(94, 114, 228, 0.15);
+  box-shadow: 0 0 0 2px rgba(94, 114, 228, 0.3);
+}
+
+.kb-select-card__icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--gradient-primary);
+  font-size: 18px;
+}
+
+.kb-select-card__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.kb-select-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-select-card__meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.kb-summary {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-md);
+}
 </style>

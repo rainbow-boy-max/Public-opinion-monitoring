@@ -14,7 +14,6 @@ export interface WebSearchResult {
   snippet: string;
   source: string;
 }
-
 export interface WebSearchTestHandle {
   abort: () => void;
   promise: Promise<{

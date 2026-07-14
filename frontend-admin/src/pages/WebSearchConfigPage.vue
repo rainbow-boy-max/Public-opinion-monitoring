@@ -35,12 +35,49 @@
         <el-input
           v-model="form.apiKey"
           show-password
-          placeholder="留空保持原值；mask 为 ***"
+          :placeholder="currentGuide.apiKeyPlaceholder"
         />
         <div class="form-tip">
           <span v-if="config?.apiKeyMasked">当前已配置（掩码 {{ config.apiKeyMasked }}）</span>
           <span v-else style="color: var(--color-danger)">当前未配置</span>
         </div>
+      </el-form-item>
+
+      <el-form-item label="使用说明">
+        <el-card shadow="never" class="guide-card">
+          <div class="guide-row">
+            <div class="guide-label">📦 {{ currentGuide.label }}</div>
+            <el-tag
+              v-if="currentGuide.builtin"
+              type="success"
+              size="small"
+              effect="dark"
+            >免 key</el-tag>
+            <el-tag
+              v-else-if="currentGuide.requiresKey"
+              type="warning"
+              size="small"
+              effect="dark"
+            >需要 API Key</el-tag>
+            <el-link
+              v-if="currentGuide.howToUrl"
+              :href="currentGuide.howToUrl"
+              type="primary"
+              target="_blank"
+              rel="noopener"
+              style="margin-left: auto"
+            >{{ currentGuide.howToLabel }} ↗</el-link>
+          </div>
+          <div class="guide-hint">
+            <strong>Key 位置：</strong>{{ currentGuide.apiKeyHint }}
+          </div>
+          <div v-if="currentGuide.baseUrlHint" class="guide-hint">
+            <strong>Base URL：</strong><code>{{ currentGuide.baseUrlHint }}</code>
+          </div>
+          <div v-if="currentGuide.notes" class="guide-hint">
+            <strong>备注：</strong>{{ currentGuide.notes }}
+          </div>
+        </el-card>
       </el-form-item>
 
       <el-form-item label="最大结果数">
@@ -117,6 +154,7 @@ import { Loading } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import { useWebSearchTest, type WebSearchLogStep } from '@/composables/useWebSearchTest';
+import { WEB_SEARCH_PROVIDER_GUIDES } from '@/utils/web-search-guides';
 
 defineOptions({ name: 'WebSearchConfigPage' });
 
@@ -151,6 +189,21 @@ const form = ref({
 const showApiKey = computed(() => {
   const p = config.value?.providers.find((x) => x.value === form.value.provider);
   return !!p && p.requiresKey;
+});
+
+const currentGuide = computed(() => {
+  return (
+    WEB_SEARCH_PROVIDER_GUIDES[form.value.provider] || {
+      value: form.value.provider,
+      label: form.value.provider,
+      builtin: false,
+      requiresKey: false,
+      apiKeyPlaceholder: '',
+      apiKeyHint: '',
+      howToUrl: '',
+      howToLabel: '',
+    }
+  );
 });
 
 const queryDraft = ref('openai gpt-4o');
@@ -272,6 +325,39 @@ onMounted(loadConfig);
 
 .test-bar {
   margin-bottom: 12px;
+}
+
+.guide-card {
+  background: rgba(94, 114, 228, 0.06);
+  border: 1px solid var(--border-subtle);
+}
+
+.guide-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.guide-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.guide-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+.guide-hint code {
+  background: rgba(94, 114, 228, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  font-size: 11px;
 }
 
 .result-item {
