@@ -69,7 +69,7 @@
 <script setup lang="ts">
 defineOptions({ name: 'DashboardPage' });
 
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { echarts, type EChartsOption } from '@/utils/echarts';
 import http from '@/utils/http';
