@@ -53,15 +53,27 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-vue': ['vue', 'vue-router', 'pinia'],
-          'vendor-element-plus': ['element-plus'],
-          'vendor-echarts': [
-            'echarts/core',
-            'echarts/charts',
-            'echarts/components',
-            'echarts/renderers',
-          ],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (
+              id.includes('/element-plus/') ||
+              id.includes('/element-plus/') ||
+              id.includes('@element-plus/icons-vue')
+            ) {
+              return 'vendor-element-plus';
+            }
+            if (id.includes('/echarts/')) {
+              return 'vendor-echarts';
+            }
+            if (
+              id.includes('/vue/') ||
+              id.includes('/vue-router/') ||
+              id.includes('/pinia/')
+            ) {
+              return 'vendor-vue';
+            }
+          }
+          return undefined;
         },
       },
     },

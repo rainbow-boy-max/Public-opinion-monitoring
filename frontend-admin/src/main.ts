@@ -42,7 +42,6 @@ import {
   ElTableColumn,
   ElTabs,
   ElTag,
-  ElTextarea,
   ElTimeline,
   ElTimelineItem,
   ElTooltip,
@@ -66,10 +65,11 @@ app.config.errorHandler = (err, _instance, info) => {
   if (root && !root.dataset.errorShown) {
     root.dataset.errorShown = '1';
     const msg =
-      (err instanceof Error ? err.stack || err.message : String(err)) + '\n\ninfo: ' + info;
+      (err instanceof Error ? err.stack || err.message : String(err)) +
+      '\n\ninfo: ' +
+      info;
     root.innerHTML =
-      '<pre style="padding:16px;color:#f87171;white-space:pre-wrap;font-size:12px;line-height:1.4;background:#0a0e27;color:#f87171">' +
-      'App boot error:\n' +
+      '<pre style="padding:16px;background:#0a0e27;color:#f87171;white-space:pre-wrap;font-size:12px;line-height:1.4">App boot error:\n' +
       msg +
       '</pre>';
   }
@@ -85,7 +85,9 @@ window.addEventListener('unhandledrejection', (e) => {
 app.use(createPinia());
 app.use(router);
 
-const components = [
+// EP 2.14.3 实际命名为 ElTextarea 不存在；多行文本场景统一走 <el-input type="textarea">，
+// 模板里没有 <el-textarea> 用法，无需注册。
+const epComponents = [
   ElAlert,
   ElAside,
   ElButton,
@@ -127,14 +129,13 @@ const components = [
   ElTableColumn,
   ElTabs,
   ElTag,
-  ElTextarea,
   ElTimeline,
   ElTimelineItem,
   ElTooltip,
   ElUpload,
 ];
 
-for (const c of components) {
+for (const c of epComponents) {
   app.use(c);
 }
 
