@@ -666,10 +666,12 @@ async function onDoTest(): Promise<void> {
     testResultVisible.value = true;
     loadData();
   } catch (err: any) {
+    const errMsg =
+      err?.response?.data?.message || err?.message || '测试失败';
     testResult.value = {
       ok: false,
       latencyMs: 0,
-      error: err?.message || '测试失败',
+      error: errMsg,
     };
     testVisible.value = false;
     testResultVisible.value = true;
