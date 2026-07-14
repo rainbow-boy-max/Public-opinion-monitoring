@@ -1,8 +1,5 @@
 import {
   Injectable,
-  UnauthorizedException,
-  BadRequestException,
-  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,6 +10,7 @@ import { randomBytes } from 'crypto';
 import { UserEntity, UserRole, AuthStatus } from '../../database/entities';
 import { RedisService } from '../../redis/redis.service';
 import { SmsService } from '../sms/sms.service';
+import { throwBusiness } from '../../common/errors/business.exception';
 
 interface LoginResult {
   token: string;
@@ -36,23 +34,29 @@ export class AuthService {
   async login(username: string, password: string): Promise<LoginResult> {
     const user = await this.userRepo.findOne({ where: { username } });
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throwBusiness('AUTH_INVALID_CREDENTIALS', { username });
     }
 
     if (user.authStatus === AuthStatus.BANNED) {
-      throw new UnauthorizedException('Account has been banned, please contact administrator');
+      throwBusiness('AUTH_USER_DISABLED', { username });
     }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
-      throw new UnauthorizedException(
-        `Account is locked until ${user.lockedUntil.toISOString()}`,
-      );
+      const minutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+      throwBusiness('AUTH_USER_LOCKED', { minutesLeft: minutes });
     }
 
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
     if (!passwordValid) {
       await this.recordFailedLogin(user);
-      throw new UnauthorizedException('Invalid credentials');
+      const remainingAttempts = this.MAX_LOGIN_ATTEMPTS - user.loginAttempts;
+      if (remainingAttempts > 0) {
+        throwBusiness('AUTH_INVALID_CREDENTIALS', {
+          username,
+          remainingAttempts,
+        });
+      }
+      throwBusiness('AUTH_USER_LOCKED', { minutesLeft: this.LOCK_DURATION_MIN });
     }
 
     user.loginAttempts = 0;
@@ -99,10 +103,15 @@ export class AuthService {
     newPassword: string,
   ): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new UnauthorizedException('User not found');
+    if (!user) throwBusiness('USER_NOT_FOUND', { userId });
 
     const valid = await bcrypt.compare(oldPassword, user.passwordHash);
-    if (!valid) throw new BadRequestException('Old password is incorrect');
+    if (!valid) {
+      throwBusiness('AUTH_INVALID_CREDENTIALS', { scene: 'change_password' });
+    }
+    if (newPassword.length < 6) {
+      throwBusiness('PASSWORD_TOO_WEAK', { length: newPassword.length });
+    }
 
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     user.firstLogin = 0;
@@ -113,15 +122,15 @@ export class AuthService {
     const rateKey = `rate:sms:${phone}`;
     const count = parseInt((await this.redisService.get(rateKey)) || '0', 10);
     if (count >= 5) {
-      throw new BadRequestException('SMS rate limit exceeded, try again later');
+      throwBusiness('RATE_LIMITED', { scene, waitMinutes: 60 });
     }
 
     const existing = await this.userRepo.findOne({ where: { phone } });
     if (scene === 'register' && existing) {
-      throw new ConflictException('Phone number already registered');
+      throwBusiness('USER_ALREADY_EXISTS', { phone, field: 'phone' });
     }
     if (scene !== 'register' && !existing) {
-      throw new BadRequestException('Phone number not registered');
+      throwBusiness('USER_NOT_FOUND', { phone, scene });
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -143,7 +152,12 @@ export class AuthService {
     const exists = await this.userRepo.findOne({
       where: [{ username }, { phone }],
     });
-    if (exists) throw new ConflictException('Username or phone already exists');
+    if (exists) {
+      throwBusiness('USER_ALREADY_EXISTS', { username, phone });
+    }
+    if (password.length < 6) {
+      throwBusiness('PASSWORD_TOO_WEAK', { length: password.length });
+    }
 
     const user = this.userRepo.create({
       username,
@@ -171,7 +185,11 @@ export class AuthService {
   async resetPassword(phone: string, code: string, newPassword: string): Promise<void> {
     await this.verifySmsCode(phone, 'reset', code);
     const user = await this.userRepo.findOne({ where: { phone } });
-    if (!user) throw new BadRequestException('User not found');
+    if (!user) throwBusiness('USER_NOT_FOUND', { phone });
+
+    if (newPassword.length < 6) {
+      throwBusiness('PASSWORD_TOO_WEAK', { length: newPassword.length });
+    }
 
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     user.loginAttempts = 0;
@@ -182,7 +200,7 @@ export class AuthService {
   async verifySmsCode(phone: string, scene: string, code: string): Promise<void> {
     const stored = await this.redisService.get(`sms:code:${phone}:${scene}`);
     if (!stored || stored !== code) {
-      throw new BadRequestException('Invalid or expired verification code');
+      throwBusiness('AUTH_VERIFY_CODE_INVALID', { phone, scene });
     }
     await this.redisService.del(`sms:code:${phone}:${scene}`);
   }
@@ -193,9 +211,9 @@ export class AuthService {
 
   async refreshToken(userId: number, oldJti: string): Promise<{ token: string }> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new UnauthorizedException('User not found');
+    if (!user) throwBusiness('USER_NOT_FOUND', { userId });
     if (user.authStatus === AuthStatus.BANNED) {
-      throw new UnauthorizedException('Account has been banned');
+      throwBusiness('AUTH_USER_DISABLED', { userId });
     }
     await this.redisService.set(`blacklist:jti:${oldJti}`, '1', 7 * 24 * 3600);
     const token = await this.issueToken(user);

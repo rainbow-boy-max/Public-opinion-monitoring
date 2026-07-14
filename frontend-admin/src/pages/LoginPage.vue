@@ -151,16 +151,24 @@ async function onLogin(): Promise<void> {
     try {
       const result = await auth.login(form.username, form.password);
       if (result.passwordChangeRequired) {
-        ElMessage.warning('首次登录，请修改默认密码');
+        ElMessage.warning({
+          message: '首次登录需要修改默认密码 / First login requires password change',
+          duration: 5000,
+        });
         router.push('/change-password');
       } else {
-        ElMessage.success('登录成功');
+        ElMessage.success('登录成功 / Login successful');
         router.push('/dashboard');
       }
     } catch (err: any) {
-      const msg = err?.message || '登录失败';
-      errorMessage.value = msg;
-      ElMessage.error(msg);
+      // http.ts 拦截器已自动弹窗提示完整错误（含双语文案 + 解决按钮）
+      // 这里只在表单内显示一条精简双语提示
+      const lang = (navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'zh';
+      errorMessage.value = err?.messageEn
+        ? lang === 'en'
+          ? err.messageEn
+          : err.message
+        : err?.message || (lang === 'en' ? 'Login failed' : '登录失败');
     } finally {
       loading.value = false;
     }

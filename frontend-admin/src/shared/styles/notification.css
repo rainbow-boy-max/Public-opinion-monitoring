@@ -1,0 +1,103 @@
+/* 全局 i18n 错误通知样式 - 被两个前端共享 */
+
+.i18n-notification {
+  min-width: 420px !important;
+  max-width: 560px !important;
+}
+
+.i18n-notification .el-notification__title {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--el-color-error-light-3);
+}
+
+.i18n-err {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.i18n-err__bilingual {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(255, 90, 95, 0.3);
+}
+
+.i18n-err__zh {
+  font-size: 13px;
+  color: #e8ebff;
+  font-weight: 500;
+}
+
+.i18n-err__en {
+  font-size: 11px;
+  color: rgba(232, 235, 255, 0.6);
+  font-style: italic;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif;
+}
+
+.i18n-err__hint {
+  background: rgba(0, 0, 0, 0.25);
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.i18n-err__hint-zh {
+  color: #fbbf24;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.i18n-err__hint-en {
+  color: rgba(251, 191, 36, 0.65);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.i18n-err__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.i18n-err__code {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 8px;
+  border-radius: 3px;
+  color: #94a3b8;
+}
+
+.i18n-err__action {
+  display: inline-block;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #5e72e4 0%, #7c3aed 100%);
+  color: #fff !important;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.i18n-err__action:hover {
+  opacity: 0.85;
+}
+
+.i18n-err__action--static {
+  background: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  cursor: default;
+}

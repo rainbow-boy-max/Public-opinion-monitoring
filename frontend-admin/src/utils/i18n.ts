@@ -1,0 +1,450 @@
+/**
+ * 前端错误码 i18n 库
+ * 与后端 src/common/errors/error-codes.ts 保持完全一致
+ * 用户通知使用 ElNotification 弹框，含中文 / 英文 + 解决按钮
+ */
+
+export type Language = 'zh' | 'en';
+
+export interface I18nEntry {
+  code: string;
+  zh: string;
+  en: string;
+  hintZh: string;
+  hintEn: string;
+  actionZh: string;
+  actionEn: string;
+  actionTarget?: string;
+  httpStatus: number;
+}
+
+export const ErrorCodeI18n: Record<string, I18nEntry> = {
+  AUTH_INVALID_CREDENTIALS: {
+    code: 'AUTH_INVALID_CREDENTIALS',
+    zh: '账号或密码错误',
+    en: 'Invalid username or password',
+    hintZh: '请检查账号和密码是否正确；连续 5 次错误将锁定账号 15 分钟。',
+    hintEn: 'Check your username/password; account locks for 15 min after 5 failed attempts.',
+    actionZh: '找回密码',
+    actionEn: 'Reset password',
+    actionTarget: '/forgot-password',
+    httpStatus: 401,
+  },
+  AUTH_USER_DISABLED: {
+    code: 'AUTH_USER_DISABLED',
+    zh: '账号已被封禁',
+    en: 'Account has been banned',
+    hintZh: '请联系系统管理员解封，或检查您是否触发了平台规则。',
+    hintEn: 'Contact the administrator to unban your account.',
+    actionZh: '联系管理员',
+    actionEn: 'Contact admin',
+    httpStatus: 403,
+  },
+  AUTH_USER_LOCKED: {
+    code: 'AUTH_USER_LOCKED',
+    zh: '账号已锁定',
+    en: 'Account locked',
+    hintZh: '连续 5 次密码错误将自动锁定 15 分钟，请稍后重试。',
+    hintEn: 'Locked for 15 minutes after 5 failed attempts. Try again later.',
+    actionZh: '稍后重试',
+    actionEn: 'Try later',
+    httpStatus: 423,
+  },
+  AUTH_NEED_FIRST_LOGIN_CHANGE: {
+    code: 'AUTH_NEED_FIRST_LOGIN_CHANGE',
+    zh: '首次登录请修改默认密码',
+    en: 'First login requires password change',
+    hintZh: '系统检测到您使用默认密码登录，请先修改为强密码（≥ 6 位）。',
+    hintEn: 'Default password detected. Please change to a strong password (≥ 6 chars).',
+    actionZh: '前往修改',
+    actionEn: 'Change now',
+    actionTarget: '/change-password',
+    httpStatus: 403,
+  },
+  AUTH_TOKEN_EXPIRED: {
+    code: 'AUTH_TOKEN_EXPIRED',
+    zh: '登录已过期',
+    en: 'Token expired',
+    hintZh: 'JWT 凭证已过期，请重新登录。',
+    hintEn: 'JWT expired. Please log in again.',
+    actionZh: '重新登录',
+    actionEn: 'Re-login',
+    actionTarget: '/login',
+    httpStatus: 401,
+  },
+  AUTH_TOKEN_INVALID: {
+    code: 'AUTH_TOKEN_INVALID',
+    zh: '无效的认证凭证',
+    en: 'Invalid token',
+    hintZh: 'JWT 签名不匹配或已注销。请重新登录。',
+    hintEn: 'JWT signature invalid or revoked. Please log in again.',
+    actionZh: '重新登录',
+    actionEn: 'Re-login',
+    actionTarget: '/login',
+    httpStatus: 401,
+  },
+  AUTH_TOKEN_REVOKED: {
+    code: 'AUTH_TOKEN_REVOKED',
+    zh: '凭证已失效',
+    en: 'Token revoked',
+    hintZh: '该账号被封禁后所有 token 已被强制注销。',
+    hintEn: 'All tokens revoked after account ban.',
+    actionZh: '重新登录',
+    actionEn: 'Re-login',
+    actionTarget: '/login',
+    httpStatus: 401,
+  },
+  AUTH_INSUFFICIENT_PERMISSIONS: {
+    code: 'AUTH_INSUFFICIENT_PERMISSIONS',
+    zh: '没有访问权限',
+    en: 'Insufficient permissions',
+    hintZh: '您当前角色无权访问该资源，请联系管理员开通。',
+    hintEn: 'Your role lacks permission. Contact the administrator.',
+    actionZh: '联系管理员',
+    actionEn: 'Contact admin',
+    httpStatus: 403,
+  },
+  AUTH_VERIFY_CODE_INVALID: {
+    code: 'AUTH_VERIFY_CODE_INVALID',
+    zh: '短信验证码错误或已失效',
+    en: 'Invalid or expired verification code',
+    hintZh: '验证码 5 分钟内有效，请检查后重新输入或重新获取。',
+    hintEn: 'Code valid for 5 minutes. Try again or resend.',
+    actionZh: '重新获取',
+    actionEn: 'Resend code',
+    httpStatus: 400,
+  },
+  AUTH_PHONE_VERIFY_FAILED: {
+    code: 'AUTH_PHONE_VERIFY_FAILED',
+    zh: '三要素认证未通过',
+    en: 'Three-element verification failed',
+    hintZh: '姓名、身份证号、手机号三者不一致；24 小时内最多认证 3 次。',
+    hintEn: 'Name/ID/phone inconsistent; max 3 attempts per 24h.',
+    actionZh: '重新核对信息',
+    actionEn: 'Re-check info',
+    httpStatus: 400,
+  },
+  AUTH_PHONE_VERIFY_LOCKED: {
+    code: 'AUTH_PHONE_VERIFY_LOCKED',
+    zh: '三要素认证已锁定',
+    en: 'Three-element verification locked',
+    hintZh: '24 小时内失败 3 次将锁定 7 天，请联系管理员。',
+    hintEn: 'Locked for 7 days after 3 fails in 24h. Contact admin.',
+    actionZh: '联系管理员',
+    actionEn: 'Contact admin',
+    httpStatus: 423,
+  },
+  NOT_FOUND: {
+    code: 'NOT_FOUND',
+    zh: '资源不存在',
+    en: 'Not found',
+    hintZh: '请求的资源不存在或已被删除。',
+    hintEn: 'The resource does not exist or has been deleted.',
+    actionZh: '返回列表',
+    actionEn: 'Back to list',
+    httpStatus: 404,
+  },
+  FORBIDDEN: {
+    code: 'FORBIDDEN',
+    zh: '没有访问权限',
+    en: 'Access denied',
+    hintZh: '您无权访问该资源。',
+    hintEn: 'You do not have permission to access this resource.',
+    actionZh: '刷新页面',
+    actionEn: 'Refresh',
+    httpStatus: 403,
+  },
+  VALIDATION_FAILED: {
+    code: 'VALIDATION_FAILED',
+    zh: '输入数据验证失败',
+    en: 'Validation failed',
+    hintZh: '请检查输入字段是否符合要求（格式、长度、必填等）。',
+    hintEn: 'Check the input fields match the requirements.',
+    actionZh: '修正输入',
+    actionEn: 'Fix input',
+    httpStatus: 400,
+  },
+  RATE_LIMITED: {
+    code: 'RATE_LIMITED',
+    zh: '请求过于频繁',
+    en: 'Too many requests',
+    hintZh: '系统在 1 分钟内最多 60 次请求，请稍后重试。',
+    hintEn: 'Maximum 60 requests per minute. Try again later.',
+    actionZh: '稍后重试',
+    actionEn: 'Try later',
+    httpStatus: 429,
+  },
+  INTERNAL_ERROR: {
+    code: 'INTERNAL_ERROR',
+    zh: '服务器内部错误',
+    en: 'Internal server error',
+    hintZh: '系统出现异常，请稍后重试或联系技术支持。',
+    hintEn: 'Server error. Please retry or contact support.',
+    actionZh: '刷新页面',
+    actionEn: 'Refresh page',
+    httpStatus: 500,
+  },
+  BAD_REQUEST: {
+    code: 'BAD_REQUEST',
+    zh: '请求参数有误',
+    en: 'Bad request',
+    hintZh: '请求中的参数不符合 API 规范。',
+    hintEn: 'Request parameters do not match the API spec.',
+    actionZh: '刷新页面',
+    actionEn: 'Refresh',
+    httpStatus: 400,
+  },
+  USER_ALREADY_EXISTS: {
+    code: 'USER_ALREADY_EXISTS',
+    zh: '用户名或手机号已存在',
+    en: 'Username or phone already exists',
+    hintZh: '请使用不同的用户名或手机号。',
+    hintEn: 'Please use a different username or phone.',
+    actionZh: '更换账号',
+    actionEn: 'Use another',
+    httpStatus: 409,
+  },
+  USER_NOT_FOUND: {
+    code: 'USER_NOT_FOUND',
+    zh: '用户不存在',
+    en: 'User not found',
+    hintZh: '该用户 ID 不存在或已被删除。',
+    hintEn: 'User ID does not exist or has been deleted.',
+    actionZh: '返回列表',
+    actionEn: 'Back to list',
+    httpStatus: 404,
+  },
+  USER_CANNOT_DELETE_ADMIN: {
+    code: 'USER_CANNOT_DELETE_ADMIN',
+    zh: '不能删除管理员账号',
+    en: 'Cannot delete admin account',
+    hintZh: '系统至少需要 1 个管理员账号。',
+    hintEn: 'At least one admin is required.',
+    actionZh: '创建新管理员',
+    actionEn: 'Create admin',
+    httpStatus: 400,
+  },
+  PASSWORD_TOO_WEAK: {
+    code: 'PASSWORD_TOO_WEAK',
+    zh: '密码强度不足',
+    en: 'Password too weak',
+    hintZh: '密码至少 6 位，建议使用字母+数字组合。',
+    hintEn: 'Password must be ≥ 6 chars. Use a mix of letters and numbers.',
+    actionZh: '重新输入',
+    actionEn: 'Reset',
+    httpStatus: 400,
+  },
+  AGENT_NOT_FOUND: {
+    code: 'AGENT_NOT_FOUND',
+    zh: '智能体不存在',
+    en: 'Agent not found',
+    hintZh: '该智能体 ID 不存在或已被删除。',
+    hintEn: 'Agent ID not found.',
+    actionZh: '返回列表',
+    actionEn: 'Back to list',
+    actionTarget: '/agents',
+    httpStatus: 404,
+  },
+  KB_NOT_FOUND: {
+    code: 'KB_NOT_FOUND',
+    zh: '知识库不存在',
+    en: 'Knowledge base not found',
+    hintZh: '该知识库 ID 不存在或已被删除。',
+    hintEn: 'KB ID not found.',
+    actionZh: '返回列表',
+    actionEn: 'Back to list',
+    actionTarget: '/knowledge',
+    httpStatus: 404,
+  },
+  LLM_MODEL_NOT_FOUND: {
+    code: 'LLM_MODEL_NOT_FOUND',
+    zh: 'LLM 模型不存在',
+    en: 'LLM model not found',
+    hintZh: '模型可能已被删除或未配置 API Key。',
+    hintEn: 'Model may be deleted or API key not configured.',
+    actionZh: '配置模型',
+    actionEn: 'Configure',
+    actionTarget: '/llm-models',
+    httpStatus: 404,
+  },
+  LLM_ALL_FAILED: {
+    code: 'LLM_ALL_FAILED',
+    zh: '所有 LLM 模型调用失败',
+    en: 'All LLM models failed',
+    hintZh: '主用模型 + 备用模型链全部失败。请检查 API Key 是否过期，或 LLM 厂商是否维护中。',
+    hintEn: 'Primary and fallback models all failed. Check API key expiry or vendor status.',
+    actionZh: '检查 LLM 配置',
+    actionEn: 'Check LLM',
+    actionTarget: '/llm-models',
+    httpStatus: 502,
+  },
+  KB_FILE_PARSE_FAILED: {
+    code: 'KB_FILE_PARSE_FAILED',
+    zh: '文档解析失败',
+    en: 'Document parse failed',
+    hintZh: '可能是不支持的内容、加密 PDF 或损坏文件。',
+    hintEn: 'Unsupported content, encrypted PDF, or corrupted file.',
+    actionZh: '重新上传',
+    actionEn: 'Re-upload',
+    httpStatus: 422,
+  },
+  KB_FILE_TOO_LARGE: {
+    code: 'KB_FILE_TOO_LARGE',
+    zh: '文件超过大小限制',
+    en: 'File too large',
+    hintZh: '单文件最大 100MB。',
+    hintEn: 'Max 100MB per file.',
+    actionZh: '压缩后重试',
+    actionEn: 'Compress and retry',
+    httpStatus: 413,
+  },
+  TASK_NOT_FOUND: {
+    code: 'TASK_NOT_FOUND',
+    zh: '监控任务不存在',
+    en: 'Task not found',
+    hintZh: '该任务 ID 不存在或不属于您。',
+    hintEn: 'Task ID not found or not owned by you.',
+    actionZh: '返回列表',
+    actionEn: 'Back to list',
+    actionTarget: '/tasks',
+    httpStatus: 404,
+  },
+  TASK_CANNOT_RUN_WHILE_PAUSED: {
+    code: 'TASK_CANNOT_RUN_WHILE_PAUSED',
+    zh: '已暂停任务不能立即采集',
+    en: 'Cannot run a paused task',
+    hintZh: '请先启用任务再触发立即采集。',
+    hintEn: 'Please enable the task first.',
+    actionZh: '启用任务',
+    actionEn: 'Enable',
+    httpStatus: 400,
+  },
+  WEBHOOK_NOT_FOUND: {
+    code: 'WEBHOOK_NOT_FOUND',
+    zh: 'Webhook 不存在',
+    en: 'Webhook not found',
+    hintZh: '该 Webhook ID 不存在或不属于您。',
+    hintEn: 'Webhook ID not found.',
+    actionZh: '返回列表',
+    actionEn: 'Back to list',
+    actionTarget: '/webhooks',
+    httpStatus: 404,
+  },
+  WEBHOOK_PUSH_ALL_FAILED: {
+    code: 'WEBHOOK_PUSH_ALL_FAILED',
+    zh: 'Webhook 推送失败',
+    en: 'Webhook push failed',
+    hintZh: '已重试 3 次仍失败（5s/15s/45s 指数退避）。请检查 URL 是否可达。',
+    hintEn: 'All 3 retries failed (5s/15s/45s backoff). Check URL reachability.',
+    actionZh: '测试 Webhook',
+    actionEn: 'Test Webhook',
+    actionTarget: '/webhooks',
+    httpStatus: 502,
+  },
+  SMS_CONFIG_NOT_FOUND: {
+    code: 'SMS_CONFIG_NOT_FOUND',
+    zh: '阿里云短信服务未配置',
+    en: 'Aliyun SMS not configured',
+    hintZh: '请先在 [短信配置] 页面填写 AccessKey 和模板。',
+    hintEn: 'Configure AccessKey and template first.',
+    actionZh: '去配置',
+    actionEn: 'Configure',
+    actionTarget: '/config/aliyun-sms',
+    httpStatus: 424,
+  },
+  SMS_DAILY_LIMIT: {
+    code: 'SMS_DAILY_LIMIT',
+    zh: '今日短信发送已达上限',
+    en: 'Daily SMS limit reached',
+    hintZh: '系统已限制每日 1000 条短信，请在管理后台调整。',
+    hintEn: '1000 SMS per day. Adjust in admin settings.',
+    actionZh: '联系管理员',
+    actionEn: 'Contact admin',
+    httpStatus: 429,
+  },
+  SMS_SEND_FAILED: {
+    code: 'SMS_SEND_FAILED',
+    zh: '短信发送失败',
+    en: 'SMS send failed',
+    hintZh: '阿里云返回错误，请检查 AccessKey、签名、模板 CODE 是否正确。',
+    hintEn: 'Aliyun returned error. Check AccessKey, signature, template code.',
+    actionZh: '检查配置',
+    actionEn: 'Check config',
+    actionTarget: '/config/aliyun-sms',
+    httpStatus: 502,
+  },
+  SMS_TEMPLATE_NOT_FOUND: {
+    code: 'SMS_TEMPLATE_NOT_FOUND',
+    zh: '短信模板不存在',
+    en: 'SMS template not found',
+    hintZh: '该模板 ID 不存在或已被删除。',
+    hintEn: 'Template ID not found.',
+    actionZh: '返回列表',
+    actionEn: 'Back to list',
+    actionTarget: '/sms-templates',
+    httpStatus: 404,
+  },
+  SMS_TEMPLATE_DEFAULT_CANNOT_DELETE: {
+    code: 'SMS_TEMPLATE_DEFAULT_CANNOT_DELETE',
+    zh: '默认模板不可删除',
+    en: 'Cannot delete default template',
+    hintZh: '请先将其他同场景模板设为默认，再删除当前。',
+    hintEn: 'Set another template as default first.',
+    actionZh: '切换默认',
+    actionEn: 'Switch default',
+    actionTarget: '/sms-templates',
+    httpStatus: 400,
+  },
+  SERVER_ERROR: {
+    code: 'SERVER_ERROR',
+    zh: '服务异常',
+    en: 'Server error',
+    hintZh: '后端服务暂时不可用，请稍后重试。',
+    hintEn: 'Backend service temporarily unavailable.',
+    actionZh: '刷新页面',
+    actionEn: 'Refresh',
+    httpStatus: 500,
+  },
+};
+
+export function getI18n(code: string, lang: Language = 'zh'): I18nEntry | null {
+  return ErrorCodeI18n[code] || null;
+}
+
+export function tMessage(code: string, lang: Language = 'zh'): string {
+  const entry = ErrorCodeI18n[code];
+  if (!entry) return lang === 'zh' ? '操作失败' : 'Operation failed';
+  return lang === 'zh' ? entry.zh : entry.en;
+}
+
+export function tHint(code: string, lang: Language = 'zh'): string {
+  const entry = ErrorCodeI18n[code];
+  if (!entry) return '';
+  return lang === 'zh' ? entry.hintZh : entry.hintEn;
+}
+
+export function tAction(code: string, lang: Language = 'zh'): { text: string; target?: string } {
+  const entry = ErrorCodeI18n[code];
+  if (!entry) return { text: lang === 'zh' ? '重试' : 'Retry' };
+  return {
+    text: lang === 'zh' ? entry.actionZh : entry.actionEn,
+    target: entry.actionTarget,
+  };
+}
+
+let currentLanguage: Language = (typeof navigator !== 'undefined' && (navigator.language === 'en' || navigator.language === 'en-US')) ? 'en' : 'zh';
+
+export function setLanguage(lang: Language): void {
+  currentLanguage = lang;
+  try {
+    localStorage.setItem('app_lang', lang);
+  } catch { /* ignore */ }
+}
+
+export function getLanguage(): Language {
+  try {
+    const stored = localStorage.getItem('app_lang');
+    if (stored === 'zh' || stored === 'en') return stored;
+  } catch { /* ignore */ }
+  return currentLanguage;
+}

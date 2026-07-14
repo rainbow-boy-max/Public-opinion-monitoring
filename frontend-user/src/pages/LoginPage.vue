@@ -73,103 +73,19 @@ async function onLogin(): Promise<void> {
     loading.value = true;
     try {
       await auth.login(form.username, form.password);
-      ElMessage.success('登录成功');
+      ElMessage.success('登录成功 / Login successful');
       router.push('/verify');
     } catch (err: any) {
-      errorMessage.value = err?.message || '登录失败';
-      ElMessage.error(errorMessage.value);
+      // http.ts 拦截器已自动弹窗提示完整错误（含双语文案 + 解决按钮）
+      const lang = (navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'zh';
+      errorMessage.value = err?.messageEn
+        ? lang === 'en'
+          ? err.messageEn
+          : err.message
+        : err?.message || (lang === 'en' ? 'Login failed' : '登录失败');
     } finally {
       loading.value = false;
     }
   });
 }
 </script>
-
-<style scoped>
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  position: relative;
-}
-
-.login-bg {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(94, 114, 228, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 70% 70%, rgba(124, 58, 237, 0.15) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-.login-container {
-  position: relative;
-  width: 100%;
-  max-width: 440px;
-}
-
-.login-card {
-  padding: 12px;
-}
-
-.login-card__brand {
-  text-align: center;
-  margin-bottom: 28px;
-}
-
-.login-card__brand svg {
-  filter: drop-shadow(0 8px 20px rgba(94, 114, 228, 0.4));
-  margin-bottom: 16px;
-}
-
-.login-card__title {
-  font-size: 24px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #FFFFFF 0%, #7C8FE8 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0 0 6px;
-}
-
-.login-card__sub {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  margin: 0;
-}
-
-.login-prefix {
-  margin-right: 6px;
-  opacity: 0.7;
-  font-size: 16px;
-}
-
-.login-submit {
-  width: 100%;
-  height: 44px;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 4px;
-  background: var(--gradient-primary) !important;
-  border: none !important;
-  box-shadow: 0 4px 16px rgba(94, 114, 228, 0.4);
-}
-
-.login-actions {
-  margin-top: 16px;
-  text-align: center;
-}
-
-.login-actions a {
-  color: var(--color-primary-light);
-  cursor: pointer;
-  text-decoration: none;
-  font-size: 13px;
-}
-
-.login-actions a:hover {
-  text-decoration: underline;
-}
-</style>
