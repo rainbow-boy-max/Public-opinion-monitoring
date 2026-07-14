@@ -59,6 +59,13 @@ export class LlmModelEntity {
   @Column({ name: 'last_test_status', length: 32, nullable: true })
   lastTestStatus: string | null;
 
+  @Column({
+    name: 'capabilities',
+    type: 'json',
+    nullable: true,
+  })
+  capabilities: { vision: boolean; reasoning: boolean; webSearch: boolean } | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -110,6 +117,9 @@ export class AgentEntity {
 
   @Column({ type: 'text', nullable: true })
   description: string | null;
+
+  @Column({ name: 'capabilities', type: 'json', nullable: true })
+  capabilities: { vision: boolean; reasoning: boolean; webSearch: boolean } | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Observable } from 'rxjs';
 import { Repository } from 'typeorm';
 import {
-  UserEntity,
   MonitorTaskEntity,
   OpinionEventEntity,
   LlmModelEntity,
@@ -11,8 +10,10 @@ import {
 } from '../../database/entities';
 import { RedisService } from '../../redis/redis.service';
 import { AuditService, DASHBOARD_ACTIVITY_CHANNEL } from './audit.service';
+import { UserManagementService } from './services/user-management.service';
 
-const OVERVIEW_CACHE_KEY = 'admin:dashboard:overview';
+const OVERVIEW_CACHE_KEY = (roleFilter: string) =>
+  `admin:dashboard:overview:${roleFilter || 'all'}`;
 const ACTIVITY_CHANNEL = DASHBOARD_ACTIVITY_CHANNEL;
 const OVERVIEW_TTL_SEC = 30;
 
@@ -48,7 +49,6 @@ export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
 
   constructor(
-    @InjectRepository(UserEntity) private userRepo: Repository<UserEntity>,
     @InjectRepository(MonitorTaskEntity)
     private monitorRepo: Repository<MonitorTaskEntity>,
     @InjectRepository(OpinionEventEntity)
@@ -57,10 +57,12 @@ export class DashboardService {
     @InjectRepository(AgentEntity) private agentRepo: Repository<AgentEntity>,
     private redisService: RedisService,
     private auditService: AuditService,
+    private userManagementService: UserManagementService,
   ) {}
 
-  async getOverview(): Promise<DashboardOverview> {
-    const cached = await this.redisService.get(OVERVIEW_CACHE_KEY);
+  async getOverview(roleFilter?: string): Promise<DashboardOverview> {
+    const roleKey = roleFilter || '';
+    const cached = await this.redisService.get(OVERVIEW_CACHE_KEY(roleKey));
     if (cached) {
       try {
         const parsed = JSON.parse(cached) as DashboardOverview;
@@ -78,7 +80,7 @@ export class DashboardService {
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     const [usersTotal, monitorTasks, todaySentiment, activeAgents] = await Promise.all([
-      this.userRepo.count(),
+      this.userManagementService.countByRole(roleFilter),
       this.monitorRepo.count({ where: { status: 'enabled' as any } }),
       this.eventRepo
         .createQueryBuilder('e')
@@ -159,7 +161,7 @@ export class DashboardService {
 
     try {
       await this.redisService.set(
-        OVERVIEW_CACHE_KEY,
+        OVERVIEW_CACHE_KEY(roleKey),
         JSON.stringify(overview),
         OVERVIEW_TTL_SEC,
       );

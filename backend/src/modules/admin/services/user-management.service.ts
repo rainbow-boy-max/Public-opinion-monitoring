@@ -22,9 +22,15 @@ export class UserManagementService {
     status?: string;
     startDate?: string;
     endDate?: string;
+    role?: string;
   }): Promise<{ items: Partial<UserEntity>[]; total: number; page: number; pageSize: number }> {
-    const { page, pageSize, search, status, startDate, endDate } = params;
-    const qb = this.userRepo.createQueryBuilder('u').where('u.role = :role', { role: UserRole.USER });
+    const { page, pageSize, search, status, startDate, endDate, role } = params;
+    const qb = this.userRepo.createQueryBuilder('u');
+    if (!role) {
+      qb.where('u.role = :role', { role: UserRole.USER });
+    } else {
+      qb.where('u.role = :role', { role });
+    }
 
     if (search) {
       qb.andWhere('(u.username LIKE :q OR u.phone LIKE :q)', { q: `%${search}%` });
@@ -59,6 +65,13 @@ export class UserManagementService {
       page,
       pageSize,
     };
+  }
+
+  async countByRole(role?: string): Promise<number> {
+    const qb = this.userRepo.createQueryBuilder('u');
+    if (!role) qb.where('u.role = :role', { role: UserRole.USER });
+    else qb.where('u.role = :role', { role });
+    return qb.getCount();
   }
 
   async banUser(userId: number, operatorId: number): Promise<void> {

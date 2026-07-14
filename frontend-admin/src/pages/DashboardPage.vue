@@ -15,6 +15,16 @@
       />
     </div>
 
+    <div class="dashboard-filter">
+      <span class="dashboard-filter__label">数据口径：</span>
+      <el-radio-group v-model="roleFilter" size="small" @change="onRoleFilterChange">
+        <el-radio-button value="">全部</el-radio-button>
+        <el-radio-button value="user">普通用户</el-radio-button>
+        <el-radio-button value="admin">管理员</el-radio-button>
+        <el-radio-button value="operator">运营</el-radio-button>
+      </el-radio-group>
+    </div>
+
     <div class="dashboard-row">
       <GlassCard title="趋势分析" icon="📈" subtitle="最近 7 天舆情趋势" class="dashboard-row__left">
         <div ref="trendChartEl" style="height: 320px" />
@@ -84,9 +94,33 @@ const cards = ref([
   { label: '未处理告警', value: '0', icon: '⚠️', bg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', glow: 'rgba(16, 185, 129, 0.4)', trend: 0, onClick: () => {} },
 ]);
 
+const roleFilter = ref('');
+
+function onRoleFilterChange(): void {
+  loadOverview(true);
+}
+
 const activities = useRecentActivities(20);
 
 let refreshTimer: number | undefined;
+let eventsBound = false;
+function onUsersFilter(ev: Event): void {
+  const detail = (ev as CustomEvent).detail as { role?: string };
+  if (!detail) return;
+  roleFilter.value = detail.role || '';
+  loadOverview(true);
+}
+
+function bindCrossPageEvents(): void {
+  if (eventsBound) return;
+  eventsBound = true;
+  window.addEventListener('admin:users-filter', onUsersFilter);
+}
+function unbindCrossPageEvents(): void {
+  if (!eventsBound) return;
+  eventsBound = false;
+  window.removeEventListener('admin:users-filter', onUsersFilter);
+}
 
 const ECHART_BASE = {
   backgroundColor: 'transparent',
@@ -172,12 +206,17 @@ function initCharts(overview?: any): void {
   }
 }
 
-async function loadOverview(): Promise<void> {
+async function loadOverview(skipChart = false): Promise<void> {
   try {
-    const res = await http.get('/admin/dashboard/overview');
+    const params: Record<string, unknown> = {};
+    if (roleFilter.value) params.roleFilter = roleFilter.value;
+    const res = await http.get('/admin/dashboard/overview', { params });
     applyOverview(res);
+    if (!skipChart) initCharts();
   } catch {
-    /* silent */
+    for (let i = 0; i < cards.value.length; i++) {
+      cards.value[i].value = '—';
+    }
   }
 }
 
@@ -197,19 +236,21 @@ const onResize = (): void => {
 
 onMounted(async () => {
   await nextTick();
+  bindCrossPageEvents();
   startMark('dashboard-mount');
   await loadOverview();
   startMark('echarts-init');
   initCharts();
   endMark('echarts-init', { charts: ['trend', 'platform'] });
   endMark('dashboard-mount');
-  refreshTimer = window.setInterval(loadOverview, 60_000);
+  refreshTimer = window.setInterval(() => loadOverview(true), 60_000);
   window.addEventListener('resize', onResize);
 });
 
 onUnmounted(() => {
   if (refreshTimer) window.clearInterval(refreshTimer);
   window.removeEventListener('resize', onResize);
+  unbindCrossPageEvents();
   if (trendChart) trendChart.dispose();
   if (platformChart) platformChart.dispose();
   trendChart = null;
@@ -228,6 +269,23 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
+}
+
+.dashboard-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.dashboard-filter__label {
+  color: var(--text-tertiary);
+  font-weight: 500;
 }
 
 .dashboard-row {

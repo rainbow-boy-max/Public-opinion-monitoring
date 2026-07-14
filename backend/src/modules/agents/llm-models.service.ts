@@ -75,6 +75,21 @@ const PRESET_PROVIDERS = [
 
 const PLACEHOLDER_ENCRYPTED = '__PLACEHOLDER_NEED_USER_INPUT__';
 
+export interface ModelCapabilities {
+  vision: boolean;
+  reasoning: boolean;
+  webSearch: boolean;
+}
+
+export function inferCapabilities(modelName: string): ModelCapabilities {
+  const lower = (modelName || '').toLowerCase();
+  const vision = /vision|gpt-4o|qwen-vl|glm-4v|claude-3|claude-4|gemini-1\.5|gemini-2|grok-vision|qvq/.test(
+    lower,
+  );
+  const reasoning = /reasoner|-r1|^r1|o1|o3|thinking|qwq|deepseek-r1/.test(lower);
+  return { vision, reasoning, webSearch: false };
+}
+
 @Injectable()
 export class LlmModelsService implements OnModuleInit {
   private readonly logger = new Logger(LlmModelsService.name);
@@ -90,10 +105,10 @@ export class LlmModelsService implements OnModuleInit {
     try {
       for (const p of PRESET_PROVIDERS) {
         for (const m of p.models) {
-          const exists = await this.repo.findOne({
+          const existing = await this.repo.findOne({
             where: { provider: p.provider, model: m.model },
           });
-          if (!exists) {
+          if (!existing) {
             await this.repo.save(
               this.repo.create({
                 provider: p.provider,
@@ -105,9 +120,14 @@ export class LlmModelsService implements OnModuleInit {
                 maxTokens: 4096,
                 isPreset: 1,
                 isEnabled: 1,
+                capabilities: inferCapabilities(m.model) as any,
               }),
             );
             this.logger.log(`Seed preset model: ${p.provider}/${m.model} (待配置 API Key)`);
+          } else if (!existing.capabilities) {
+            existing.capabilities = inferCapabilities(m.model) as any;
+            await this.repo.save(existing);
+            this.logger.log(`Backfill capabilities: ${p.provider}/${m.model}`);
           }
         }
       }
@@ -151,6 +171,7 @@ export class LlmModelsService implements OnModuleInit {
         apiKeyConfigured: m.apiKeyEnc !== PLACEHOLDER_ENCRYPTED,
         lastTestedAt: m.lastTestedAt,
         lastTestStatus: m.lastTestStatus,
+        capabilities: m.capabilities ?? inferCapabilities(m.model),
       })),
       total,
       page,
@@ -332,6 +353,23 @@ export class LlmModelsService implements OnModuleInit {
     if (dto.apiVersion) entity.apiVersion = dto.apiVersion;
     if (typeof dto.maxTokens === 'number') entity.maxTokens = dto.maxTokens;
     if (typeof dto.isEnabled === 'boolean') entity.isEnabled = dto.isEnabled ? 1 : 0;
+    if (
+      dto.vision !== undefined ||
+      dto.reasoning !== undefined ||
+      dto.webSearch !== undefined
+    ) {
+      const base = (entity.capabilities as any) || inferCapabilities(entity.model || dto.model || '');
+      entity.capabilities = {
+        vision:
+          dto.vision !== undefined ? !!dto.vision : base.vision === true,
+        reasoning:
+          dto.reasoning !== undefined ? !!dto.reasoning : base.reasoning === true,
+        webSearch:
+          dto.webSearch !== undefined ? !!dto.webSearch : base.webSearch === true,
+      } as any;
+    } else if (!entity.capabilities) {
+      entity.capabilities = inferCapabilities(entity.model) as any;
+    }
   }
 
   private maskApiKey(enc: string): string {

@@ -12,7 +12,7 @@
       <el-button type="primary" :icon="Refresh" @click="loadData">刷新</el-button>
     </template>
 
-    <el-tabs v-model="activeProvider" :lazy="true" class="provider-tabs" @tab-change="onTabChange">
+    <el-tabs v-model="activeProvider" class="provider-tabs" @tab-change="onTabChange">
       <el-tab-pane label="全部" name="">
         <ModelsTable
           :items="paginatedItems"

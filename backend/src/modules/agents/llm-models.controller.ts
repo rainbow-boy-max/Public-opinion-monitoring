@@ -52,6 +52,18 @@ class SaveModelDto {
   @IsOptional()
   @IsBoolean()
   isPreset?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  vision?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  reasoning?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  webSearch?: boolean;
 }
 
 class TestModelDto {

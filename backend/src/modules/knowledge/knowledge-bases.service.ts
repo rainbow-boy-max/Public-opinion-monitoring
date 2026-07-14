@@ -319,7 +319,7 @@ export class KnowledgeBasesService {
       order: { id: 'DESC' },
     });
     return kbs.map((k) => ({
-      id: k.id,
+      id: Number(k.id),
       name: k.name,
       description: k.description,
       fileCount: k.fileCount,

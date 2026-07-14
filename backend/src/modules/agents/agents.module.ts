@@ -21,6 +21,8 @@ import { PrReportsController } from './pr-reports.controller';
 import { PrReportsService } from './pr-reports.service';
 import { LlmModule } from './llm.module';
 import { AdminModule } from '../admin/admin.module';
+import { KnowledgeBasesModule } from '../knowledge/knowledge-bases.module';
+import { WebSearchModule } from '../admin/web-search.module';
 
 @Module({
   imports: [
@@ -51,6 +53,8 @@ import { AdminModule } from '../admin/admin.module';
     }),
     LlmModule,
     AdminModule,
+    KnowledgeBasesModule,
+    WebSearchModule,
   ],
   controllers: [
     AgentsController,

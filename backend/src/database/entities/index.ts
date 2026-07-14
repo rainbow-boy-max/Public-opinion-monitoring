@@ -19,6 +19,7 @@ export { WebhookPushLogEntity } from './webhook-push-log.entity';
 export { SmsLogEntity } from './sms-log.entity';
 export { SystemLogEntity } from './system-log.entity';
 export { AuditEventEntity, type AuditActorType } from './audit-event.entity';
+export { WebSearchConfigEntity, type WebSearchProvider } from './web-search-config.entity';
 export {
   LlmModelEntity,
   LlmProvider,

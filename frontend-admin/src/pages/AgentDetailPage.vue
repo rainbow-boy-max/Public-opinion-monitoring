@@ -134,8 +134,8 @@
             >去管理知识库 →</el-link>
           </el-alert>
 
-          <el-form label-width="120px">
-            <el-form-item label="启用知识库">
+          <el-form label-width="120px" :rules="kbRules" :model="form" ref="kbFormRef">
+            <el-form-item label="启用知识库" prop="kbEnabled">
               <el-switch v-model="form.kbEnabled" />
               <span style="margin-left: 12px">开启后 AI 会基于知识库内容回答</span>
             </el-form-item>
@@ -261,6 +261,7 @@ const agentId = computed(() => Number(route.params.id) || 0);
 const isNew = computed(() => route.name === 'agent-new' || !agentId.value);
 
 const formRef = ref<FormInstance>();
+const kbFormRef = ref<FormInstance>();
 const activeTab = ref('basic');
 const saving = ref(false);
 
@@ -314,6 +315,29 @@ const rules = {
   roleDescription: [{ required: true, message: '请输入角色描述', trigger: 'blur' }],
 };
 
+const kbRules = {
+  kbEnabled: [
+    {
+      validator: (_rule: unknown, _value: unknown, cb: (err?: Error) => void) => {
+        if (form.kbEnabled && form.knowledgeBaseIds.length < 1) {
+          return cb(new Error('开启知识库时至少勾选 1 个'));
+        }
+        cb();
+      },
+      trigger: 'change',
+    },
+  ],
+};
+
+function validateKb(): boolean {
+  if (!form.kbEnabled) return true;
+  if (form.knowledgeBaseIds.length < 1) {
+    ElMessage.error('开启知识库时至少勾选 1 个');
+    return false;
+  }
+  return true;
+}
+
 const kbFiles = ref<any[]>([]);
 const kbLoading = ref(false);
 const testInput = ref('');
@@ -364,7 +388,8 @@ async function loadModels(): Promise<void> {
 
 async function loadAllKbs(): Promise<void> {
   try {
-    allKbs.value = await http.get('/admin/knowledge/available');
+    const list = (await http.get('/admin/knowledge/available')) as Array<Record<string, unknown>>;
+    allKbs.value = (list || []).map((kb) => ({ ...kb, id: Number(kb.id) }));
   } catch (err) {
     console.error(err);
   }
@@ -373,8 +398,8 @@ async function loadAllKbs(): Promise<void> {
 async function loadAgentKbBindings(): Promise<void> {
   if (isNew.value) return;
   try {
-    const ids = await http.get(`/admin/agents/${agentId.value}/knowledge-bases`);
-    form.knowledgeBaseIds = Array.isArray(ids) ? ids : [];
+    const ids = (await http.get(`/admin/agents/${agentId.value}/knowledge-bases`)) as Array<unknown>;
+    form.knowledgeBaseIds = Array.isArray(ids) ? ids.map((n) => Number(n)) : [];
   } catch (err) {
     form.knowledgeBaseIds = [];
   }
@@ -434,6 +459,7 @@ function onTabClick(tab: any): void {
 
 async function onSave(): Promise<void> {
   if (!formRef.value) return;
+  if (!validateKb()) return;
   await formRef.value.validate(async (valid) => {
     if (!valid) return;
     saving.value = true;
@@ -467,6 +493,7 @@ const savingAll = ref(false);
 
 async function onSaveAll(): Promise<void> {
   if (!formRef.value) return;
+  if (!validateKb()) return;
   const validated = await new Promise<boolean>((resolve) => {
     formRef.value!.validate((valid) => resolve(!!valid));
   });
@@ -557,6 +584,7 @@ async function onSaveModels(): Promise<void> {
 }
 
 async function onSaveKb(): Promise<void> {
+  if (!validateKb()) return;
   try {
     await http.put(`/agents/${agentId.value}`, {
       kbEnabled: form.kbEnabled ? 1 : 0,

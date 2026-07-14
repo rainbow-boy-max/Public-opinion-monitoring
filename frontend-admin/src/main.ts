@@ -139,6 +139,12 @@ for (const c of epComponents) {
   app.use(c);
 }
 
+// 兜底：按需注册 EP 2.14.3 子组件依赖（ElPopper / ElCollection / ElFocusTrap / ElAffix 等）
+// 在 LlmModelsManagementPage el-tabs 切 tab 与 el-dropdown render 时若找不到子组件会触发
+// TypeError: Cannot read properties of undefined (reading 'opaque')。
+// 同步加载全量 EP 作兜底；保留按需循环以让 webpack manualChunks 把 vendor-element-plus 拆 chunk。
+app.use(ElementPlus);
+
 app.config.globalProperties.$message = ElMessage;
 app.config.globalProperties.$notify = ElNotification;
 app.config.globalProperties.$msgbox = ElMessageBox;

@@ -19,7 +19,22 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IsString, IsOptional, IsNumber, IsArray, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray, IsEnum, IsInt, Min, IsBoolean, ValidateNested, IsObject } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+
+class CapabilitiesDto {
+  @IsOptional()
+  @IsBoolean()
+  vision?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  reasoning?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  webSearch?: boolean;
+}
 
 class CreateAgentDto {
   @IsString()
@@ -61,6 +76,18 @@ class CreateAgentDto {
   @IsOptional()
   @IsString()
   avatar?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  knowledgeBaseIds?: number[];
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CapabilitiesDto)
+  capabilities?: CapabilitiesDto;
 }
 
 class UpdateAgentDto {
@@ -110,6 +137,17 @@ class UpdateAgentDto {
   @IsOptional()
   @IsString()
   avatar?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  knowledgeBaseIds?: number[];
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CapabilitiesDto)
+  capabilities?: CapabilitiesDto;
 }
 
 class ChatDto {

@@ -136,6 +136,7 @@ export class AdminController {
     @Query('pageSize') pageSize = 20,
     @Query('search') search?: string,
     @Query('status') status?: string,
+    @Query('role') role?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
@@ -144,6 +145,7 @@ export class AdminController {
       pageSize,
       search,
       status,
+      role,
       startDate,
       endDate,
     });

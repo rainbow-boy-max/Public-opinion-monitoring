@@ -12,8 +12,8 @@ export class DashboardController {
   constructor(private readonly service: DashboardService) {}
 
   @Get('overview')
-  overview() {
-    return this.service.getOverview();
+  overview(@Query('roleFilter') roleFilter?: string) {
+    return this.service.getOverview(roleFilter);
   }
 
   @Get('recent-activities')

@@ -6,6 +6,11 @@
     </template>
 
     <div class="toolbar">
+      <el-radio-group v-model="roleFilter" @change="onRoleFilterChange">
+        <el-radio-button value="user">普通用户</el-radio-button>
+        <el-radio-button value="admin">管理员</el-radio-button>
+        <el-radio-button value="operator">运营</el-radio-button>
+      </el-radio-group>
       <el-input
         v-model="searchText"
         placeholder="搜索用户名或手机号"
@@ -193,6 +198,12 @@ const page = ref(1);
 const pageSize = ref(20);
 const searchText = ref('');
 const statusFilter = ref('');
+const roleFilter = ref('');
+
+function onRoleFilterChange(): void {
+  page.value = 1;
+  loadData();
+}
 
 function statusText(s: string): string {
   return { unverified: '未认证', verified: '已认证', banned: '已封禁' }[s] || s;
@@ -206,24 +217,34 @@ function formatDate(s: string): string {
   return new Date(s).toLocaleString('zh-CN', { hour12: false });
 }
 
-async function loadData(): Promise<void> {
-  loading.value = true;
-  try {
-    const params: Record<string, unknown> = {
-      page: page.value,
-      pageSize: pageSize.value,
-    };
-    if (searchText.value) params.search = searchText.value;
-    if (statusFilter.value) params.status = statusFilter.value;
-    const res = await http.get('/admin/users', { params });
-    tableData.value = res.items;
-    total.value = res.total;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    loading.value = false;
+  async function loadData(): Promise<void> {
+    loading.value = true;
+    try {
+      const params: Record<string, unknown> = {
+        page: page.value,
+        pageSize: pageSize.value,
+      };
+      if (searchText.value) params.search = searchText.value;
+      if (statusFilter.value) params.status = statusFilter.value;
+      if (roleFilter.value) params.role = roleFilter.value;
+      const res = await http.get('/admin/users', { params });
+      tableData.value = res.items;
+      total.value = res.total;
+      try {
+        window.dispatchEvent(
+          new CustomEvent('admin:users-filter', {
+            detail: { role: roleFilter.value || '', total: res.total },
+          }),
+        );
+      } catch {
+        /* ignore */
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      loading.value = false;
+    }
   }
-}
 
 async function onBan(row: UserRow): Promise<void> {
   await ElMessageBox.confirm(`确认封禁用户 ${row.username}?`, '操作确认', {
