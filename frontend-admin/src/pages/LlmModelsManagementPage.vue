@@ -1,24 +1,55 @@
 <template>
-  <GlassCard title="LLM 大模型管理" icon="🧠" subtitle="内置 6 家厂商 + 自定义，OpenAI 协议一键接入">
+  <GlassCard title="LLM 大模型管理" icon="🧠" subtitle="9 家国内外厂商 + 自定义 · 支持 OpenAI / Anthropic 协议">
     <template #extra>
+      <el-button
+        :icon="Refresh"
+        :loading="initializing"
+        @click="onInitPresets"
+        style="margin-right: 8px;"
+      >🔁 一键初始化预置</el-button>
       <el-input
         v-model="search"
         placeholder="搜索显示名/模型/厂商"
         clearable
-        style="width: 240px; margin-right: 12px;"
+        style="width: 220px; margin-right: 12px;"
         :prefix-icon="Search"
         @input="onSearchInput"
       />
       <el-button type="primary" :icon="Refresh" @click="loadData">刷新</el-button>
     </template>
 
+    <div v-if="selectedRows.length > 0" class="batch-bar">
+      <span class="batch-label">已选 {{ selectedRows.length }} 项</span>
+      <el-button
+        type="primary"
+        :loading="batchLoading"
+        @click="onBatch(true)"
+      >批量启用</el-button>
+      <el-button
+        type="warning"
+        :loading="batchLoading"
+        @click="onBatch(false)"
+      >批量禁用</el-button>
+      <el-button
+        type="danger"
+        plain
+        :loading="batchLoading"
+        @click="onBatch(true, true)"
+      >强制启用（含无 Key）</el-button>
+      <el-button link @click="onClearSelection">清空选择</el-button>
+    </div>
+
     <el-tabs v-model="activeProvider" class="provider-tabs" @tab-change="onTabChange">
       <el-tab-pane label="全部" name="">
         <ModelsTable
           :items="paginatedItems"
+          :total-list="filteredItems"
           @test="onTest"
           @edit="onEdit"
           @delete="onDelete"
+          @moveUp="onMoveUp"
+          @moveDown="onMoveDown"
+          @selectionChange="onSelectionChange"
         />
         <el-pagination
           v-if="filteredTotal > 0"
@@ -38,9 +69,13 @@
       >
         <ModelsTable
           :items="byProvider[p.provider] || []"
+          :total-list="byProvider[p.provider] || []"
           @test="onTest"
           @edit="onEdit"
           @delete="onDelete"
+          @moveUp="onMoveUp"
+          @moveDown="onMoveDown"
+          @selectionChange="onSelectionChange"
         />
       </el-tab-pane>
       <el-tab-pane label="添加自定义模型" name="custom">
@@ -49,7 +84,22 @@
     </el-tabs>
   </GlassCard>
 
-  <el-dialog v-model="editVisible" :title="editForm.id ? '编辑模型' : '添加模型'" width="720">
+  <el-dialog
+    v-model="editVisible"
+    :title="editForm.id ? '编辑模型' : '添加模型'"
+    width="760"
+  >
+    <el-alert
+      v-if="editForm.id && editForm.isPreset"
+      type="info"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 16px"
+    >
+      <template #title>这是系统预置模型</template>
+      编辑或删除会覆盖出厂设置；调用「🔁 一键初始化预置」会全部复位。
+    </el-alert>
+
     <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="140px">
       <el-form-item label="提供商" prop="provider">
         <el-select v-model="editForm.provider" @change="onProviderChange">
@@ -63,9 +113,25 @@
       <el-form-item label="显示名称" prop="displayName">
         <el-input v-model="editForm.displayName" placeholder="例如：DeepSeek V3" />
       </el-form-item>
+
+      <el-form-item label="API 协议">
+        <el-radio-group v-model="editForm.apiStyle">
+          <el-radio value="openai">OpenAI 兼容（/chat/completions）</el-radio>
+          <el-radio value="anthropic">Anthropic 兼容（/v1/messages）</el-radio>
+        </el-radio-group>
+        <div class="form-tip">
+          选「Anthropic 兼容」时 system 提示词走请求体顶层 + 鉴权用 x-api-key；
+          DeepSeek 与 MiniMax 官方支持，其它厂商可指向自建 micro-one-api 等代理。
+        </div>
+      </el-form-item>
+
       <el-form-item label="Base URL" prop="baseUrl">
         <div class="base-url-row">
-          <el-input v-model="editForm.baseUrl" :disabled="!!editForm.id" placeholder="https://api.deepseek.com/v1" />
+          <el-input
+            v-model="editForm.baseUrl"
+            :disabled="!!editForm.id"
+            placeholder="如：https://api.deepseek.com/v1"
+          />
           <el-button
             v-if="!editForm.id && editForm.baseUrl"
             type="primary"
@@ -75,7 +141,11 @@
             一键获取模型列表
           </el-button>
         </div>
+        <div class="form-tip">
+          apiStyle=anthropic 时 Base URL 应为根路径（不含 /v1/messages），如 <code>https://api.minimax.io/anthropic</code>
+        </div>
       </el-form-item>
+
       <el-form-item v-if="!editForm.id && availableModels.length > 0" label="选择模型">
         <el-button
           v-for="m in availableModels"
@@ -87,29 +157,40 @@
           {{ m }}
         </el-button>
       </el-form-item>
+
       <el-form-item label="API Key" prop="apiKey">
         <el-input
           v-model="editForm.apiKey"
           show-password
           placeholder="请输入 API Key，留空保持原值"
         />
+        <div class="form-tip">
+          当前已配置（掩码 {{ editForm.apiKeyMasked || '无' }}）；
+          {{ editForm.apiStyle === 'anthropic' ? '走 x-api-key 头' : '走 Authorization: Bearer 头' }}
+        </div>
       </el-form-item>
+
       <el-form-item label="最大输出 Token">
         <el-input-number v-model="editForm.maxTokens" :min="256" :max="200000" :step="256" />
       </el-form-item>
+
       <el-form-item label="能力">
         <el-checkbox v-model="editForm.vision">📷 图片理解 (vision)</el-checkbox>
         <el-checkbox v-model="editForm.reasoning">🧠 推理/思考 (reasoning)</el-checkbox>
         <el-checkbox v-model="editForm.webSearch">🔍 联网搜索 (webSearch)</el-checkbox>
         <div class="form-tip">
-          未勾选任何能力将关闭该模型的能力声明；联网搜索需要在
+          未勾选任何能力将关闭该模型的能力声明；联网搜索需在
           <el-link type="primary" @click="$router.push('/config/web-search')">「Web 搜索配置」</el-link>
-          配置 Provider
         </div>
       </el-form-item>
+
       <el-form-item>
         <el-switch v-model="editForm.isEnabled" />
         <span style="margin-left: 8px">启用</span>
+        <span
+          v-if="!hasApiKey && editForm.id"
+          style="margin-left: 12px; color: var(--color-warning); font-size: 12px;"
+        >⚠ 当前未配置 API Key，保存后会自动保持"禁用"状态</span>
       </el-form-item>
     </el-form>
     <template #footer>
@@ -150,7 +231,6 @@
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: 'LlmModelsManagementPage' });
 import { ref, reactive, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus';
 import { Refresh, Search } from '@element-plus/icons-vue';
@@ -159,7 +239,17 @@ import GlassCard from '@shared/components/GlassCard.vue';
 import ModelsTable from './ModelsTable.vue';
 import CustomModelForm from './CustomModelForm.vue';
 
-interface LlmModel {
+defineOptions({ name: 'LlmModelsManagementPage' });
+
+interface Provider {
+  provider: string;
+  displayName: string;
+  baseUrl: string;
+  apiStyle?: 'openai' | 'anthropic';
+  models: Array<{ model: string; displayName: string }>;
+}
+
+interface LlmRow {
   id: number;
   provider: string;
   model: string;
@@ -169,42 +259,44 @@ interface LlmModel {
   maxTokens: number;
   isPreset: boolean;
   isEnabled: boolean;
-  apiKeyMasked: string;
+  effectiveState: 'enabled' | 'disabled' | 'disabled_pending_key' | 'enabled_force';
   apiKeyConfigured: boolean;
-  lastTestedAt: string | null;
-  lastTestStatus: string | null;
+  apiKeyMasked: string;
+  capabilities: { vision: boolean; reasoning: boolean; webSearch: boolean };
+  apiStyle: 'openai' | 'anthropic';
+  sortOrder: number;
 }
 
-interface Provider {
-  provider: string;
-  displayName: string;
-  baseUrl: string;
-  models: Array<{ model: string; displayName: string }>;
-}
-
-const tableData = ref<LlmModel[]>([]);
-const providers = ref<Provider[]>([]);
-const activeProvider = ref('');
-
+const tableData = ref<LlmRow[]>([]);
+const loading = ref(false);
+const initializing = ref(false);
+const total = ref(0);
 const page = ref(1);
 const pageSize = ref(20);
 const search = ref('');
+const activeProvider = ref('');
+
+const selectedRows = ref<LlmRow[]>([]);
+const batchLoading = ref(false);
 
 const editVisible = ref(false);
 const editFormRef = ref<FormInstance>();
 const saving = ref(false);
-const editForm = reactive({
+const editForm = reactive<any>({
   id: 0,
   provider: 'openai',
   model: '',
   displayName: '',
   baseUrl: 'https://api.openai.com/v1',
   apiKey: '',
+  apiKeyMasked: '',
   maxTokens: 4096,
   isEnabled: true,
   vision: false,
   reasoning: false,
   webSearch: false,
+  apiStyle: 'openai',
+  isPreset: false,
 });
 
 const fetching = ref(false);
@@ -228,47 +320,75 @@ const editRules = {
 const PRESET_BASE_URLS: Record<string, string> = {
   openai: 'https://api.openai.com/v1',
   deepseek: 'https://api.deepseek.com/v1',
+  deepseek_anthropic: 'https://api.deepseek.com/anthropic',
   dashscope: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   zhipu: 'https://open.bigmodel.cn/api/paas/v4',
   moonshot: 'https://api.moonshot.cn/v1',
   siliconflow: 'https://api.siliconflow.cn/v1',
+  minimax: 'https://api.minimax.io/v1',
+  minimax_anthropic: 'https://api.minimax.io/anthropic',
   custom: '',
 };
 
-const byProvider = computed<Record<string, LlmModel[]>>(() => {
-  const grouped: Record<string, LlmModel[]> = {};
+const byProvider = computed<Record<string, LlmRow[]>>(() => {
+  const grouped: Record<string, LlmRow[]> = {};
   for (const m of tableData.value) {
     if (!grouped[m.provider]) grouped[m.provider] = [];
     grouped[m.provider].push(m);
   }
+  for (const k of Object.keys(grouped)) {
+    grouped[k].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }
   return grouped;
 });
 
-const filteredTotal = computed(() => {
-  if (!search.value) return tableData.value.length;
+const filteredItems = computed(() => {
+  if (!search.value) return tableData.value;
   const q = search.value.toLowerCase();
   return tableData.value.filter(
     (m) =>
       m.displayName.toLowerCase().includes(q) ||
       m.model.toLowerCase().includes(q) ||
       m.provider.toLowerCase().includes(q),
-  ).length;
+  );
 });
 
+const filteredTotal = computed(() => filteredItems.value.length);
+
 const paginatedItems = computed(() => {
-  let list = tableData.value;
-  if (search.value) {
-    const q = search.value.toLowerCase();
-    list = list.filter(
-      (m) =>
-        m.displayName.toLowerCase().includes(q) ||
-        m.model.toLowerCase().includes(q) ||
-        m.provider.toLowerCase().includes(q),
-    );
-  }
+  const list = filteredItems.value;
   const start = (page.value - 1) * pageSize.value;
   return list.slice(start, start + pageSize.value);
 });
+
+const hasApiKey = computed(() => {
+  return !!editForm.apiKey || !!editForm.apiKeyMasked;
+});
+
+const providers = ref<Provider[]>([]);
+
+async function loadData(): Promise<void> {
+  loading.value = true;
+  try {
+    const res = await http.get('/admin/llm-models', {
+      params: { page: 1, pageSize: 100 },
+    });
+    tableData.value = res.items;
+    total.value = res.total;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function loadPresets(): Promise<void> {
+  try {
+    providers.value = await http.get('/admin/llm-models/presets');
+  } catch (err) {
+    console.error(err);
+  }
+}
 
 let searchDebounceTimer: number | undefined;
 function onSearchInput(): void {
@@ -279,24 +399,18 @@ function onSearchInput(): void {
 }
 
 function onTabChange(): void {
-  /* tab 切换不再重拉数据，仅切换显示 */
+  /* tab 切换不重拉数据 */
 }
 
-async function loadData(): Promise<void> {
-  try {
-    const res = await http.get('/admin/llm-models', {
-      params: { page: 1, pageSize: 100 },
-    });
-    tableData.value = res.items;
-    providers.value = await http.get('/admin/llm-models/presets');
-  } catch (err) {
-    console.error(err);
+function onProviderChange(): void {
+  const base = PRESET_BASE_URLS[editForm.provider];
+  if (base && !editForm.id) {
+    editForm.baseUrl = base;
   }
-}
-
-function onProviderChange(p: string): void {
-  editForm.baseUrl = PRESET_BASE_URLS[p] || '';
-  availableModels.value = [];
+  const preset = providers.value.find((p) => p.provider === editForm.provider);
+  if (preset && !editForm.id) {
+    editForm.apiStyle = (preset.apiStyle as 'openai' | 'anthropic') || 'openai';
+  }
 }
 
 async function onFetchModels(): Promise<void> {
@@ -330,7 +444,7 @@ function onPickPreset(modelId: string): void {
   ElMessage.success(`已选择 ${modelId}`);
 }
 
-function onEdit(m: LlmModel): void {
+function onEdit(m: LlmRow): void {
   Object.assign(editForm, {
     id: m.id,
     provider: m.provider,
@@ -338,11 +452,14 @@ function onEdit(m: LlmModel): void {
     displayName: m.displayName,
     baseUrl: m.baseUrl,
     apiKey: '',
+    apiKeyMasked: m.apiKeyMasked,
     maxTokens: m.maxTokens,
     isEnabled: m.isEnabled,
-    vision: !!(m.capabilities && m.capabilities.vision),
-    reasoning: !!(m.capabilities && m.capabilities.reasoning),
-    webSearch: !!(m.capabilities && m.capabilities.webSearch),
+    vision: m.capabilities?.vision || false,
+    reasoning: m.capabilities?.reasoning || false,
+    webSearch: m.capabilities?.webSearch || false,
+    apiStyle: m.apiStyle,
+    isPreset: m.isPreset,
   });
   availableModels.value = [];
   editVisible.value = true;
@@ -354,7 +471,7 @@ async function onSave(): Promise<void> {
     if (!valid) return;
     saving.value = true;
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         provider: editForm.provider,
         model: editForm.model,
         displayName: editForm.displayName,
@@ -364,6 +481,7 @@ async function onSave(): Promise<void> {
         vision: !!editForm.vision,
         reasoning: !!editForm.reasoning,
         webSearch: !!editForm.webSearch,
+        apiStyle: editForm.apiStyle,
       };
       if (editForm.apiKey) payload.apiKey = editForm.apiKey;
       if (editForm.id) {
@@ -382,10 +500,12 @@ async function onSave(): Promise<void> {
   });
 }
 
-async function onDelete(m: LlmModel): Promise<void> {
-  await ElMessageBox.confirm(`确认删除 ${m.provider}/${m.model}？`, '删除确认', {
-    type: 'warning',
-  });
+async function onDelete(m: LlmRow): Promise<void> {
+  await ElMessageBox.confirm(
+    `确认删除 ${m.provider}/${m.model}？${m.isPreset ? '这是预置模型，删除后下次「一键初始化」会重新加入。' : ''}`,
+    '删除确认',
+    { type: 'warning' },
+  );
   try {
     await http.delete(`/admin/llm-models/${m.id}`);
     ElMessage.success('已删除');
@@ -395,7 +515,108 @@ async function onDelete(m: LlmModel): Promise<void> {
   }
 }
 
-function onTest(m: LlmModel): void {
+async function onBatch(isEnabled: boolean, force = false): Promise<void> {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择模型');
+    return;
+  }
+  batchLoading.value = true;
+  try {
+    const ids = selectedRows.value.map((m) => m.id);
+    const r: any = await http.put('/admin/llm-models/batch', {
+      ids,
+      isEnabled,
+      force,
+    });
+    const success = r.successIds?.length || 0;
+    const skipped = r.skipped?.length || 0;
+    const failed = r.failed?.length || 0;
+    let message = '';
+    if (failed === 0 && skipped === 0) {
+      message = `已${isEnabled ? '启用' : '禁用'} ${success} 项`;
+      ElMessage.success(message);
+    } else if (success === 0 && failed === 0) {
+      message = `已跳过 ${skipped} 项无 API Key`;
+      ElMessage.error(message);
+    } else {
+      const parts: string[] = [];
+      if (success > 0) parts.push(`成功 ${success} 项`);
+      if (skipped > 0) parts.push(`跳过 ${skipped} 项无 API Key`);
+      if (failed > 0) parts.push(`失败 ${failed} 项`);
+      message = parts.join('，');
+      if (failed > 0) ElMessage.error(message);
+      else ElMessage.warning(message);
+    }
+    onClearSelection();
+    loadData();
+  } catch (err: any) {
+    ElMessage.error(err?.message || '批量操作失败');
+  } finally {
+    batchLoading.value = false;
+  }
+}
+
+function onClearSelection(): void {
+  selectedRows.value = [];
+}
+
+function onSelectionChange(rows: LlmRow[]): void {
+  selectedRows.value = rows;
+}
+
+async function onMoveUp(row: LlmRow): Promise<void> {
+  const list = filteredItems.value;
+  const idx = list.findIndex((x) => x.id === row.id);
+  if (idx <= 0) return;
+  const target = list[idx - 1];
+  try {
+    await http.put(`/admin/llm-models/${row.id}/sort`, { sortOrder: target.sortOrder });
+    ElMessage.success('已上移');
+    loadData();
+  } catch (err: any) {
+    ElMessage.error(err?.message || '上移失败');
+  }
+}
+
+async function onMoveDown(row: LlmRow): Promise<void> {
+  const list = filteredItems.value;
+  const idx = list.findIndex((x) => x.id === row.id);
+  if (idx < 0 || idx >= list.length - 1) return;
+  const target = list[idx + 1];
+  try {
+    await http.put(`/admin/llm-models/${row.id}/sort`, { sortOrder: target.sortOrder });
+    ElMessage.success('已下移');
+    loadData();
+  } catch (err: any) {
+    ElMessage.error(err?.message || '下移失败');
+  }
+}
+
+async function onInitPresets(): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      '将清空所有系统预置模型（is_preset=1）并按当前代码重新 seed；自定义模型（is_preset=0）会保留。是否继续？',
+      '一键初始化预置',
+      { type: 'warning', confirmButtonText: '继续', cancelButtonText: '取消' },
+    );
+  } catch {
+    return;
+  }
+  initializing.value = true;
+  try {
+    const r: any = await http.post('/admin/llm-models/init-presets');
+    ElMessage.success(
+      `已重置预置：移除 ${r.removed}，新增 ${r.added}，保留自定义 ${r.keptCustom}`,
+    );
+    loadData();
+  } catch (err: any) {
+    ElMessage.error(err?.message || '初始化失败');
+  } finally {
+    initializing.value = false;
+  }
+}
+
+function onTest(m: LlmRow): void {
   currentTestId.value = m.id;
   testPrompt.value = '请用一句话回应：你好';
   testVisible.value = true;
@@ -404,10 +625,10 @@ function onTest(m: LlmModel): void {
 async function onDoTest(): Promise<void> {
   testing.value = true;
   try {
-    const res = await http.post(`/admin/llm-models/${currentTestId.value}/test`, {
+    const r: any = await http.post(`/admin/llm-models/${currentTestId.value}/test`, {
       prompt: testPrompt.value,
     });
-    testResult.value = res;
+    testResult.value = r;
     testVisible.value = false;
     testResultVisible.value = true;
     loadData();
@@ -424,21 +645,43 @@ async function onDoTest(): Promise<void> {
   }
 }
 
-onMounted(loadData);
+onMounted(() => {
+  loadData();
+  loadPresets();
+});
 </script>
 
 <style scoped>
-.provider-tabs :deep(.el-tabs__nav-wrap::after) {
-  background: transparent;
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: rgba(94, 114, 228, 0.1);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
 }
 
-.provider-tabs :deep(.el-tabs__item) {
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.provider-tabs :deep(.el-tabs__item.is-active) {
+.batch-label {
+  font-size: 14px;
+  font-weight: 600;
   color: var(--color-primary-light);
+  margin-right: auto;
+}
+
+.form-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.form-tip code {
+  background: rgba(94, 114, 228, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  font-size: 11px;
 }
 
 .base-url-row {

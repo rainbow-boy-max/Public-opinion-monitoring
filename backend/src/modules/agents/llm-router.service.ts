@@ -105,6 +105,7 @@ export class LlmRouterService {
           messages: input.messages,
           temperature: input.temperature,
           maxTokens: input.maxTokens,
+          apiStyle: model.apiStyle,
         });
 
         const latencyMs = Date.now() - start;
@@ -190,6 +191,7 @@ export class LlmRouterService {
           messages: input.messages,
           temperature: input.temperature,
           maxTokens: input.maxTokens,
+          apiStyle: model.apiStyle,
         });
         const finalContent: string[] = [];
         let totalTokens = 0;

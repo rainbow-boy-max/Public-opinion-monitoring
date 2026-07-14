@@ -16,7 +16,7 @@ import { LlmModelsService } from './llm-models.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { IsString, IsOptional, IsNumber, IsBoolean, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsBoolean, IsInt, IsArray, Min, Max, IsIn } from 'class-validator';
 
 class SaveModelDto {
   @IsString()
@@ -54,6 +54,14 @@ class SaveModelDto {
   isPreset?: boolean;
 
   @IsOptional()
+  @IsIn(['openai', 'anthropic'])
+  apiStyle?: 'openai' | 'anthropic';
+
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
+
+  @IsOptional()
   @IsBoolean()
   vision?: boolean;
 
@@ -78,6 +86,31 @@ class FetchModelsDto {
 
   @IsString()
   apiKey: string;
+}
+
+class BatchDto {
+  @IsArray()
+  @IsInt({ each: true })
+  ids: number[];
+
+  @IsBoolean()
+  isEnabled: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
+}
+
+class ReorderDto {
+  @IsInt()
+  @Min(0)
+  sortOrder: number;
+}
+
+interface BatchInput {
+  ids: number[];
+  isEnabled: boolean;
+  force?: boolean;
 }
 
 @Controller('admin/llm-models')
@@ -117,27 +150,44 @@ export class LlmModelsController {
     return this.service.save(dto);
   }
 
-  @Put(':id')
+  @Put('batch')
   @HttpCode(HttpStatus.OK)
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: SaveModelDto) {
-    return this.service.update(id, dto);
+  async batch(@Body() body: any) {
+    if (!Array.isArray(body?.ids) || body.ids.length === 0) {
+      return { ok: false, message: 'ids 不能为空' };
+    }
+    return this.service.batch({
+      ids: body.ids.map((n: unknown) => Number(n)).filter((n) => Number.isFinite(n) && n > 0),
+      isEnabled: !!body.isEnabled,
+      force: !!body.force,
+    });
   }
 
-  @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.service.remove(id);
-  }
-
-  @Post(':id/test')
+  @Post('init-presets')
   @HttpCode(HttpStatus.OK)
-  async test(@Param('id', ParseIntPipe) id: number, @Body() dto: TestModelDto) {
-    return this.service.testConnection(id, dto.prompt);
+  async initPresets() {
+    return this.service.initPresets();
   }
 
   @Post('fetch-models')
   @HttpCode(HttpStatus.OK)
   async fetchModels(@Body() dto: FetchModelsDto) {
     return this.service.fetchModels(dto.baseUrl, dto.apiKey);
+  }
+
+  @Put(':id')
+  @HttpCode(HttpStatus.OK)
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: SaveModelDto) {
+    return this.service.update(id, dto);
+  }
+
+  @Put(':id/sort')
+  @HttpCode(HttpStatus.OK)
+  async reorder(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReorderDto,
+  ) {
+    await this.service.reorder({ id, sortOrder: dto.sortOrder });
+    return { ok: true };
   }
 }

@@ -69,6 +69,17 @@ export class LlmModelEntity {
   @Column({ name: 'tool_supported', type: 'json', nullable: true })
   toolSupported: { webSearch?: boolean } | null;
 
+  @Column({ name: 'sort_order', type: 'int', default: 0 })
+  sortOrder: number;
+
+  @Column({
+    name: 'api_style',
+    type: 'enum',
+    enum: ['openai', 'anthropic'],
+    default: 'openai',
+  })
+  apiStyle: 'openai' | 'anthropic';
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
