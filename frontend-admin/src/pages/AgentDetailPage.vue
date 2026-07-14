@@ -62,6 +62,7 @@
                 filterable
                 placeholder="选择主用大模型（必填）"
                 style="width: 100%"
+                @change="onPrimaryModelChange"
               >
                 <el-option-group
                   v-for="p in configuredProviders"
@@ -75,11 +76,43 @@
                     :value="m.id"
                   >
                     <span style="float: left">{{ m.displayName }}</span>
+                    <span
+                      v-if="m.capabilities && (m.capabilities.vision || m.capabilities.reasoning || m.capabilities.webSearch)"
+                      style="float: right; margin-left: 8px; font-size: 11px;"
+                    >
+                      <el-tag
+                        v-if="m.capabilities.vision"
+                        type="success"
+                        size="small"
+                        effect="plain"
+                      >📷 vision</el-tag>
+                      <el-tag
+                        v-if="m.capabilities.reasoning"
+                        type="warning"
+                        size="small"
+                        effect="plain"
+                      >🧠 reasoning</el-tag>
+                      <el-tag
+                        v-if="m.capabilities.webSearch"
+                        type="primary"
+                        size="small"
+                        effect="plain"
+                      >🔍 webSearch</el-tag>
+                    </span>
                     <span style="float: right; color: var(--text-tertiary); font-family: monospace; font-size: 12px;">{{ m.model }}</span>
                   </el-option>
                 </el-option-group>
               </el-select>
-              <div class="form-tip">主用模型不可用时自动降级到备用模型链</div>
+              <div class="form-tip">
+                主用模型不可用时自动降级到备用模型链
+                <el-button
+                  v-if="form.primaryModelId"
+                  link
+                  type="primary"
+                  @click="autoDetectCapabilities"
+                  style="margin-left: 8px"
+                >⚙ 自动判断能力</el-button>
+              </div>
             </el-form-item>
             <el-form-item label="备用大模型">
               <el-select
@@ -518,6 +551,61 @@ async function onSaveKbBindings(): Promise<void> {
     ElMessage.error(err?.message || '保存失败');
   } finally {
     savingKbBindings.value = false;
+  }
+}
+
+function onPrimaryModelChange(): void {
+  const m = allModels.value.find((x: any) => x.id === form.primaryModelId);
+  if (!m) return;
+  const caps = m.capabilities || {};
+  if (caps.webSearch || caps.vision || caps.reasoning) return;
+  // 模型未声明任何能力；提示用户去"模型能力"Tab 手动勾选
+  ElMessageBox.confirm(
+    '该模型未声明任何能力（vision/reasoning/webSearch 全 false）。是否跳转到「模型能力」Tab 手动勾选？',
+    '模型未声明能力',
+    {
+      type: 'warning',
+      confirmButtonText: '去设置',
+      cancelButtonText: '稍后',
+    },
+  )
+    .then(() => {
+      activeTab.value = 'caps';
+    })
+    .catch(() => {
+      /* user cancelled */
+    });
+}
+
+async function autoDetectCapabilities(): Promise<void> {
+  const m = allModels.value.find((x: any) => x.id === form.primaryModelId);
+  if (!m) {
+    ElMessage.warning('请先选择模型');
+    return;
+  }
+  const caps = m.capabilities || {};
+  form.capabilities = {
+    vision: caps.vision === true,
+    reasoning: caps.reasoning === true,
+    webSearch: caps.webSearch === true,
+  };
+  if (!caps.webSearch && !caps.vision && !caps.reasoning) {
+    try {
+      await ElMessageBox.confirm(
+        '该模型未声明任何能力（vision/reasoning/webSearch 全 false）。前往「模型能力」Tab 手动勾选？',
+        '模型无能力声明',
+        {
+          type: 'warning',
+          confirmButtonText: '去设置',
+          cancelButtonText: '取消',
+        },
+      );
+      activeTab.value = 'caps';
+    } catch {
+      /* ignore */
+    }
+  } else {
+    ElMessage.success('已自动同步模型声明的能力');
   }
 }
 

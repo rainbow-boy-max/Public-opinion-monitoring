@@ -38,8 +38,13 @@
     <GlassCard
       title="最近活动"
       icon="⚡"
-      :subtitle="activities.connected.value ? '实时已连接 · 后端正在推送' : '实时连接断开，每 5 秒自动重连'"
+      :subtitle="dashboardStreamSubtitle"
     >
+      <template #extra>
+        <el-button v-if="activities.connected.value" type="success" plain size="small" disabled>实时已连接</el-button>
+        <el-button v-else-if="activities.unauthorized?.value" type="danger" plain size="small" @click="onReconnect">重新登录</el-button>
+        <el-button v-else type="warning" plain size="small" @click="onReconnect">重新连接</el-button>
+      </template>
       <el-empty v-if="!activities.loading.value && activities.items.value.length === 0" description="暂无活动" />
       <el-timeline v-else>
         <el-timeline-item
@@ -96,7 +101,18 @@ const cards = ref([
 
 const roleFilter = ref('');
 
+const dashboardStreamSubtitle = computed(() => {
+  if (activities.connected.value) return '实时已连接 · 后端正在推送';
+  if (activities.unauthorized?.value) return '鉴权失败，请重新登录';
+  return '实时连接断开，每 5 秒自动重连';
+});
+
 function onRoleFilterChange(): void {
+  loadOverview(true);
+}
+
+function onReconnect(): void {
+  activities.reconnect?.();
   loadOverview(true);
 }
 
