@@ -54,7 +54,7 @@ export class MonitorTaskEntity {
   @Column({ type: 'text' })
   keywords: string;
 
-  @Column({ name: 'exclude_keywords', type: 'text', nullable: true })
+  @Column({ name: 'exclude_keywords', type: 'json', nullable: true })
   excludeKeywords: string | null;
 
   @Column({ type: 'json' })
@@ -62,7 +62,7 @@ export class MonitorTaskEntity {
 
   @Column({
     name: 'match_mode',
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: MatchMode,
     default: MatchMode.BOTH,
   })
@@ -70,7 +70,7 @@ export class MonitorTaskEntity {
 
   @Column({
     name: 'sentiment_filter',
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: SentimentFilter,
     default: SentimentFilter.ALL,
   })
@@ -83,14 +83,14 @@ export class MonitorTaskEntity {
   minLikeThreshold: number;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: TaskFrequency,
     default: TaskFrequency.FIFTEEN_MIN,
   })
   frequency: TaskFrequency;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: TaskStatus,
     default: TaskStatus.ENABLED,
   })

@@ -72,7 +72,7 @@ export class OpinionEventEntity {
   shareCount: number;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['positive', 'negative', 'neutral'],
     default: 'neutral',
   })

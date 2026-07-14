@@ -61,7 +61,7 @@ export class LlmModelEntity {
 
   @Column({
     name: 'capabilities',
-    type: 'json',
+    type: 'text',
     nullable: true,
   })
   capabilities: { vision: boolean; reasoning: boolean; webSearch: boolean } | null;
@@ -74,7 +74,7 @@ export class LlmModelEntity {
 
   @Column({
     name: 'api_style',
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['openai', 'anthropic'],
     default: 'openai',
   })
@@ -120,7 +120,7 @@ export class AgentEntity {
   kbTopK: number;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: AgentStatus,
     default: AgentStatus.ENABLED,
   })
@@ -176,7 +176,7 @@ export class AgentKbFileEntity {
   totalChars: number;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: KbFileStatus,
     default: KbFileStatus.PENDING,
   })
@@ -215,7 +215,7 @@ export class AgentKbChunkEntity {
   @Column({ name: 'char_count', type: 'int' })
   charCount: number;
 
-  @Column({ name: 'embedding_b64', type: 'mediumtext' })
+  @Column({ name: 'embedding_b64', type: 'text' })
   embeddingB64: string;
 
   @Column({ length: 128, nullable: true })
@@ -249,10 +249,10 @@ export class PrReportEntity {
   @Column({ name: 'input_snapshot', type: 'text', nullable: true })
   inputSnapshot: string | null;
 
-  @Column({ name: 'analysis', type: 'mediumtext', nullable: true })
+  @Column({ name: 'analysis', type: 'text', nullable: true })
   analysis: string | null;
 
-  @Column({ name: 'strategy', type: 'mediumtext', nullable: true })
+  @Column({ name: 'strategy', type: 'text', nullable: true })
   strategy: string | null;
 
   @Column({ name: 'model_used', length: 128, nullable: true })
@@ -265,7 +265,7 @@ export class PrReportEntity {
   latencyMs: number;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: PrReportStatus,
     default: PrReportStatus.PENDING,
   })
@@ -305,7 +305,7 @@ export class SmsTemplateEntity {
   id: number;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: SmsTemplateScene,
   })
   scene: SmsTemplateScene;
@@ -322,7 +322,7 @@ export class SmsTemplateEntity {
   @Column({ name: 'template_content', type: 'text' })
   templateContent: string;
 
-  @Column({ name: 'variables', type: 'json', nullable: true })
+  @Column({ name: 'variables', type: 'text', nullable: true })
   variables: string[] | null;
 
   @Column({ name: 'is_default', type: 'tinyint', default: 0 })
@@ -332,7 +332,7 @@ export class SmsTemplateEntity {
   remark: string | null;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: SmsTemplateStatus,
     default: SmsTemplateStatus.DRAFT,
   })

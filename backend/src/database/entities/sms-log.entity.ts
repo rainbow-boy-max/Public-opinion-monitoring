@@ -17,7 +17,7 @@ export class SmsLogEntity {
   phone: string;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['login', 'register', 'reset', 'notify', 'alert'],
   })
   scene: 'login' | 'register' | 'reset' | 'notify' | 'alert';
@@ -26,7 +26,7 @@ export class SmsLogEntity {
   templateCode: string;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['sent', 'success', 'failed'],
   })
   status: 'sent' | 'success' | 'failed';

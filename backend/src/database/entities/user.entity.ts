@@ -42,14 +42,14 @@ export class UserEntity {
 
   @Column({
     name: 'auth_status',
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: AuthStatus,
     default: AuthStatus.UNVERIFIED,
   })
   authStatus: AuthStatus;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: UserRole,
     default: UserRole.USER,
   })

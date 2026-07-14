@@ -49,7 +49,7 @@ export class WebhookEntity {
   url: string;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: WebhookFormat,
     default: WebhookFormat.CUSTOM_JSON,
   })
@@ -72,7 +72,7 @@ export class WebhookEntity {
 
   @Column({
     name: 'periodic_freq',
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: PeriodicFreq,
     nullable: true,
   })
@@ -85,7 +85,7 @@ export class WebhookEntity {
   lastPushAt: Date | null;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: WebhookStatus,
     default: WebhookStatus.ACTIVE,
   })

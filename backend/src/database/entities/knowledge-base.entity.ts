@@ -27,7 +27,7 @@ export class KnowledgeBaseEntity {
   @Column({ length: 64, nullable: true })
   domain: string | null;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'text', nullable: true })
   tags: string[] | null;
 
   @Column({ name: 'file_count', type: 'int', default: 0 })
@@ -46,7 +46,7 @@ export class KnowledgeBaseEntity {
   aiSummary: string | null;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: KnowledgeBaseStatus,
     default: KnowledgeBaseStatus.DRAFT,
   })
@@ -91,7 +91,7 @@ export class KnowledgeBaseFileEntity {
   @Column({ name: 'storage_path', length: 512 })
   storagePath: string;
 
-  @Column({ name: 'parsed_text', type: 'longtext', nullable: true })
+  @Column({ name: 'parsed_text', type: 'text', nullable: true })
   parsedText: string | null;
 
   @Column({ name: 'parsed_summary', type: 'text', nullable: true })
@@ -113,7 +113,7 @@ export class KnowledgeBaseFileEntity {
   aiScore: number | null;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: KnowledgeFileStatus,
     default: KnowledgeFileStatus.PENDING,
   })
@@ -146,19 +146,19 @@ export class KnowledgeBaseChunkEntity {
   @Column({ name: 'chunk_index', type: 'int' })
   chunkIndex: number;
 
-  @Column({ type: 'mediumtext' })
+  @Column({ type: 'text' })
   content: string;
 
   @Column({ name: 'char_count', type: 'int' })
   charCount: number;
 
-  @Column({ name: 'embedding_b64', type: 'mediumtext' })
+  @Column({ name: 'embedding_b64', type: 'text' })
   embeddingB64: string;
 
   @Column({ name: 'qa_pairs', type: 'json', nullable: true })
   qaPairs: any[] | null;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'text', nullable: true })
   metadata: any;
 
   @CreateDateColumn({ name: 'created_at' })

@@ -16,7 +16,7 @@ export class AliyunConfigEntity {
 
   @Column({
     name: 'endpoint_type',
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['common', 'beijing', 'shanghai'],
     default: 'common',
   })
@@ -24,7 +24,7 @@ export class AliyunConfigEntity {
 
   @Column({
     name: 'param_type',
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['normal', 'md5', 'sm2'],
     default: 'md5',
   })

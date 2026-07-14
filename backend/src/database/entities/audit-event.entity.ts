@@ -20,7 +20,7 @@ export class AuditEventEntity {
 
   @Column({
     name: 'actor_type',
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['admin', 'user', 'system'],
     default: 'admin',
   })

@@ -31,7 +31,7 @@ export class WebhookTaskBindingEntity {
   task: MonitorTaskEntity;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['active', 'inactive'],
     default: 'active',
   })

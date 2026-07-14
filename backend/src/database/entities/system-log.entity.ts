@@ -16,7 +16,7 @@ export class SystemLogEntity {
   operatorId: number | null;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['info', 'warn', 'error'],
     default: 'info',
   })

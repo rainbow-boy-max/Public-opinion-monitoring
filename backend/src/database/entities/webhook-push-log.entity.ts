@@ -40,7 +40,7 @@ export class WebhookPushLogEntity {
   retryCount: number;
 
   @Column({
-    type: 'enum',
+    type: 'varchar', length: 32,
     enum: ['success', 'failed', 'timeout'],
   })
   result: 'success' | 'failed' | 'timeout';
