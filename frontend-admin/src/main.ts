@@ -52,15 +52,36 @@ import {
   ElNotification,
 } from 'element-plus';
 import 'element-plus/dist/index.css';
-import 'element-plus/theme-chalk/dark/css-vars.css';
 import '@shared/styles/theme.css';
 import '@shared/styles/element-overrides.css';
 import '@shared/styles/notification.css';
 import App from './App.vue';
 import router from './router';
-import { observePaint, setPerfToken, startMark, endMark } from './utils/perf-metrics';
 
 const app = createApp(App);
+
+app.config.errorHandler = (err, _instance, info) => {
+  console.error('[admin app error]', info, err);
+  const root = document.getElementById('app');
+  if (root && !root.dataset.errorShown) {
+    root.dataset.errorShown = '1';
+    const msg =
+      (err instanceof Error ? err.stack || err.message : String(err)) + '\n\ninfo: ' + info;
+    root.innerHTML =
+      '<pre style="padding:16px;color:#f87171;white-space:pre-wrap;font-size:12px;line-height:1.4;background:#0a0e27;color:#f87171">' +
+      'App boot error:\n' +
+      msg +
+      '</pre>';
+  }
+};
+
+window.addEventListener('error', (e) => {
+  console.error('[admin window error]', e.error || e.message);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('[admin unhandledrejection]', e.reason);
+});
+
 app.use(createPinia());
 app.use(router);
 
@@ -121,20 +142,17 @@ app.config.globalProperties.$message = ElMessage;
 app.config.globalProperties.$notify = ElNotification;
 app.config.globalProperties.$msgbox = ElMessageBox;
 
-try {
-  setPerfToken(localStorage.getItem('admin_token'));
-} catch {
-  /* ignore */
-}
-
-observePaint();
-
-router.beforeEach(() => {
-  startMark('route-switch');
-});
-
-router.afterEach(() => {
-  endMark('route-switch');
-});
-
 app.mount('#app');
+
+// 性能埋点用 dynamic import + 失败保护，避免阻塞 mount
+(async () => {
+  try {
+    const m = await import('./utils/perf-metrics');
+    m.setPerfToken(localStorage.getItem('admin_token'));
+    m.observePaint();
+    router.beforeEach(() => m.startMark('route-switch'));
+    router.afterEach(() => m.endMark('route-switch'));
+  } catch (err) {
+    console.warn('[admin perf-metrics skipped]', err);
+  }
+})();
