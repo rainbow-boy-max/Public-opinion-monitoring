@@ -163,7 +163,15 @@
           v-model="editForm.apiKey"
           show-password
           placeholder="请输入 API Key，留空保持原值"
-        />
+        >
+          <template #append>
+            <el-button
+              v-if="hasApiKey"
+              :loading="testingEditKey"
+              @click="onTestEditConnection"
+            >测试连接</el-button>
+          </template>
+        </el-input>
         <div class="form-tip">
           当前已配置（掩码 {{ editForm.apiKeyMasked || '无' }}）；
           {{ editForm.apiStyle === 'anthropic' ? '走 x-api-key 头' : '走 Authorization: Bearer 头' }}
@@ -435,6 +443,31 @@ async function onFetchModels(): Promise<void> {
     availableModels.value = [];
   } finally {
     fetching.value = false;
+  }
+}
+
+async function onTestEditConnection(): Promise<void> {
+  if (!editForm.baseUrl) {
+    ElMessage.warning('请先填写 Base URL');
+    return;
+  }
+  if (!editForm.apiKey) {
+    ElMessage.warning('请先输入 API Key');
+    return;
+  }
+  testingEditKey.value = true;
+  const start = Date.now();
+  try {
+    const r: any = await http.post('/admin/llm-models/fetch-models', {
+      baseUrl: editForm.baseUrl,
+      apiKey: editForm.apiKey,
+    });
+    const ms = Date.now() - start;
+    ElMessage.success(`连接成功 (${ms}ms)，共 ${r.count} 个模型`);
+  } catch (err: any) {
+    ElMessage.error(`连接失败：${err?.message || '未知错误'}`);
+  } finally {
+    testingEditKey.value = false;
   }
 }
 
