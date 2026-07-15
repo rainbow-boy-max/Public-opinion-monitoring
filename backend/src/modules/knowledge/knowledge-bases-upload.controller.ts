@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Body,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -49,9 +50,15 @@ export class KnowledgeBasesUploadController {
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile() file: MulterFile,
     @CurrentUser('id') operatorId: number,
+    @Body('filename_utf8') filenameUtf8?: string,
   ) {
     if (!file) throw new BadRequestException('请选择文件');
-    const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+    // multer 将中文文件名存储为 latin-1 编码，前端传 filename_utf8 覆盖
+    const decodedName: string = (filenameUtf8
+      ? filenameUtf8
+      : Buffer.from(file.originalname, 'binary').toString('utf8')
+    ).replace(/[<>:"/\\|?*]/g, '_');
+    const ext = path.extname(decodedName).toLowerCase().replace('.', '');
     const allowed = ['pdf', 'docx', 'ppt', 'pptx', 'txt', 'md', 'html'];
     if (!allowed.includes(ext)) {
       throw new BadRequestException(
@@ -72,7 +79,7 @@ export class KnowledgeBasesUploadController {
     const fileType = ext === 'pptx' ? 'pptx' : ext;
     const record = this.fileRepo.create({
       kbId: kb.id,
-      filename: file.originalname,
+      filename: decodedName,
       fileType,
       fileSize: file.size,
       storagePath,

@@ -76,25 +76,33 @@
 
         <!-- Tab 2: 文件管理 -->
         <el-tab-pane label="文件管理" name="files">
-          <el-upload
-            :show-file-list="false"
-            :before-upload="beforeUpload"
-            :http-request="onUpload"
-            :data="{ kbId: kbId }"
-            accept=".pdf,.docx,.pptx,.ppt,.txt,.md,.html"
-            drag
-            class="kb-uploader"
-          >
-            <div class="upload-zone">
-              <div class="upload-icon">📤</div>
-              <div class="upload-text">点击或拖拽文件到此处上传</div>
-              <div class="upload-hint">支持 PDF / Word / PowerPoint / TXT / Markdown / HTML</div>
-              <div class="upload-hint">上传后自动执行 AI 解析 · AI 打分 · AI 摘要 · 向量化</div>
-              <div class="upload-hint">单文件最大 100MB</div>
-            </div>
-          </el-upload>
+      <el-upload
+        :show-file-list="false"
+        :before-upload="beforeUpload"
+        :http-request="onUpload"
+        :data="{ kbId: kbId }"
+        accept=".pdf,.docx,.pptx,.ppt,.txt,.md,.html"
+        drag
+        class="kb-uploader"
+      >
+        <div class="upload-zone">
+          <div class="upload-icon">📤</div>
+          <div class="upload-text">点击或拖拽文件到此处上传</div>
+          <div class="upload-hint">支持 PDF / Word / PowerPoint / TXT / Markdown / HTML</div>
+          <div class="upload-hint">上传后自动执行 AI 解析 · AI 打分 · AI 摘要 · 向量化</div>
+          <div class="upload-hint">单文件最大 100MB</div>
+        </div>
+      </el-upload>
 
-          <el-table :data="files" v-loading="loading" style="margin-top: 20px" stripe>
+      <el-progress
+        v-if="uploading"
+        :percentage="uploadProgress"
+        :status="uploadProgress === 100 ? 'success' : undefined"
+        :stroke-width="8"
+        style="margin: 12px 0"
+      />
+
+      <el-table :data="files" v-loading="loading" style="margin-top: 20px" stripe>
             <el-table-column prop="filename" label="文件名" min-width="200" show-overflow-tooltip />
             <el-table-column prop="fileType" label="类型" width="80">
               <template #default="{ row }">
@@ -103,7 +111,7 @@
             </el-table-column>
             <el-table-column prop="fileSize" label="大小" width="100">
               <template #default="{ row }">
-                {{ (row.fileSize / 1024).toFixed(1) }} KB
+                {{ formatBytes(row.fileSize) }}
               </template>
             </el-table-column>
             <el-table-column prop="chunkCount" label="分块" width="80" />
@@ -188,8 +196,8 @@
 defineOptions({ name: 'KnowledgeBaseDetailPage' });
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { MagicStick, Refresh, Search } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox, ElProgress } from 'element-plus';
+import { MagicStick, Refresh, Search, Download, EditPen } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import StatCard from '@shared/components/StatCard.vue';
@@ -208,6 +216,18 @@ const searchInput = ref('');
 const searching = ref(false);
 const searchDone = ref(false);
 const searchResults = ref<any[]>([]);
+
+const uploading = ref(false);
+const uploadProgress = ref(0);
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const val = bytes / Math.pow(k, i);
+  return val < 10 ? val.toFixed(1) + ' ' + units[i] : Math.round(val) + ' ' + units[i];
+}
 
 function statusLabel(s: string): string {
   return ({ draft: '草稿', processing: '处理中', ready: '已就绪', disabled: '已禁用' } as Record<string, string>)[s] || s;
@@ -285,16 +305,26 @@ async function onUpload(options: any): Promise<void> {
   const { file, onSuccess, onError } = options;
   const form = new FormData();
   form.append('file', file);
+  // 显式传递 UTF-8 文件名，防止后端 latin-1 截断
+  form.append('filename_utf8', file.name);
+  uploading.value = true;
+  uploadProgress.value = 0;
   try {
     const res = await http.post(`/admin/knowledge/${kbId.value}/upload`, form, {
       transformRequest: (data: any) => data,
       headers: { 'Content-Type': undefined },
+      onUploadProgress: (e: any) => {
+        if (e.total) uploadProgress.value = Math.round((e.loaded / e.total) * 100);
+      },
     });
+    await new Promise((r) => setTimeout(r, 300)); // 等进度条到 100%
     ElMessage.success(res.message || '上传成功');
     onSuccess(res);
+    uploading.value = false;
     loadFiles();
     loadKb();
   } catch (err: any) {
+    uploading.value = false;
     ElMessage.error(err?.message || '上传失败');
     onError(err);
   }
