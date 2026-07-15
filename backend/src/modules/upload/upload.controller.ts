@@ -30,7 +30,10 @@ export class UploadController {
       'video/mp4', 'video/quicktime',
       'application/pdf', 'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain', 'text/javascript', 'text/html', 'text/csv',
+      'application/json', 'application/octet-stream',
     ];
     if (!allowedTypes.includes(file.mimetype)) {
       throw new BadRequestException('不支持的文件类型');
