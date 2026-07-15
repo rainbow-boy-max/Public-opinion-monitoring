@@ -6,25 +6,45 @@ import {
   Delete,
   Body,
   Param,
+  ParseIntPipe,
   Query,
   UseGuards,
   HttpCode,
   HttpStatus,
-  ParseIntPipe,
 } from '@nestjs/common';
+import { KnowledgeBasesService } from './knowledge-bases.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { KnowledgeBasesService } from './knowledge-bases.service';
-import {
-  KnowledgeBaseStatus,
-} from '../../database/entities';
-import { IsString, IsOptional, IsArray, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsNumber, Min, Max, MinLength, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
 
 class CreateKbDto {
   @IsString()
+  @MinLength(1)
+  @MaxLength(128)
   name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  domain?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+}
+
+class UpdateKbDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
 
   @IsOptional()
   @IsString()
@@ -36,7 +56,17 @@ class CreateKbDto {
 
   @IsOptional()
   @IsArray()
+  @IsString({ each: true })
   tags?: string[];
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+}
+
+class UpdateFileContentDto {
+  @IsString()
+  content: string;
 }
 
 class UpdateKbDto {
@@ -136,6 +166,25 @@ export class KnowledgeBasesController {
       uploadedAt: f.uploadedAt,
       parsedAt: f.parsedAt,
     }));
+  }
+
+  @Get(':id/files/:fileId/content')
+  async getFileContent(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fileId', ParseIntPipe) fileId: number,
+  ) {
+    return this.service.getFileContent(id, fileId);
+  }
+
+  @Put(':id/files/:fileId/content')
+  @HttpCode(HttpStatus.OK)
+  async updateFileContent(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fileId', ParseIntPipe) fileId: number,
+    @Body() dto: UpdateFileContentDto,
+  ) {
+    await this.service.updateFileContent(id, fileId, dto.content);
+    return { ok: true };
   }
 
   @Delete(':id/files/:fileId')

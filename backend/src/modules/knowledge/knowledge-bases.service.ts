@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Like } from 'typeorm';
 import { Queue } from 'bull';
 import {
   KnowledgeBaseEntity,
@@ -134,6 +134,44 @@ export class KnowledgeBasesService {
     } catch { /* ignore */ }
     await this.chunkRepo.delete({ fileId });
     await this.fileRepo.remove(file);
+    await this.refreshKbStats(kbId);
+  }
+
+  async getFileContent(kbId: number, fileId: number): Promise<{ content: string }> {
+    const file = await this.fileRepo.findOne({ where: { id: fileId, kbId } });
+    if (!file) throw new NotFoundException('文件不存在');
+    if (file.parsedText) {
+      return { content: file.parsedText };
+    }
+    try {
+      const fs = await import('fs/promises');
+      const content = await fs.readFile(file.storagePath, 'utf-8');
+      return { content: content.slice(0, 50000) };
+    } catch {
+      return { content: '// 无法读取文件内容' };
+    }
+  }
+
+  async updateFileContent(kbId: number, fileId: number, content: string): Promise<void> {
+    const file = await this.fileRepo.findOne({ where: { id: fileId, kbId } });
+    if (!file) throw new NotFoundException('文件不存在');
+    file.parsedText = content;
+    await this.fileRepo.save(file);
+    // 更新 chunks
+    await this.chunkRepo.delete({ fileId });
+    if (content.trim()) {
+      const chunks = this.splitText(content, 1000, 200);
+      const chunkEntities = chunks.map((t, i) =>
+        this.chunkRepo.create({
+          fileId,
+          kbId,
+          chunkIndex: i,
+          content: t,
+          charCount: t.length,
+        }),
+      );
+      await this.chunkRepo.save(chunkEntities);
+    }
     await this.refreshKbStats(kbId);
   }
 

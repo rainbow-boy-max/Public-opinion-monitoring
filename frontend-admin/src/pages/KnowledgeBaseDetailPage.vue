@@ -143,13 +143,43 @@
                 </span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right">
               <template #default="{ row }">
+                <el-button size="small" @click="onPreviewFile(row)">预览</el-button>
                 <el-button size="small" type="danger" @click="onDeleteFile(row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
+
+        <!-- 文件预览/编辑 dialog -->
+        <el-dialog
+          v-model="previewVisible"
+          :title="previewFile?.filename || '文件预览'"
+          width="80%"
+          top="5vh"
+        >
+          <div style="display: flex; gap: 12px; margin-bottom: 12px">
+            <el-button
+              v-if="previewFile?.status === 'ready'"
+              :loading="savingContent"
+              type="primary"
+              @click="onSavePreview"
+            >保存修改</el-button>
+            <el-button @click="onRefreshPreview">刷新</el-button>
+            <el-tag v-if="previewFile" style="margin-left: auto">
+              {{ formatBytes(previewFile.fileSize) }}
+            </el-tag>
+          </div>
+          <el-input
+            v-if="previewFile"
+            v-model="previewContent"
+            type="textarea"
+            :rows="20"
+            style="font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace; font-size: 13px;"
+            placeholder="加载中..."
+          />
+        </el-dialog>
 
         <!-- Tab 3: AI 检索测试 -->
         <el-tab-pane label="AI 检索测试" name="search">
@@ -219,6 +249,10 @@ const searchResults = ref<any[]>([]);
 
 const uploading = ref(false);
 const uploadProgress = ref(0);
+const previewVisible = ref(false);
+const previewFile = ref<any>(null);
+const previewContent = ref('');
+const savingContent = ref(false);
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -343,6 +377,43 @@ async function onDeleteFile(row: any): Promise<void> {
     loadKb();
   } catch (err: any) {
     ElMessage.error(err?.message || '删除失败');
+  }
+}
+
+async function onPreviewFile(row: any): Promise<void> {
+  previewFile.value = row;
+  previewContent.value = '';
+  previewVisible.value = true;
+  try {
+    const res = await http.get(`/admin/knowledge/${kbId.value}/files/${row.id}/content`);
+    previewContent.value = res.content || '';
+  } catch (err: any) {
+    previewContent.value = `// 加载失败: ${err?.message || '未知错误'}`;
+  }
+}
+
+async function onSavePreview(): Promise<void> {
+  if (!previewFile.value) return;
+  savingContent.value = true;
+  try {
+    await http.put(`/admin/knowledge/${kbId.value}/files/${previewFile.value.id}/content`, {
+      content: previewContent.value,
+    });
+    ElMessage.success('已保存');
+  } catch (err: any) {
+    ElMessage.error(err?.message || '保存失败');
+  } finally {
+    savingContent.value = false;
+  }
+}
+
+async function onRefreshPreview(): Promise<void> {
+  if (!previewFile.value) return;
+  try {
+    const res = await http.get(`/admin/knowledge/${kbId.value}/files/${previewFile.value.id}/content`);
+    previewContent.value = res.content || '';
+  } catch (err: any) {
+    ElMessage.error(err?.message || '刷新失败');
   }
 }
 
