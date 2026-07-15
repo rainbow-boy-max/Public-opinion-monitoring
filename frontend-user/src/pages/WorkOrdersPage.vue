@@ -69,6 +69,14 @@
           <el-descriptions-item label="描述" :span="2"><pre class="desc-text">{{ detail.description }}</pre></el-descriptions-item>
           <el-descriptions-item v-if="detail.analysis" label="分析" :span="2"><pre class="desc-text">{{ detail.analysis }}</pre></el-descriptions-item>
           <el-descriptions-item v-if="detail.resolution" label="处置" :span="2"><pre class="desc-text">{{ detail.resolution }}</pre></el-descriptions-item>
+          <el-descriptions-item v-if="detail.attachments" label="附件" :span="2">
+            <div class="attachment-list">
+              <div v-for="(att, i) in parsedAttachments" :key="i" class="attachment-item">
+                <a :href="att.url" target="_blank" class="attachment-link">{{ att.name }}</a>
+                <span class="attachment-size">({{ formatSize(att.size) }})</span>
+              </div>
+            </div>
+          </el-descriptions-item>
           <el-descriptions-item v-if="detail.resolvedAt" label="解决时间">{{ formatDate(detail.resolvedAt) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDate(detail.createdAt) }}</el-descriptions-item>
           <el-descriptions-item v-if="detail.rating" label="评分">
@@ -127,6 +135,24 @@
             <el-option label="严重" value="critical" />
           </el-select>
         </el-form-item>
+        <el-form-item label="附件">
+          <el-upload
+            ref="uploadRef"
+            :action="`${baseURL}/upload`"
+            :headers="uploadHeaders"
+            :on-success="onUploadSuccess"
+            :on-remove="onUploadRemove"
+            :file-list="uploadFileList"
+            :limit="5"
+            :accept="'.jpg,.png,.gif,.webp,.mp4,.pdf,.doc,.docx,.txt'"
+            list-type="text"
+          >
+            <el-button size="small" type="primary">选择文件</el-button>
+            <template #tip>
+              <div class="upload-tip">支持 jpg/png/gif/mp4/pdf/doc/txt，最多 5 个文件</div>
+            </template>
+          </el-upload>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreateDialog = false">取消</el-button>
@@ -149,7 +175,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 
@@ -166,6 +192,7 @@ interface WorkOrder {
   createdAt: string;
   rating: number | null;
   feedback: string | null;
+  attachments: string | null;
   comments?: WorkOrderComment[];
 }
 
@@ -203,6 +230,37 @@ const createForm = reactive({
   description: '',
   priority: 'medium',
 });
+
+const uploadRef = ref<any>(null);
+const uploadFileList = ref<any[]>([]);
+const uploadedAttachments = ref<{ url: string; name: string; size: number }[]>([]);
+const baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+const uploadHeaders = ref({ Authorization: `Bearer ${localStorage.getItem('user_token') || ''}` });
+
+function onUploadSuccess(response: any, file: any, fileList: any[]) {
+  if (response && response.url) {
+    uploadedAttachments.value.push({ url: response.url, name: response.name, size: response.size });
+  }
+}
+
+function onUploadRemove(file: any) {
+  const idx = uploadedAttachments.value.findIndex(a => a.name === file.name);
+  if (idx !== -1) uploadedAttachments.value.splice(idx, 1);
+}
+
+const parsedAttachments = computed(() => {
+  if (!detail.value?.attachments) return [];
+  try {
+    return JSON.parse(detail.value.attachments);
+  } catch { return []; }
+});
+
+function formatSize(bytes: number): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
 
 const showRatingDialog = ref(false);
 const ratingValue = ref(0);
@@ -294,11 +352,14 @@ async function onCreate(): Promise<void> {
       title: createForm.title,
       description: createForm.description,
       priority: createForm.priority,
+      attachments: uploadedAttachments.value.length > 0 ? JSON.stringify(uploadedAttachments.value) : undefined,
     });
     showCreateDialog.value = false;
     createForm.title = '';
     createForm.description = '';
     createForm.priority = 'medium';
+    uploadFileList.value = [];
+    uploadedAttachments.value = [];
     await loadList();
   } catch (err) {
     console.error(err);
@@ -427,5 +488,37 @@ onMounted(() => {
 .text-muted {
   color: var(--text-tertiary);
   font-size: 13px;
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attachment-link {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.attachment-link:hover {
+  text-decoration: underline;
+}
+
+.attachment-size {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 </style>

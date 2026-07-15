@@ -80,6 +80,10 @@ const router = createRouter({
           component: () => import('@/pages/TtsConfigPage.vue'),
         },
         {
+          path: 'config/hot-topics',
+          component: () => import('@/pages/HotTopicsConfigPage.vue'),
+        },
+        {
           path: 'system-logs',
           component: () => import('@/pages/SystemLogsPage.vue'),
         },

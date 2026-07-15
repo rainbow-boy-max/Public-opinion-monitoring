@@ -41,6 +41,7 @@ import { WorkOrdersModule } from './modules/work-orders/work-order.module';
 import { BrandReputationModule } from './modules/brand-reputation/brand-reputation.module';
 import { KnowledgeGraphModule } from './modules/knowledge-graph/knowledge-graph.module';
 import { TenantModule } from './modules/tenant/tenant.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
     BrandReputationModule,
     KnowledgeGraphModule,
     TenantModule,
+    UploadModule,
   ],
   providers: [
     {

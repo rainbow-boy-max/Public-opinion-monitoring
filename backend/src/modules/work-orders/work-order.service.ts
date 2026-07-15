@@ -35,6 +35,7 @@ export class WorkOrderService {
       priority?: WorkOrderPriority;
       assignedTo?: number;
       dueAt?: string;
+      attachments?: string;
     },
   ): Promise<WorkOrderEntity> {
     const order = this.orderRepo.create({
@@ -46,6 +47,7 @@ export class WorkOrderService {
       priority: dto.priority || WorkOrderPriority.MEDIUM,
       assignedTo: dto.assignedTo || null,
       dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
+      attachments: dto.attachments || null,
       status: WorkOrderStatus.PENDING,
     });
     return this.orderRepo.save(order);

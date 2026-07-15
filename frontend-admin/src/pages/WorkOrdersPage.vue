@@ -104,6 +104,14 @@
           <el-descriptions-item v-if="detail.analysis" label="分析" :span="2"><pre class="desc-text">{{ detail.analysis }}</pre></el-descriptions-item>
           <el-descriptions-item v-if="detail.resolution" label="处置方式">{{ detail.resolutionType || '—' }}</el-descriptions-item>
           <el-descriptions-item v-if="detail.resolution" label="处置内容" :span="2"><pre class="desc-text">{{ detail.resolution }}</pre></el-descriptions-item>
+          <el-descriptions-item v-if="detail.attachments" label="附件" :span="2">
+            <div class="attachment-list">
+              <div v-for="(att, i) in parsedAttachments" :key="i" class="attachment-item">
+                <a :href="att.url" target="_blank" class="attachment-link">{{ att.name }}</a>
+                <span class="attachment-size">({{ formatSize(att.size) }})</span>
+              </div>
+            </div>
+          </el-descriptions-item>
           <el-descriptions-item v-if="detail.resolvedAt" label="解决时间">{{ formatDate(detail.resolvedAt) }}</el-descriptions-item>
           <el-descriptions-item v-if="detail.rating" label="用户评分" :span="2">
             <el-rate :model-value="detail.rating" disabled size="small" show-score />
@@ -123,6 +131,7 @@
           <el-button type="primary" @click="onChangeStatus" :loading="statusLoading">执行</el-button>
           <el-button v-if="detail.status === 'pending' || !detail.assignedTo" @click="showAssign = true">指派</el-button>
           <el-button type="success" v-if="detail.status === 'in_progress'" @click="onResolveDirect" :loading="resolveLoading">完结工单</el-button>
+          <el-button type="warning" v-if="detail.status === 'closed'" @click="onSendRatingInvite" :loading="ratingInviteLoading">发送评分邀请</el-button>
         </div>
         <div v-if="statusAction === 'resolved'" class="resolution-fields">
           <el-select v-model="resolutionType" placeholder="处置类型" style="width:150px">
@@ -222,7 +231,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { Plus } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
@@ -247,6 +256,7 @@ interface WorkOrder {
   updatedAt: string;
   rating: number | null;
   feedback: string | null;
+  attachments: string | null;
   comments?: WorkOrderComment[];
 }
 
@@ -291,6 +301,37 @@ const showAdminReply = ref(false);
 const adminReplyText = ref('');
 const adminReplyLoading = ref(false);
 const resolveLoading = ref(false);
+const ratingInviteLoading = ref(false);
+
+const parsedAttachments = computed(() => {
+  if (!detail.value?.attachments) return [];
+  try {
+    return JSON.parse(detail.value.attachments);
+  } catch { return []; }
+});
+
+function formatSize(bytes: number): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function onSendRatingInvite(): Promise<void> {
+  if (!detail.value) return;
+  ratingInviteLoading.value = true;
+  try {
+    await http.post(`/work-orders/${detail.value.id}/comment`, {
+      content: `系统通知：已发送评分邀请，请用户评价本次工单处理服务。`,
+    });
+    const res = await http.get(`/work-orders/${detail.value.id}`);
+    detail.value = res.data;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    ratingInviteLoading.value = false;
+  }
+}
 
 const createVisible = ref(false);
 const createLoading = ref(false);
@@ -627,5 +668,31 @@ onMounted(() => {
 .text-muted {
   color: var(--text-tertiary);
   font-size: 13px;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attachment-link {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.attachment-link:hover {
+  text-decoration: underline;
+}
+
+.attachment-size {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 </style>

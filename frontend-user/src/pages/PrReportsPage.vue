@@ -9,8 +9,13 @@
         <el-tab-pane label="单事件报告" name="single">
           <div v-if="!loading && reports.length === 0" class="empty-state">
             <el-empty description="暂无公关报告">
-              <el-button type="primary" @click="loadMockReport">加载示例报告</el-button>
-              <el-button @click="$router.push('/realtime')">前往实时大屏</el-button>
+              <template #image>
+                <div class="empty-state-image">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                </div>
+              </template>
+              <el-button type="primary" size="large" @click="loadMockReport" class="demo-btn">加载示例报告</el-button>
+              <el-button @click="$router.push('/realtime')" style="margin-top: 8px">前往实时大屏</el-button>
             </el-empty>
           </div>
 
@@ -414,13 +419,34 @@ async function loadReports(): Promise<void> {
 
 function loadMockReport() {
   reports.value = [{
-    id: 0,
+    id: 1,
     title: '示例：品牌危机公关分析报告',
     eventId: null,
     agentId: null,
+    status: 'completed',
+    reportType: 'single',
+    createdAt: new Date().toISOString(),
+    modelUsed: 'DeepSeek-V3',
+    tokensUsed: 2856,
+    latencyMs: 3420,
     analysis: '## 一、舆情深度分析\n\n事件性质：产品质量负面舆情，涉及食品安全问题。\n当前传播态势：事件已在微博、微信、抖音等多平台传播，微博话题阅读量突破 2 亿，讨论量 15 万+。\n关键情绪词：愤怒、失望、担忧、质疑\n可能蔓延方向：可能从产品问题蔓延至品牌信任危机',
     strategy: '## 二、潜在风险评估\n\n商业风险：高 - 已有电商平台下架相关产品\n品牌风险：中高 - 品牌口碑指数下降 30%\n\n## 三、公关应对方案\n\n### 短期（24小时内）行动：\n1. 立即发布官方声明，表明态度\n2. 成立专项调查组\n3. 启动消费者热线\n\n### 公开声明话术：\n「我们高度重视消费者反馈，已第一时间成立专项工作组进行全面核查。如有任何问题，我们将依法承担相应责任。」',
   }];
+  reports.value.push({
+    id: 2,
+    title: '示例：行业趋势周报',
+    eventId: null,
+    agentId: null,
+    status: 'completed',
+    reportType: 'periodic',
+    periodicFreq: 'daily',
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    modelUsed: 'GPT-4o',
+    tokensUsed: 4120,
+    latencyMs: 5800,
+    analysis: '## 本周舆情综述\n\n本周行业内主要舆情集中在 AI 监管政策、新能源市场竞争格局变化等方面。\n\n### 关键发现\n- AI 相关讨论占比 38%，环比上升 12%\n- 新能源领域关注度持续走高\n- 消费者权益保护话题热度不减',
+    strategy: '## 应对建议\n\n建议持续关注 AI 监管政策走向，提前做好合规准备。',
+  });
 }
 
 async function loadAgents(): Promise<void> {
@@ -779,6 +805,15 @@ void statusType;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.empty-state-image {
+  opacity: 0.3;
+  margin-bottom: 8px;
+}
+
+.demo-btn {
+  margin-bottom: 8px;
 }
 
 .report-list {

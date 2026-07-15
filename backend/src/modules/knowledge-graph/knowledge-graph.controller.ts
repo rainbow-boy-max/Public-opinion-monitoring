@@ -8,7 +8,10 @@ import {
   HttpStatus,
   Query,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { KnowledgeGraphService } from './knowledge-graph.service';
+import { LlmModelEntity } from '../../database/entities';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../../common/decorators/current-user.decorator';
@@ -56,7 +59,31 @@ class FromTextDto {
 @Controller('knowledge-graph')
 @UseGuards(JwtAuthGuard)
 export class KnowledgeGraphController {
-  constructor(private readonly kgService: KnowledgeGraphService) {}
+  constructor(
+    private readonly kgService: KnowledgeGraphService,
+    @InjectRepository(LlmModelEntity)
+    private llmModelRepo: Repository<LlmModelEntity>,
+  ) {}
+
+  @Get('active-model')
+  async activeModel() {
+    const models = await this.llmModelRepo.find({
+      where: { isEnabled: 1 } as any,
+      order: { sortOrder: 'ASC' as any },
+      take: 1,
+    });
+    if (models.length === 0) {
+      return { name: null, message: '未配置 LLM 模型' };
+    }
+    const m = models[0];
+    return {
+      name: m.displayName || m.model,
+      model: m.model,
+      provider: m.provider,
+      apiStyle: m.apiStyle,
+      isEnabled: true,
+    };
+  }
 
   @Post('extract')
   @HttpCode(HttpStatus.OK)

@@ -73,6 +73,9 @@ export class WorkOrderEntity {
   @Column({ type: 'text', nullable: true })
   feedback: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  attachments: string | null;
+
   @Column({ name: 'resolved_at', type: 'datetime', nullable: true })
   resolvedAt: Date | null;
 

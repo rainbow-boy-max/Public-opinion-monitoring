@@ -47,6 +47,10 @@ class CreateWorkOrderDto {
   @IsOptional()
   @IsString()
   dueAt?: string;
+
+  @IsOptional()
+  @IsString()
+  attachments?: string;
 }
 
 class UpdateWorkOrderDto {
@@ -153,6 +157,7 @@ export class WorkOrderController {
       priority: dto.priority,
       assignedTo: dto.assignedTo,
       dueAt: dto.dueAt,
+      attachments: dto.attachments,
     });
     return { success: true, data: order };
   }

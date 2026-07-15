@@ -179,9 +179,14 @@ const menuItems: MenuItem[] = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>',
   },
   {
-    path: '/sms-templates',
-    label: '短信模板',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+    path: '/hot-topics',
+    label: '热点话题',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  },
+  {
+    path: '/config/hot-topics',
+    label: '热点配置',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>',
   },
   {
     path: '/config/aliyun-verify',
@@ -248,6 +253,7 @@ const META: Record<string, { title: string; subtitle: string }> = {
   '/custom-dashboard': { title: '自定义面板', subtitle: '可拖拽组件式仪表盘' },
   '/comparison': { title: '多维对比分析', subtitle: '多关键词组对比分析' },
   '/hot-topics': { title: '热点话题', subtitle: '上升热点发现与聚合管理' },
+  '/config/hot-topics': { title: '热点话题配置', subtitle: '数据源选择与刷新策略' },
   '/short-video': { title: '短视频监控', subtitle: '多平台短视频数据监控与分析' },
   '/competitor-tracking': { title: '竞品追踪', subtitle: '竞品动态对比分析' },
   '/work-orders': { title: '工单管理', subtitle: '人工分析与处置工作流' },
@@ -311,6 +317,7 @@ const keepAliveIncludes = [
   'UserManagementPage',
   'SmsTemplatesPage',
   'HotTopicsPage',
+  'HotTopicsConfigPage',
   'AliyunSmsConfigPage',
   'AliyunVerifyConfigPage',
   'CompetitorTrackingPage',

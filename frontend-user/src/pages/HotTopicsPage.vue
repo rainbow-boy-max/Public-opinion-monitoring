@@ -4,7 +4,20 @@
 
     <el-tabs v-model="activeTab" class="hot-topics-tabs">
       <el-tab-pane label="平台热点" name="platform">
-        <div class="platform-hot-topics">
+        <div class="platform-status-bar">
+          <span v-if="platformUpdatedAt" class="platform-updated-at">
+            <el-icon><Clock /></el-icon> 最后更新: {{ formatPlatformTime(platformUpdatedAt) }}
+          </span>
+          <span class="platform-refresh-indicator" :class="{ 'is-refreshing': platformRefreshCountdown > 0 }">
+            <el-icon><Refresh /></el-icon> {{ platformRefreshCountdown }}s 后自动刷新
+          </span>
+          <el-tag v-if="platformDegraded" type="warning" size="small" effect="dark">降级到模拟数据</el-tag>
+          <el-button size="small" :icon="Refresh" :loading="platformLoading" @click="fetchPlatformTopics" />
+        </div>
+        <div v-if="!platformLoading && Object.keys(platformTopics).length === 0" class="platform-empty">
+          <el-empty description="暂无平台热点数据" />
+        </div>
+        <div v-loading="platformLoading" class="platform-hot-topics">
           <div v-for="(platformData, key) in platformTopics" :key="key" class="platform-section glass-card">
             <div class="platform-section__header">
               <PlatformTag :platform="key as string" :label="platformData.name" />
@@ -166,7 +179,7 @@ import PageHeader from '@shared/components/PageHeader.vue';
 import GlassCard from '@shared/components/GlassCard.vue';
 import PlatformTag from '@shared/components/PlatformTag.vue';
 import SentimentBadge from '@shared/components/SentimentBadge.vue';
-import { Refresh } from '@element-plus/icons-vue';
+import { Refresh, Clock } from '@element-plus/icons-vue';
 import EmptyStateGuide from '@/components/EmptyStateGuide.vue';
 
 interface Article {
@@ -201,6 +214,9 @@ const expandedId = ref<number | null>(null);
 const activeTab = ref('platform');
 const platformTopics = ref<Record<string, { name: string; topics: any[] }>>({});
 const platformLoading = ref(false);
+const platformUpdatedAt = ref('');
+const platformRefreshCountdown = ref(60);
+const platformDegraded = ref(false);
 const router = useRouter();
 const sparkW = 80;
 const sparkH = 28;
@@ -235,6 +251,11 @@ function formatHot(v: number): string {
 function formatTime(s?: string): string {
   if (!s) return '';
   return new Date(s).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatPlatformTime(s?: string): string {
+  if (!s) return '';
+  return new Date(s).toLocaleString('zh-CN', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 const trendChartRefs = ref<HTMLElement[]>([]);
@@ -357,19 +378,23 @@ function buildMockTopics(): HotTopic[] {
 
 async function fetchPlatformTopics(): Promise<void> {
   platformLoading.value = true;
+  platformDegraded.value = false;
   try {
     const data = await http.get('/hot-topics/platform');
     platformTopics.value = data.platforms || {};
+    platformUpdatedAt.value = data.updatedAt || '';
+    platformDegraded.value = false;
   } catch {
-    // Fallback to mock data on error
     platformTopics.value = buildMockPlatformTopics();
+    platformUpdatedAt.value = new Date().toISOString();
+    platformDegraded.value = true;
   } finally {
     platformLoading.value = false;
+    platformRefreshCountdown.value = 60;
   }
 }
 
 function buildMockPlatformTopics(): Record<string, { name: string; topics: any[] }> {
-  const now = Date.now();
   return {
     weibo: { name: '微博热搜', topics: [
       { rank: 1, title: '官方回应网传医保缴费年限延长', hot: 8520000, url: '#', category: '社会' },
@@ -378,7 +403,7 @@ function buildMockPlatformTopics(): Record<string, { name: string; topics: any[]
       { rank: 4, title: '全国多个城市出现雾霾天气', hot: 6950000, url: '#', category: '社会' },
       { rank: 5, title: '2026年高考报名人数再创新高', hot: 6580000, url: '#', category: '教育' },
     ]},
-    douyin: { name: '抖音热榜', topics: [
+    douyin: { name: '抖音热点', topics: [
       { rank: 1, title: '挑战全网最丝滑转身', hot: 9250000, url: '#' },
       { rank: 2, title: '街头采访：你月薪多少', hot: 8720000, url: '#' },
       { rank: 3, title: '美食探店本期打卡重庆', hot: 8350000, url: '#' },
@@ -399,12 +424,40 @@ function buildMockPlatformTopics(): Record<string, { name: string; topics: any[]
       { rank: 4, title: '30岁转行来得及吗？真实经历分享', hot: 9850000, url: '#', category: '职场' },
       { rank: 5, title: '《三体》动画版口碑两极分化', hot: 9200000, url: '#', category: '文化' },
     ]},
-    xiaohongshu: { name: '小红书热门', topics: [
-      { rank: 1, title: '冬季护肤全攻略干皮必看', hot: 6500000, url: '#', category: '美妆' },
-      { rank: 2, title: '5平米小卧室改造前后对比', hot: 6200000, url: '#', category: '家居' },
-      { rank: 3, title: '减脂餐一周不重样食谱', hot: 5880000, url: '#', category: '美食' },
-      { rank: 4, title: '冬季氛围感穿搭合集', hot: 5550000, url: '#', category: '穿搭' },
-      { rank: 5, title: '周末Citywalk路线推荐', hot: 5220000, url: '#', category: '旅行' },
+    bili: { name: 'B站热门', topics: [
+      { rank: 1, title: '2026年B站百大UP主颁奖典礼', hot: 9200000, url: '#', category: '娱乐' },
+      { rank: 2, title: '硬核科普：芯片是如何制造的', hot: 8800000, url: '#', category: '科技' },
+      { rank: 3, title: '全站最详细的AI绘画教程', hot: 8500000, url: '#', category: '科技' },
+      { rank: 4, title: 'UP主挑战24小时不碰手机', hot: 8200000, url: '#', category: '生活' },
+      { rank: 5, title: '2026年度最佳动画番剧推荐', hot: 7900000, url: '#', category: '动漫' },
+    ]},
+    toutiao: { name: '今日头条', topics: [
+      { rank: 1, title: '专家解读2026年经济走势', hot: 9100000, url: '#', category: '财经' },
+      { rank: 2, title: '国际局势最新动态分析', hot: 8700000, url: '#', category: '时政' },
+      { rank: 3, title: '多地出台楼市新政', hot: 8400000, url: '#', category: '房产' },
+      { rank: 4, title: '科技巨头发布新一代芯片', hot: 8100000, url: '#', category: '科技' },
+      { rank: 5, title: '2026年就业形势分析报告', hot: 7800000, url: '#', category: '职场' },
+    ]},
+    hupu: { name: '虎扑热榜', topics: [
+      { rank: 1, title: 'CBA总决赛精彩回顾', hot: 8800000, url: '#', category: '体育' },
+      { rank: 2, title: 'NBA交易市场最新动态', hot: 8500000, url: '#', category: '体育' },
+      { rank: 3, title: '欧冠淘汰赛对阵出炉', hot: 8200000, url: '#', category: '体育' },
+      { rank: 4, title: '国足最新世界排名公布', hot: 7900000, url: '#', category: '体育' },
+      { rank: 5, title: '电竞LPL春季赛战况', hot: 7600000, url: '#', category: '电竞' },
+    ]},
+    '36kr': { name: '36氪热榜', topics: [
+      { rank: 1, title: '2026年创投圈十大趋势预测', hot: 7200000, url: '#', category: '创投' },
+      { rank: 2, title: 'AI大模型创业公司融资盘点', hot: 6900000, url: '#', category: '科技' },
+      { rank: 3, title: '出海企业面临的挑战与机遇', hot: 6600000, url: '#', category: '商业' },
+      { rank: 4, title: '新能源赛道估值重构', hot: 6300000, url: '#', category: '财经' },
+      { rank: 5, title: 'SaaS行业年度报告发布', hot: 6000000, url: '#', category: '科技' },
+    ]},
+    github: { name: 'GitHub', topics: [
+      { rank: 1, title: 'torvalds/linux: Linux kernel', hot: 8500, url: '#', category: '系统' },
+      { rank: 2, title: 'microsoft/vscode: Visual Studio Code', hot: 8200, url: '#', category: '工具' },
+      { rank: 3, title: 'facebook/react: A declarative UI library', hot: 7900, url: '#', category: '前端' },
+      { rank: 4, title: 'pallets/flask: The Python micro framework', hot: 7600, url: '#', category: 'Python' },
+      { rank: 5, title: 'rust-lang/rust: Empowering everyone', hot: 7300, url: '#', category: '语言' },
     ]},
   };
 }
@@ -505,6 +558,15 @@ function renderDetailCharts(id: number): void {
 onMounted(() => {
   fetchPlatformTopics();
   fetchTopics();
+  platformRefreshCountdown.value = 60;
+  const platformTimer = window.setInterval(() => {
+    if (platformRefreshCountdown.value <= 1) {
+      fetchPlatformTopics();
+    } else {
+      platformRefreshCountdown.value--;
+    }
+  }, 1000);
+  refreshTimer = platformTimer;
 });
 
 onUnmounted(() => {
@@ -792,6 +854,42 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 20px;
+}
+
+.platform-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--glass-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+}
+
+.platform-updated-at {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.platform-refresh-indicator {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.platform-refresh-indicator.is-refreshing {
+  color: var(--color-primary-light);
+}
+
+.platform-empty {
+  padding: 60px 0;
 }
 
 .platform-section {

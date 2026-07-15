@@ -3,6 +3,10 @@
     <PageHeader title="行业知识图谱" subtitle="提取实体与关系，可视化舆情知识网络">
       <template #actions>
         <div class="kg-controls">
+          <el-tag v-if="activeModel" type="success" size="small" effect="dark">
+            🧠 {{ activeModel.name }} ({{ activeModel.provider }})
+          </el-tag>
+          <el-tag v-else type="info" size="small">🧠 未配置 LLM</el-tag>
           <el-select v-model="timeRange" size="small" style="width: 100px">
             <el-option label="24小时" :value="24" />
             <el-option label="7天" :value="168" />
@@ -140,6 +144,7 @@ const graphData = ref<KnowledgeGraph | null>(null);
 const stats = ref<GraphStats | null>(null);
 const timeRange = ref(168);
 const searchQuery = ref('');
+const activeModel = ref<{ name: string; provider: string } | null>(null);
 
 let chartInstance: echarts.ECharts | null = null;
 let pieInstance: echarts.ECharts | null = null;
@@ -160,6 +165,15 @@ const connectedNodes = computed(() => {
   }
   return result;
 });
+
+async function fetchActiveModel(): Promise<void> {
+  try {
+    const data = await http.get('/knowledge-graph/active-model');
+    activeModel.value = data.name ? data : null;
+  } catch {
+    activeModel.value = null;
+  }
+}
 
 async function extractGraph(): Promise<void> {
   loading.value = true;
@@ -505,6 +519,7 @@ function renderPieChart(): void {
 
 onMounted(() => {
   extractGraph();
+  fetchActiveModel();
 });
 
 onUnmounted(() => {
