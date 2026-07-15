@@ -2,7 +2,7 @@
   <div class="brand-reputation-page">
     <GlassCard title="品牌声誉管理" subtitle="品牌声量 / NPS 趋势 / 竞品排名">
       <template #extra>
-        <el-button :loading="loading" type="primary" icon="DataAnalysis" @click="analyze">分析</el-button>
+        <el-button :loading="loading" type="primary" icon="TrendCharts" @click="analyze">分析</el-button>
         <el-button v-if="hasData" icon="Download" @click="exportJson">导出 JSON</el-button>
       </template>
       <div class="config-bar">

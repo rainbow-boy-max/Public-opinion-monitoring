@@ -7,6 +7,8 @@
           <el-option v-for="g in groups" :key="g.id" :label="g.name" :value="g.id" />
         </el-select>
         <el-button type="primary" :icon="Plus" @click="openCreateGroup">新建竞品组</el-button>
+        <el-button v-if="selectedGroup" :icon="Edit" @click="openEditGroup(selectedGroup)">编辑</el-button>
+        <el-button v-if="selectedGroup" type="danger" :icon="Delete" @click="deleteGroup(selectedGroup)">删除</el-button>
       </div>
       <div class="competitor-page__time">
         <el-radio-group v-model="timeRange" size="small" @change="loadComparison">
@@ -95,6 +97,9 @@
         <el-form-item label="竞品列表">
           <div v-for="(c, idx) in groupForm.competitors" :key="idx" class="competitor-form-row">
             <el-input v-model="c.name" placeholder="竞品名称" style="width:140px" />
+            <el-select v-model="c.keywords" multiple filterable allow-create default-first-option placeholder="关键词（回车添加）" style="width:240px" collapse-tags>
+              <el-option v-for="(kw, ki) in c.keywords" :key="ki" :label="kw" :value="kw" />
+            </el-select>
             <el-select v-model="c.platforms" multiple placeholder="平台" style="width:160px" collapse-tags>
               <el-option label="微博" value="weibo" />
               <el-option label="微信" value="weixin" />
@@ -122,8 +127,8 @@
 import { ref, computed, onMounted, nextTick } from 'vue';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
-import { Plus, Delete } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { Plus, Delete, Edit } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import GlassCard from '@shared/components/GlassCard.vue';
 
 defineOptions({ name: 'CompetitorTrackingPage' });
@@ -171,8 +176,9 @@ const groups = ref<CompetitorGroup[]>([]);
 const comparisonData = ref<ComparisonResponse>({ competitors: [], keywords: [], hourlyTrend: [] });
 const groupDialogVisible = ref(false);
 const editingGroup = ref(false);
+const editingGroupId = ref<number | null>(null);
 const savingGroup = ref(false);
-const groupForm = ref<{ name: string; competitors: { name: string; platforms: string[] }[] }>({
+const groupForm = ref<{ name: string; competitors: { name: string; keywords: string[]; platforms: string[] }[] }>({
   name: '',
   competitors: [],
 });
@@ -188,6 +194,8 @@ let hourlyTrendChart: echarts.ECharts | null = null;
 
 const hasData = computed(() => comparisonData.value.competitors.length > 0);
 const demoAvailable = ref(true);
+
+const selectedGroup = computed(() => groups.value.find(g => g.id === selectedGroupId.value) || null);
 
 const maxShareOfVoice = computed(() => {
   if (!comparisonData.value.competitors.length) return 0;
@@ -208,7 +216,7 @@ const keywordRows = computed(() => {
 });
 
 function addCompetitor() {
-  groupForm.value.competitors.push({ name: '', platforms: [] });
+  groupForm.value.competitors.push({ name: '', keywords: [], platforms: [] });
 }
 
 function removeCompetitor(idx: number) {
@@ -217,8 +225,51 @@ function removeCompetitor(idx: number) {
 
 function openCreateGroup() {
   editingGroup.value = false;
-  groupForm.value = { name: '', competitors: [{ name: '', platforms: [] }] };
+  editingGroupId.value = null;
+  groupForm.value = { name: '', competitors: [{ name: '', keywords: [], platforms: [] }] };
   groupDialogVisible.value = true;
+}
+
+function openEditGroup(group: CompetitorGroup) {
+  editingGroup.value = true;
+  editingGroupId.value = group.id;
+  let competitors: { name: string; keywords: string[]; platforms: string[] }[] = [];
+  try {
+    const parsed = typeof group.competitors === 'string' ? JSON.parse(group.competitors) : group.competitors;
+    competitors = (parsed || []).map((c: any) => ({
+      name: c.name || '',
+      keywords: Array.isArray(c.keywords) ? c.keywords : [],
+      platforms: Array.isArray(c.platforms) ? c.platforms : [],
+    }));
+  } catch {
+    competitors = [];
+  }
+  if (competitors.length === 0) competitors = [{ name: '', keywords: [], platforms: [] }];
+  groupForm.value = { name: group.name, competitors };
+  groupDialogVisible.value = true;
+}
+
+async function deleteGroup(group: CompetitorGroup) {
+  try {
+    await ElMessageBox.confirm(`确定删除竞品组 "${group.name}"？此操作不可撤销`, '删除确认', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    });
+  } catch {
+    return;
+  }
+  try {
+    await http.delete(`/competitor/groups/${group.id}`);
+    ElMessage.success('删除成功');
+    if (selectedGroupId.value === group.id) {
+      selectedGroupId.value = null;
+      comparisonData.value = { competitors: [], keywords: [], hourlyTrend: [] };
+    }
+    await loadGroups();
+  } catch {
+    ElMessage.error('删除失败');
+  }
 }
 
 function sentimentColor(score: number): string {
@@ -271,12 +322,17 @@ async function saveGroup() {
   }
   savingGroup.value = true;
   try {
-    await http.post('/competitor/groups', groupForm.value);
-    ElMessage.success('竞品组创建成功');
+    if (editingGroup.value && editingGroupId.value) {
+      await http.put(`/competitor/groups/${editingGroupId.value}`, groupForm.value);
+      ElMessage.success('竞品组更新成功');
+    } else {
+      await http.post('/competitor/groups', groupForm.value);
+      ElMessage.success('竞品组创建成功');
+    }
     groupDialogVisible.value = false;
     await loadGroups();
-  } catch {
-    ElMessage.error('创建失败');
+  } catch (err: any) {
+    ElMessage.error(err?.message || '保存失败');
   } finally {
     savingGroup.value = false;
   }

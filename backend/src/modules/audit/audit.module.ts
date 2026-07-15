@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -19,7 +20,14 @@ import { AuditInterceptor } from './audit.interceptor';
     }),
   ],
   controllers: [AuditController],
-  providers: [AuditService, AuditInterceptor],
+  providers: [
+    AuditService,
+    AuditInterceptor,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
+  ],
   exports: [AuditService, AuditInterceptor],
 })
 export class AuditModule {}

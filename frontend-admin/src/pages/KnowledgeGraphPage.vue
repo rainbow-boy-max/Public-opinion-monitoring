@@ -175,17 +175,17 @@ async function extractGraph(): Promise<void> {
       renderGraph();
     } else {
       ElMessage.warning('暂无数据，加载示例图谱');
-      loadMockGraph();
+      await loadMockGraph();
     }
   } catch {
     ElMessage.info('使用示例数据展示');
-    loadMockGraph();
+    await loadMockGraph();
   } finally {
     loading.value = false;
   }
 }
 
-function loadMockGraph(): void {
+async function loadMockGraph(): Promise<void> {
   const mock: KnowledgeGraph = {
     nodes: [
       { id: 'huawei', name: '华为', type: 'org', weight: 60, category: 1 },

@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AuditLog } from '../audit/audit-log.decorator';
 import { AliyunConfigService, UserManagementService } from './services';
 import { TtsService } from '../tts/tts.service';
 import { VerifyRealnameService } from '../verify/verify-realname.service';
@@ -115,6 +116,7 @@ export class AdminController {
 
   @Put('config/aliyun-sms')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'config', action: 'update', resourceType: 'aliyun_sms', titleExpr: '更新短信配置' })
   async updateSmsConfig(@Body() dto: SmsConfigDto) {
     await this.aliyunConfigService.saveSmsConfig(dto);
     return { message: 'SMS config updated successfully' };
@@ -127,6 +129,7 @@ export class AdminController {
 
   @Put('config/aliyun-verify')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'config', action: 'update', resourceType: 'aliyun_verify', titleExpr: '更新三要素认证配置' })
   async updateVerifyConfig(@Body() dto: VerifyConfigDto) {
     await this.aliyunConfigService.saveVerifyConfig(dto);
     return { message: 'Verify config updated successfully' };
@@ -143,6 +146,7 @@ export class AdminController {
 
   @Post('config/tts')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'config', action: 'update', resourceType: 'tts', titleExpr: '保存 TTS 配置' })
   async saveTtsConfig(@Body() dto: { provider: string; apiKey: string; groupId?: string; endpoint?: string }) {
     this.ttsService.updateProviderConfig(dto.provider, {
       apiKey: dto.apiKey,
@@ -176,6 +180,7 @@ export class AdminController {
 
   @Put('users/:id/ban')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'users', action: 'ban', resourceType: 'user', resourceIdParam: 'id', titleExpr: '封禁用户' })
   async banUser(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser('id') operatorId: number,
@@ -187,6 +192,7 @@ export class AdminController {
 
   @Put('users/:id/unban')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'users', action: 'unban', resourceType: 'user', resourceIdParam: 'id', titleExpr: '解封用户' })
   async unbanUser(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser('id') operatorId: number,
@@ -197,6 +203,7 @@ export class AdminController {
 
   @Post('users')
   @HttpCode(HttpStatus.CREATED)
+  @AuditLog({ module: 'users', action: 'create', resourceType: 'user', titleExpr: '创建用户 {username}' })
   async createUser(
     @CurrentUser('id') operatorId: number,
     @Body() dto: CreateUserDto,
@@ -219,6 +226,7 @@ export class AdminController {
 
   @Post('users/:id/reset-password')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'users', action: 'reset_password', resourceType: 'user', resourceIdParam: 'id', titleExpr: '重置用户密码' })
   async resetPassword(
     @CurrentUser('id') operatorId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -229,6 +237,7 @@ export class AdminController {
 
   @Delete('users/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @AuditLog({ module: 'users', action: 'delete', resourceType: 'user', resourceIdParam: 'id', titleExpr: '删除用户' })
   async deleteUser(
     @CurrentUser('id') operatorId: number,
     @Param('id', ParseIntPipe) id: number,
