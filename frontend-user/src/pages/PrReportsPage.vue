@@ -637,9 +637,16 @@ const floatingCurrentTime = ref(0);
 const floatingTotalDuration = ref(0);
 let floatingAudioEl: HTMLAudioElement | null = null;
 
+const selectedVoiceProvider = computed(() => {
+  const v = voices.value.find(v => v.id === selectedVoice.value);
+  return v?.provider || 'minimax';
+});
+
 async function loadVoices(): Promise<void> {
   try {
     voices.value = await http.get('/tts/voices');
+    const defaultVoice = voices.value[0];
+    if (defaultVoice) selectedVoice.value = defaultVoice.id;
   } catch (err) {
     console.error(err);
   }
@@ -659,9 +666,11 @@ async function startSynthesis(): Promise<void> {
   synthesizing.value = true;
   synthesisError.value = '';
   try {
+    const provider = selectedVoiceProvider.value;
     const res = await http.post(`/tts/report/${report.id}`, {
       voiceId: selectedVoice.value,
       speed: voiceSpeed.value,
+      provider,
     });
     currentAudio.value = res.audioUrl;
     currentDuration.value = res.durationMs;
