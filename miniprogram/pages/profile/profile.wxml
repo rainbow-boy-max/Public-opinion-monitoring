@@ -1,0 +1,45 @@
+<view class="profile-page">
+  <!-- 用户信息 -->
+  <view class="user-section card">
+    <view class="user-avatar">
+      <text class="avatar-text">{{avatarText}}</text>
+    </view>
+    <view class="user-info">
+      <text class="user-name">{{userInfo.username || '用户'}}</text>
+      <text class="user-phone">{{userInfo.phone || ''}}</text>
+      <text class="user-role">{{userInfo.role === 'admin' ? '管理员' : '普通用户'}}</text>
+    </view>
+  </view>
+
+  <!-- 设置项 -->
+  <view class="settings-section card">
+    <view class="setting-item">
+      <text class="setting-label">消息推送通知</text>
+      <switch class="setting-switch" checked="{{notificationEnabled}}" bindchange="onToggleNotification" color="#5E72E4" />
+    </view>
+    <view class="setting-item">
+      <text class="setting-label">深色模式</text>
+      <switch class="setting-switch" checked="{{darkMode}}" disabled color="#5E72E4" />
+    </view>
+  </view>
+
+  <!-- 操作 -->
+  <view class="actions-section">
+    <view class="action-item" bindtap="onChangePassword">
+      <text class="action-icon">🔑</text>
+      <text class="action-text">修改密码</text>
+      <text class="action-arrow">&gt;</text>
+    </view>
+    <view class="action-item" bindtap="onAbout">
+      <text class="action-icon">ℹ️</text>
+      <text class="action-text">关于系统</text>
+      <text class="action-arrow">&gt;</text>
+    </view>
+  </view>
+
+  <!-- 版本信息 -->
+  <text class="version-info">舆情监测系统 v1.0.0</text>
+
+  <!-- 退出登录 -->
+  <button class="logout-btn" bindtap="onLogout">退出登录</button>
+</view>

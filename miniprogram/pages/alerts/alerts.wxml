@@ -1,0 +1,53 @@
+<view class="alerts-page">
+  <!-- 头部统计 -->
+  <view class="alert-header">
+    <view class="alert-stat">
+      <text class="alert-stat-value">{{rules.length}}</text>
+      <text class="alert-stat-label">预警规则</text>
+    </view>
+    <view class="alert-stat">
+      <text class="alert-stat-value">{{activeCount}}</text>
+      <text class="alert-stat-label">启用中</text>
+    </view>
+    <view class="alert-stat">
+      <text class="alert-stat-value">{{alertLogCount}}</text>
+      <text class="alert-stat-label">触发记录</text>
+    </view>
+  </view>
+
+  <!-- 规则列表 -->
+  <view class="rules-list" wx:if="{{rules.length > 0}}">
+    <view class="rule-card" wx:for="{{rules}}" wx:for-item="rule" wx:key="id">
+      <view class="rule-info">
+        <text class="rule-name">{{rule.name}}</text>
+        <text class="rule-desc" wx:if="{{rule.description}}">{{rule.description}}</text>
+        <view class="rule-condition">
+          <text class="condition-type">{{getConditionLabel(rule.conditionType)}}</text>
+          <text class="condition-channel">{{getChannelLabel(rule.channel)}}</text>
+        </view>
+      </view>
+      <view class="rule-action">
+        <switch class="rule-switch" checked="{{rule.status === 'enabled'}}" data-id="{{rule.id}}"
+          bindchange="onToggleRule" color="#5E72E4" />
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:else>
+    <text class="empty-text">暂无预警规则</text>
+  </view>
+
+  <!-- 添加规则按钮 -->
+  <view class="add-rule-bar">
+    <button class="btn-primary add-btn" bindtap="onAddRule">+ 添加预警规则</button>
+  </view>
+
+  <!-- 触发日志 -->
+  <view class="logs-section" wx:if="{{alertLogs.length > 0}}">
+    <text class="section-title">最近触发记录</text>
+    <view class="log-card" wx:for="{{alertLogs}}" wx:for-item="log" wx:key="id">
+      <text class="log-name">{{log.ruleName || log.name}}</text>
+      <text class="log-time">{{formatDateTime(log.createdAt || log.triggeredAt)}}</text>
+    </view>
+  </view>
+</view>

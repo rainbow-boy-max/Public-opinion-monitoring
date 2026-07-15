@@ -1,0 +1,21 @@
+.sentiment-badge {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.sentiment-positive {
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.sentiment-negative {
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.sentiment-neutral {
+  color: #9CA3AF;
+  background: rgba(107, 114, 128, 0.12);
+}

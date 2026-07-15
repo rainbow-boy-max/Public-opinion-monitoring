@@ -1,0 +1,1 @@
+<text class="sentiment-badge sentiment-{{sentiment}}">{{label}}</text>

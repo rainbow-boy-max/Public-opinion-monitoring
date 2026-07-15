@@ -31,6 +31,10 @@ const router = createRouter({
           component: () => import('@/pages/AgentsPage.vue'),
         },
         {
+          path: 'agent-templates',
+          component: () => import('@/pages/AgentTemplatesPage.vue'),
+        },
+        {
           path: 'agents/new',
           name: 'agent-new',
           component: () => import('@/pages/AgentDetailPage.vue'),
@@ -76,6 +80,10 @@ const router = createRouter({
           component: () => import('@/pages/SystemLogsPage.vue'),
         },
         {
+          path: 'comparison',
+          component: () => import('@/pages/ComparisonPage.vue'),
+        },
+        {
           path: 'competitor-tracking',
           component: () => import('@/pages/CompetitorTrackingPage.vue'),
         },
@@ -86,6 +94,18 @@ const router = createRouter({
         {
           path: 'alert',
           component: () => import('@/pages/AlertCenterPage.vue'),
+        },
+        {
+          path: 'keyword-extension',
+          component: () => import('@/pages/KeywordExtensionPage.vue'),
+        },
+        {
+          path: 'custom-dashboard',
+          component: () => import('@/pages/CustomDashboardPage.vue'),
+        },
+        {
+          path: 'short-video',
+          component: () => import('@/pages/ShortVideoPage.vue'),
         },
       ],
     },

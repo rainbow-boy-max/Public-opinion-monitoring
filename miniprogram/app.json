@@ -1,0 +1,51 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/events/events",
+    "pages/event-detail/event-detail",
+    "pages/alerts/alerts",
+    "pages/profile/profile",
+    "pages/login/login"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#0a0e27",
+    "navigationBarTitleText": "舆情监测系统",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0a0e27",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#6B75A8",
+    "selectedColor": "#5E72E4",
+    "backgroundColor": "#0a0e27",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "assets/icons/home.png",
+        "selectedIconPath": "assets/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/events/events",
+        "text": "事件",
+        "iconPath": "assets/icons/events.png",
+        "selectedIconPath": "assets/icons/events-active.png"
+      },
+      {
+        "pagePath": "pages/alerts/alerts",
+        "text": "预警",
+        "iconPath": "assets/icons/alerts.png",
+        "selectedIconPath": "assets/icons/alerts-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "assets/icons/profile.png",
+        "selectedIconPath": "assets/icons/profile-active.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

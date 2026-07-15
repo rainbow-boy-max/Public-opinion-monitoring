@@ -1,0 +1,61 @@
+<view class="detail-page">
+  <view class="detail-header">
+    <text class="detail-title">{{event.title}}</text>
+    <view class="detail-meta">
+      <text class="platform-badge platform-{{event.platform}}">{{getPlatformLabel(event.platform)}}</text>
+      <text class="detail-author">{{event.author}}</text>
+      <text class="detail-time">{{formatDateTime(event.publishTime)}}</text>
+    </view>
+  </view>
+
+  <!-- 情感标签 -->
+  <view class="sentiment-section">
+    <text class="sentiment-badge tag-{{event.sentiment}}">{{getSentimentLabel(event.sentiment)}}</text>
+    <text class="sentiment-label">情感倾向</text>
+  </view>
+
+  <!-- 互动数据 -->
+  <view class="engagement-section card">
+    <view class="engagement-item">
+      <text class="engagement-value">{{formatCount(event.readCount)}}</text>
+      <text class="engagement-label">阅读</text>
+    </view>
+    <view class="engagement-item">
+      <text class="engagement-value">{{formatCount(event.likeCount)}}</text>
+      <text class="engagement-label">点赞</text>
+    </view>
+    <view class="engagement-item">
+      <text class="engagement-value">{{formatCount(event.commentCount)}}</text>
+      <text class="engagement-label">评论</text>
+    </view>
+    <view class="engagement-item">
+      <text class="engagement-value">{{formatCount(event.shareCount)}}</text>
+      <text class="engagement-label">转发</text>
+    </view>
+  </view>
+
+  <!-- 命中关键词 -->
+  <view class="keywords-section" wx:if="{{event.matchedKeywords && event.matchedKeywords.length > 0}}">
+    <text class="section-title">命中关键词</text>
+    <view class="keywords-list">
+      <text class="keyword-tag" wx:for="{{event.matchedKeywords}}" wx:key="*this">{{item}}</text>
+    </view>
+  </view>
+
+  <!-- 内容 -->
+  <view class="content-section card">
+    <text class="content-title">内容摘要</text>
+    <text class="content-body">{{event.summary || event.content}}</text>
+  </view>
+
+  <!-- AI 分析 -->
+  <view class="ai-section card" wx:if="{{event.aiAnalysis}}">
+    <text class="ai-title">AI 分析</text>
+    <text class="ai-body">{{event.aiAnalysis}}</text>
+  </view>
+
+  <!-- 查看原文 -->
+  <button class="btn-primary source-btn" bindtap="onOpenSource" wx:if="{{event.url}}">
+    查看原文
+  </button>
+</view>

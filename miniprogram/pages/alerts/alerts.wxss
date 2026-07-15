@@ -1,0 +1,146 @@
+.alerts-page {
+  padding: 16px 16px 32px;
+}
+
+/* 头部统计 */
+.alert-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.alert-stat {
+  flex: 1;
+  text-align: center;
+  background: rgba(30, 39, 80, 0.4);
+  border: 1px solid rgba(140, 155, 240, 0.15);
+  border-radius: 10px;
+  padding: 14px 8px;
+}
+
+.alert-stat-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-primary-light);
+}
+
+.alert-stat-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+/* 规则卡片 */
+.rule-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(30, 39, 80, 0.4);
+  border: 1px solid rgba(140, 155, 240, 0.15);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.rule-info {
+  flex: 1;
+  margin-right: 12px;
+}
+
+.rule-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.rule-desc {
+  display: block;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.rule-condition {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.condition-type {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(94, 114, 228, 0.12);
+  color: var(--color-primary-light);
+}
+
+.condition-channel {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(107, 114, 128, 0.12);
+  color: var(--text-tertiary);
+}
+
+.rule-switch {
+  transform: scale(0.8);
+}
+
+/* 添加按钮 */
+.add-rule-bar {
+  margin: 16px 0 24px;
+}
+
+.add-btn {
+  width: 100%;
+  border-radius: 10px;
+}
+
+.add-btn::after {
+  border: none;
+}
+
+/* 日志 */
+.logs-section {
+  margin-top: 8px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 10px;
+}
+
+.log-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.log-name {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.log-time {
+  font-size: 12px;
+  color: var(--text-disabled);
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: var(--text-disabled);
+}

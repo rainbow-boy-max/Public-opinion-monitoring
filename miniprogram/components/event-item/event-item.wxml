@@ -1,0 +1,13 @@
+<view class="event-item" bindtap="onTap">
+  <view class="item-header">
+    <view class="platform-info">
+      <text class="platform-name">{{platformLabel}}</text>
+    </view>
+    <text class="sentiment-badge tag-{{sentiment}}">{{sentimentLabel}}</text>
+  </view>
+  <view class="item-title">{{title}}</view>
+  <view class="item-footer">
+    <text class="item-author">{{author}}</text>
+    <text class="item-time">{{time}}</text>
+  </view>
+</view>

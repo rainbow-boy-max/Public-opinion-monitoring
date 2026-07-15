@@ -91,8 +91,8 @@
 
         <template v-if="form.conditionType === 'sentiment_negative'">
           <el-form-item label="触发阈值">
-            <el-slider v-model="sentimentForm.threshold" :min="0" :max="100" show-input style="width: 300px" />
-            <span style="margin-left: 10px; font-size: 12px; color: var(--text-tertiary)">负面占比超过此值触发</span>
+            <el-slider v-model="sentimentForm.threshold" :min="0" :max="100" />
+            <div class="visual-hint">当负面情感占比超过 <strong>{{ sentimentForm.threshold }}%</strong> 时触发预警</div>
           </el-form-item>
           <el-form-item label="时间窗口">
             <el-select v-model="sentimentForm.timeWindow">
@@ -106,8 +106,8 @@
 
         <template v-if="form.conditionType === 'volume_spike'">
           <el-form-item label="触发阈值">
-            <el-input-number v-model="volumeForm.threshold" :min="1" :max="100000" />
-            <span style="margin-left: 10px; font-size: 12px; color: var(--text-tertiary)">事件数量超过此值触发</span>
+            <el-input-number v-model="volumeForm.threshold" :min="1" :step="10" />
+            <div class="visual-hint">当 <strong>{{ timeWindowLabel(volumeForm.timeWindow) }}</strong> 内事件数超过 <strong>{{ volumeForm.threshold }}</strong> 条时触发预警</div>
           </el-form-item>
           <el-form-item label="时间窗口">
             <el-select v-model="volumeForm.timeWindow">
@@ -121,9 +121,11 @@
 
         <template v-if="form.conditionType === 'keyword_match'">
           <el-form-item label="关键词">
-            <el-select v-model="keywordForm.keywords" multiple filterable allow-create default-first-option placeholder="输入关键词后回车" style="width: 100%">
-              <el-option v-for="k in keywordForm.keywords" :key="k" :label="k" :value="k" />
-            </el-select>
+            <el-input v-model="keywordInput" placeholder="输入关键词后回车" @keyup.enter="addKeyword" />
+            <div class="tag-list" v-if="keywordForm.keywords.length">
+              <el-tag v-for="(k, i) in keywordForm.keywords" :key="i" closable @close="removeKeyword(i)" style="margin: 4px 4px 0 0">{{ k }}</el-tag>
+            </div>
+            <div class="visual-hint">当监测到以下关键词出现时触发预警</div>
           </el-form-item>
         </template>
 
@@ -131,22 +133,22 @@
           <el-form-item label="选择平台">
             <el-select v-model="platformForm.platforms" multiple placeholder="选择平台" style="width: 100%">
               <el-option label="微信" value="weixin" />
-              <el-option label="微信视频号" value="weixin_video" />
+              <el-option label="微博" value="weibo" />
               <el-option label="抖音" value="douyin" />
               <el-option label="小红书" value="xiaohongshu" />
               <el-option label="快手" value="kuaishou" />
-              <el-option label="微博" value="weibo" />
               <el-option label="百家号" value="baijiahao" />
             </el-select>
+            <div class="visual-hint">当指定平台产生相关舆情时触发预警</div>
           </el-form-item>
         </template>
 
         <el-form-item label="通知渠道" prop="channel">
-          <el-select v-model="form.channel" style="width: 100%" @change="onChannelChange">
-            <el-option value="internal" label="站内通知" />
-            <el-option value="webhook" label="Webhook" />
-            <el-option value="sms" label="短信" />
-          </el-select>
+          <el-radio-group v-model="form.channel" @change="onChannelChange">
+            <el-radio-button value="internal">站内通知</el-radio-button>
+            <el-radio-button value="webhook">Webhook推送</el-radio-button>
+            <el-radio-button value="sms">短信通知</el-radio-button>
+          </el-radio-group>
         </el-form-item>
 
         <template v-if="form.channel === 'webhook'">
@@ -157,9 +159,8 @@
           </el-form-item>
         </template>
 
-        <el-form-item label="冷却时间(分钟)">
-          <el-input-number v-model="form.cooldownMinutes" :min="0" :max="1440" />
-          <span style="margin-left: 10px; font-size: 12px; color: var(--text-tertiary)">触发后在此时间内不重复告警</span>
+        <el-form-item label="冷却时间">
+          <el-slider v-model="form.cooldownMinutes" :min="5" :max="480" :marks="cooldownMarks" show-input style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -182,9 +183,9 @@ interface AlertRule {
   id: number;
   name: string;
   conditionType: string;
-  conditionConfig: string;
+  conditionConfig: Record<string, unknown>;
   channel: string;
-  channelConfig: string | null;
+  channelConfig: Record<string, unknown> | null;
   status: string;
   cooldownMinutes: number;
   lastTriggeredAt: string | null;
@@ -207,6 +208,7 @@ const checkingId = ref<number | null>(null);
 const logPage = ref(1);
 const pageSize = 20;
 const totalLogs = ref(0);
+const keywordInput = ref('');
 
 const form = reactive({
   name: '',
@@ -220,6 +222,15 @@ const volumeForm = reactive({ threshold: 100, timeWindow: 15 });
 const keywordForm = reactive({ keywords: [] as string[] });
 const platformForm = reactive({ platforms: [] as string[] });
 const webhookForm = reactive({ webhookId: null as number | null });
+
+const cooldownMarks = {
+  15: '15分',
+  30: '30分',
+  60: '1小时',
+  120: '2小时',
+  240: '4小时',
+  480: '8小时',
+};
 
 const formRules = {
   name: [{ required: true, message: '请输入规则名称', trigger: 'blur' }],
@@ -247,6 +258,23 @@ function channelTagType(c: string): 'success' | 'warning' | 'info' {
 function formatDate(s: string): string {
   if (!s) return '—';
   return new Date(s).toLocaleString('zh-CN', { hour12: false });
+}
+
+function timeWindowLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes} 分钟`;
+  return `${minutes / 60} 小时`;
+}
+
+function addKeyword(): void {
+  const val = keywordInput.value.trim();
+  if (val && !keywordForm.keywords.includes(val)) {
+    keywordForm.keywords.push(val);
+  }
+  keywordInput.value = '';
+}
+
+function removeKeyword(index: number): void {
+  keywordForm.keywords.splice(index, 1);
 }
 
 function onTypeChange(): void {
@@ -346,10 +374,9 @@ function openEdit(rule: AlertRule): void {
   form.conditionType = rule.conditionType;
   form.channel = rule.channel;
   form.cooldownMinutes = rule.cooldownMinutes;
-  setConditionConfig(JSON.parse(rule.conditionConfig));
+  setConditionConfig(rule.conditionConfig);
   if (rule.channelConfig) {
-    const cc = JSON.parse(rule.channelConfig);
-    webhookForm.webhookId = cc.webhookId || null;
+    webhookForm.webhookId = (rule.channelConfig.webhookId as number) || null;
   }
   dialogVisible.value = true;
 }
@@ -426,5 +453,18 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   margin-top: 20px;
+}
+
+.visual-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 4px;
 }
 </style>

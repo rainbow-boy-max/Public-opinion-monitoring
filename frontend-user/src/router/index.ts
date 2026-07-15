@@ -69,8 +69,20 @@ const router = createRouter({
           component: () => import('@/pages/PropagationPage.vue'),
         },
         {
+          path: 'comparison',
+          component: () => import('@/pages/ComparisonPage.vue'),
+        },
+        {
+          path: 'custom-dashboard',
+          component: () => import('@/pages/CustomDashboardPage.vue'),
+        },
+        {
           path: 'hot-topics',
           component: () => import('@/pages/HotTopicsPage.vue'),
+        },
+        {
+          path: 'short-video',
+          component: () => import('@/pages/ShortVideoPage.vue'),
         },
       ],
     },

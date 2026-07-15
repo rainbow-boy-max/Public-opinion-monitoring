@@ -35,6 +35,12 @@
       </nav>
 
       <div class="user-topbar__right">
+        <el-tooltip :content="isDark ? '切换亮色主题' : '切换暗色主题'" placement="bottom">
+          <el-icon class="user-topbar__theme-toggle" @click="toggleTheme">
+            <Moon v-if="isDark" />
+            <Sunny v-else />
+          </el-icon>
+        </el-tooltip>
         <div v-if="auth.user?.authStatus !== 'verified'" class="user-topbar__warning" @click="$router.push('/verify')">
           <span>⚠️</span>
           <span>未实名认证</span>
@@ -72,9 +78,12 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { useUserAuthStore } from '@/store/auth';
+import { useTheme } from '@/composables/useTheme';
+import { Sunny, Moon } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const auth = useUserAuthStore();
+const { isDark, toggleTheme } = useTheme();
 
 interface MenuItem {
   path: string;
@@ -129,9 +138,24 @@ const menuItems: MenuItem[] = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
   },
   {
+    path: '/comparison',
+    label: '多维对比',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>',
+  },
+  {
     path: '/hot-topics',
     label: '热点话题',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+  },
+  {
+    path: '/short-video',
+    label: '短视频监控',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>',
+  },
+  {
+    path: '/custom-dashboard',
+    label: '自定义面板',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>',
   },
 ];
 
@@ -236,6 +260,18 @@ function onCommand(cmd: string): void {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.user-topbar__theme-toggle {
+  font-size: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.user-topbar__theme-toggle:hover {
+  color: var(--color-primary);
+  transform: rotate(15deg);
 }
 
 .user-topbar__warning {

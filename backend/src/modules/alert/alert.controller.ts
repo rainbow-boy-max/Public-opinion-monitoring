@@ -18,7 +18,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AlertRuleService, CreateAlertRuleDto, UpdateAlertRuleDto } from './alert-rule.service';
 import { AlertCheckerService } from './alert-checker.service';
-import { AlertLogEntity } from '../../database/entities';
+import { AlertLogEntity, AlertRuleEntity } from '../../database/entities';
 import { IsString, IsOptional, IsEnum, IsNumber, IsObject, Min } from 'class-validator';
 import {
   AlertConditionType,
@@ -92,15 +92,29 @@ export class AlertController {
     @InjectRepository(AlertLogEntity) private logRepo: Repository<AlertLogEntity>,
   ) {}
 
+  @Get('platforms')
+  async listPlatforms() {
+    return [
+      { value: 'weibo', label: '微博' },
+      { value: 'weixin', label: '微信' },
+      { value: 'douyin', label: '抖音' },
+      { value: 'xiaohongshu', label: '小红书' },
+      { value: 'kuaishou', label: '快手' },
+      { value: 'baijiahao', label: '百家号' },
+    ];
+  }
+
   @Get('rules')
   async listRules(@CurrentUser('id') userId: number) {
-    return this.alertRuleService.list(userId);
+    const rules = await this.alertRuleService.list(userId);
+    return rules.map(r => this.serializeRule(r));
   }
 
   @Post('rules')
   @HttpCode(HttpStatus.CREATED)
   async createRule(@CurrentUser('id') userId: number, @Body() dto: CreateRuleDto) {
-    return this.alertRuleService.create(userId, dto);
+    const rule = await this.alertRuleService.create(userId, dto);
+    return this.serializeRule(rule);
   }
 
   @Put('rules/:id')
@@ -110,7 +124,8 @@ export class AlertController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRuleDto,
   ) {
-    return this.alertRuleService.update(userId, id, dto);
+    const rule = await this.alertRuleService.update(userId, id, dto);
+    return this.serializeRule(rule);
   }
 
   @Delete('rules/:id')
@@ -157,5 +172,23 @@ export class AlertController {
     const rule = await this.alertRuleService.getById(userId, id);
     await this.alertCheckerService.checkRule(rule);
     return { message: 'Check completed' };
+  }
+
+  private serializeRule(rule: AlertRuleEntity) {
+    return {
+      id: rule.id,
+      userId: rule.userId,
+      name: rule.name,
+      description: rule.description,
+      conditionType: rule.conditionType,
+      conditionConfig: JSON.parse(rule.conditionConfig),
+      channel: rule.channel,
+      channelConfig: rule.channelConfig ? JSON.parse(rule.channelConfig) : null,
+      status: rule.status,
+      cooldownMinutes: rule.cooldownMinutes,
+      lastTriggeredAt: rule.lastTriggeredAt,
+      createdAt: rule.createdAt,
+      updatedAt: rule.updatedAt,
+    };
   }
 }

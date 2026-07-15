@@ -1,6 +1,7 @@
 <template>
   <GlassCard :title="`任务 #${taskId} 舆情事件`" icon="🔍" subtitle="按时间倒序展示">
     <template #extra>
+      <el-button @click="showExportDialog = true">导出</el-button>
       <el-button @click="$router.push('/tasks')">返回列表</el-button>
     </template>
 
@@ -62,11 +63,50 @@
       @size-change="load"
     />
   </GlassCard>
+
+  <el-dialog v-model="showExportDialog" title="导出舆情数据" width="480">
+    <el-form label-width="100px">
+      <el-form-item label="导出格式">
+        <el-radio-group v-model="exportFormat">
+          <el-radio-button value="csv">CSV</el-radio-button>
+          <el-radio-button value="json">JSON</el-radio-button>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="时间范围">
+        <el-date-picker
+          v-model="exportDateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          style="width: 100%"
+        />
+      </el-form-item>
+      <el-form-item label="情感倾向">
+        <el-select v-model="exportSentiment" placeholder="全部" clearable style="width: 100%">
+          <el-option label="正面" value="positive" />
+          <el-option label="负面" value="negative" />
+          <el-option label="中性" value="neutral" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="平台">
+        <el-select v-model="exportPlatform" placeholder="全部" clearable style="width: 100%">
+          <el-option v-for="p in platformOptions" :key="p" :label="p" :value="p" />
+        </el-select>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="showExportDialog = false">取消</el-button>
+      <el-button type="primary" :loading="exporting" @click="doExport">导出</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { ElMessage } from 'element-plus';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import PlatformTag from '@shared/components/PlatformTag.vue';
@@ -130,6 +170,43 @@ watch(() => route.params.id, () => {
 });
 
 onMounted(load);
+
+const showExportDialog = ref(false);
+const exportFormat = ref<'csv' | 'json'>('csv');
+const exportDateRange = ref<[string, string] | null>(null);
+const exportSentiment = ref('');
+const exportPlatform = ref('');
+const exporting = ref(false);
+
+async function doExport(): Promise<void> {
+  exporting.value = true;
+  try {
+    const blob = await http.post(
+      '/export/events',
+      {
+        taskId: taskId.value,
+        format: exportFormat.value,
+        startDate: exportDateRange.value?.[0],
+        endDate: exportDateRange.value?.[1],
+        sentiment: exportSentiment.value || undefined,
+        platform: exportPlatform.value || undefined,
+      },
+      { responseType: 'blob' },
+    ) as Blob;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `events_${taskId.value}_${new Date().toISOString().slice(0, 10)}.${exportFormat.value}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ElMessage.success('导出成功');
+    showExportDialog.value = false;
+  } catch (err: any) {
+    ElMessage.error(err?.message || '导出失败');
+  } finally {
+    exporting.value = false;
+  }
+}
 </script>
 
 <style scoped>

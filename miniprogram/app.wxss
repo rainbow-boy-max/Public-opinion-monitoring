@@ -1,0 +1,106 @@
+/* 全站深空玻璃拟态主题 - 舆情监测系统微信小程序 */
+/* 设计原则：深色背景 + 半透明卡片 + 渐变边光 */
+
+/* === 背景色 === */
+page {
+  --bg-deep-space: #0a0e27;
+  --bg-cosmic: #141938;
+  --bg-nebula: #1a2046;
+  --bg-surface: #1f2750;
+
+  --glass-bg: rgba(30, 39, 80, 0.4);
+  --glass-border: rgba(140, 155, 240, 0.15);
+  --glass-shadow: 0 8px 32px rgba(0, 5, 30, 0.4);
+
+  --color-primary: #5E72E4;
+  --color-primary-light: #7C8FE8;
+  --color-primary-dark: #4255C0;
+  --color-accent: #7C3AED;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #06B6D4;
+
+  --text-primary: #E8EBFF;
+  --text-secondary: #9DA8E5;
+  --text-tertiary: #6B75A8;
+  --text-disabled: #4A5273;
+
+  --border-subtle: rgba(140, 155, 240, 0.08);
+  --border-medium: rgba(140, 155, 240, 0.18);
+  --border-strong: rgba(140, 155, 240, 0.3);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+  --gap-xl: 32px;
+
+  background: var(--bg-deep-space);
+  background-image: radial-gradient(circle at 20% 0%, #1a2046 0%, #0a0e27 50%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* 卡片组件 */
+.card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--gap-md);
+  backdrop-filter: blur(var(--glass-blur, 20px));
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* 渐变按钮 */
+.btn-primary {
+  background: linear-gradient(135deg, #5E72E4 0%, #7C3AED 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* 文本标签 */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.tag-positive {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10B981;
+}
+
+.tag-negative {
+  background: rgba(239, 68, 68, 0.12);
+  color: #EF4444;
+}
+
+.tag-neutral {
+  background: rgba(107, 114, 128, 0.12);
+  color: #9CA3AF;
+}
+
+/* 加载 */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}

@@ -59,6 +59,12 @@
           <PageHeader gradient :title="currentTitle" :subtitle="currentSubtitle" />
         </div>
         <div class="admin-topbar__right">
+          <el-tooltip :content="isDark ? '切换亮色主题' : '切换暗色主题'" placement="bottom">
+            <el-icon class="admin-topbar__theme-toggle" @click="toggleTheme">
+              <Moon v-if="isDark" />
+              <Sunny v-else />
+            </el-icon>
+          </el-tooltip>
           <div class="admin-topbar__time">{{ currentTime }}</div>
           <el-dropdown @command="onCommand">
             <div class="admin-topbar__user">
@@ -120,12 +126,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAdminAuthStore } from '@/store/auth';
-import { Expand, Fold, SwitchButton, Operation } from '@element-plus/icons-vue';
+import { Expand, Fold, SwitchButton, Operation, Sunny, Moon } from '@element-plus/icons-vue';
 import PageHeader from '@shared/components/PageHeader.vue';
+import { useTheme } from '@/composables/useTheme';
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAdminAuthStore();
+const { isDark, toggleTheme } = useTheme();
 
 interface MenuItem {
   path: string;
@@ -149,6 +157,11 @@ const menuItems: MenuItem[] = [
     path: '/agents',
     label: 'AI 智能体',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>',
+  },
+  {
+    path: '/agent-templates',
+    label: '模板市场',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>',
   },
   {
     path: '/llm-models',
@@ -196,14 +209,34 @@ const menuItems: MenuItem[] = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>',
   },
   {
+    path: '/comparison',
+    label: '多维对比',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>',
+  },
+  {
     path: '/hot-topics',
     label: '热点话题',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
   },
   {
+    path: '/short-video',
+    label: '短视频监控',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>',
+  },
+  {
     path: '/alert',
     label: '预警中心',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+  },
+  {
+    path: '/keyword-extension',
+    label: '关键词扩展',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg>',
+  },
+  {
+    path: '/custom-dashboard',
+    label: '自定义面板',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>',
   },
 ];
 
@@ -215,6 +248,7 @@ const META: Record<string, { title: string; subtitle: string }> = {
   '/dashboard': { title: '概览', subtitle: '系统关键指标与状态' },
   '/users': { title: '用户管理', subtitle: '注册用户与权限控制' },
   '/agents': { title: 'AI 智能体', subtitle: '自定义 AI 智能体与知识库' },
+  '/agent-templates': { title: 'AI 智能体模板市场', subtitle: '预置模板，一键部署' },
   '/llm-models': { title: 'LLM 模型', subtitle: '管理 6 大厂商与自定义模型' },
   '/knowledge': { title: 'AI 知识库', subtitle: '独立知识库 · AI 解析 · AI 打分 · AI 增强' },
   '/config/aliyun-sms': { title: '短信配置', subtitle: '阿里云短信服务接入' },
@@ -224,7 +258,11 @@ const META: Record<string, { title: string; subtitle: string }> = {
   '/config/kb-scoring': { title: 'AI 打分配置', subtitle: '知识库文档 AI 自动评分模型与能力设置' },
   '/system-logs': { title: '系统日志', subtitle: 'API 请求与异常记录' },
   '/alert': { title: '预警中心', subtitle: '预警规则与触发记录' },
+  '/keyword-extension': { title: '关键词扩展', subtitle: 'AI 智能关键词拓展推荐' },
+  '/custom-dashboard': { title: '自定义面板', subtitle: '可拖拽组件式仪表盘' },
+  '/comparison': { title: '多维对比分析', subtitle: '多关键词组对比分析' },
   '/hot-topics': { title: '热点话题', subtitle: '上升热点发现与聚合管理' },
+  '/short-video': { title: '短视频监控', subtitle: '多平台短视频数据监控与分析' },
   '/competitor-tracking': { title: '竞品追踪', subtitle: '竞品动态对比分析' },
 };
 
@@ -274,6 +312,7 @@ function onCommand(cmd: string): void {
 const keepAliveIncludes = [
   'DashboardPage',
   'AgentsPage',
+  'AgentTemplatesPage',
   'AgentDetailPage',
   'LlmModelsManagementPage',
   'KnowledgeBasesPage',
@@ -286,6 +325,8 @@ const keepAliveIncludes = [
   'AliyunVerifyConfigPage',
   'CompetitorTrackingPage',
   'AlertCenterPage',
+  'KeywordExtensionPage',
+  'ComparisonPage',
 ];
 
 onMounted(() => {
@@ -509,6 +550,18 @@ onUnmounted(() => {
   font-size: 13px;
   color: var(--text-tertiary);
   font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+}
+
+.admin-topbar__theme-toggle {
+  font-size: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.admin-topbar__theme-toggle:hover {
+  color: var(--color-primary);
+  transform: rotate(15deg);
 }
 
 .admin-topbar__user {

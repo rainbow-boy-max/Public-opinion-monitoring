@@ -55,3 +55,6 @@ export { AlertLogEntity } from './alert-log.entity';
 export { CompetitorGroupEntity } from './competitor.entity';
 export { ReportScheduleEntity, ScheduleFreq } from './report-schedule.entity';
 export { PropagationLinkEntity } from './propagation.entity';
+export { CustomDashboardEntity } from './dashboard.entity';
+export { AgentTemplateEntity } from './agent-template.entity';
+export { ShortVideoEntity } from './short-video.entity';

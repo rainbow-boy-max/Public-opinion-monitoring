@@ -1,6 +1,7 @@
 <template>
   <GlassCard title="监控任务" icon="🎯" subtitle="关键词 + 平台 + 频率订阅">
     <template #extra>
+      <el-button @click="exportTasks">导出CSV</el-button>
       <el-button type="primary" :icon="Plus" @click="openCreate">创建任务</el-button>
     </template>
 
@@ -89,12 +90,17 @@
         <el-input v-model="form.name" placeholder="给任务起一个名字" />
       </el-form-item>
       <el-form-item label="关键词" prop="keywords">
-        <el-input
-          v-model="form.keywordsText"
-          type="textarea"
-          :rows="3"
-          placeholder="多个关键词用逗号或换行分隔"
-        />
+        <div class="keywords-input-row">
+          <el-input
+            v-model="form.keywordsText"
+            type="textarea"
+            :rows="3"
+            placeholder="多个关键词用逗号或换行分隔"
+          />
+          <el-button size="default" type="primary" plain @click="openKeywordExtension">
+            智能扩展
+          </el-button>
+        </div>
         <div class="form-tip">支持精确匹配、模糊匹配、通配符，三要素认证或订阅词条</div>
       </el-form-item>
       <el-form-item label="监测平台" prop="platforms">
@@ -116,6 +122,60 @@
     <template #footer>
       <el-button @click="dialogVisible = false">取消</el-button>
       <el-button type="primary" :loading="creating" @click="onCreate">创建</el-button>
+    </template>
+  </el-dialog>
+
+  <el-dialog v-model="kwDialogVisible" title="AI 关键词扩展" width="640" :close-on-click-modal="false">
+    <div class="kw-extension">
+      <div class="kw-section">
+        <label class="kw-label">种子关键词</label>
+        <el-input
+          v-model="kwForm.keywordsText"
+          type="textarea"
+          :rows="2"
+          placeholder="输入种子关键词，多个词用逗号或换行分隔"
+        />
+      </div>
+      <div class="kw-section">
+        <label class="kw-label">推荐数量: {{ kwForm.count }}</label>
+        <el-slider v-model="kwForm.count" :min="5" :max="20" :step="1" show-stops />
+      </div>
+      <div class="kw-section">
+        <el-button type="primary" :loading="kwLoading" :disabled="!kwHasKeywords" @click="doKwSuggest">
+          智能扩展
+        </el-button>
+      </div>
+      <el-alert v-if="kwError === 'LLM_NOT_CONFIGURED'" title="LLM 未配置" type="warning" show-icon :description="'请先联系管理员配置 LLM 模型'" closable />
+      <el-alert v-else-if="kwError" :title="'扩展失败'" type="error" show-icon :description="kwError" closable />
+      <div v-if="kwResults.length > 0" class="kw-section">
+        <label class="kw-label">推荐关键词 ({{ kwResults.length }})</label>
+        <div class="kw-grid">
+          <div
+            v-for="item in kwResults"
+            :key="item.word"
+            class="kw-card"
+            :class="{ 'kw-card--selected': kwSelected.includes(item.word) }"
+            @click="kwToggle(item.word)"
+          >
+            <div class="kw-card__head">
+              <span class="kw-card__word">{{ item.word }}</span>
+              <el-tag :type="kwBadgeType(item.type)" size="small" effect="dark">
+                {{ kwTypeLabel(item.type) }}
+              </el-tag>
+            </div>
+            <div class="kw-card__score">
+              <el-progress :percentage="item.score" :stroke-width="6" :color="kwScoreColor(item.score)" />
+            </div>
+            <div class="kw-card__reason" :title="item.reason">{{ item.reason }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <template #footer>
+      <el-button @click="kwDialogVisible = false">取消</el-button>
+      <el-button type="primary" :disabled="kwSelected.length === 0" @click="kwApply">
+        添加已选 ({{ kwSelected.length }})
+      </el-button>
     </template>
   </el-dialog>
 </template>
@@ -304,7 +364,96 @@ function goDetail(row: TaskRow): void {
   router.push(`/tasks/${row.id}`);
 }
 
+async function exportTasks(): Promise<void> {
+  try {
+    const blob = await http.post('/export/tasks', { format: 'csv' }, { responseType: 'blob' }) as Blob;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tasks_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ElMessage.success('导出成功');
+  } catch (err: any) {
+    ElMessage.error(err?.message || '导出失败');
+  }
+}
+
 onMounted(load);
+
+// Keyword extension
+interface KwItem {
+  word: string;
+  type: 'synonym' | 'broader' | 'narrower' | 'related';
+  score: number;
+  reason: string;
+}
+
+const kwDialogVisible = ref(false);
+const kwForm = reactive({ keywordsText: '', count: 10 });
+const kwLoading = ref(false);
+const kwResults = ref<KwItem[]>([]);
+const kwError = ref('');
+const kwSelected = ref<string[]>([]);
+
+const kwHasKeywords = computed(() => kwForm.keywordsText.split(/[,\n;，；]/).map(s => s.trim()).filter(Boolean).length > 0);
+
+function kwBadgeType(t: string): 'success' | 'warning' | 'info' | 'primary' {
+  return ({ synonym: 'success', broader: 'warning', narrower: 'info', related: 'primary' } as any)[t] || 'info';
+}
+
+function kwTypeLabel(t: string): string {
+  return ({ synonym: '同义词', broader: '上位词', narrower: '下位词', related: '相关词' } as any)[t] || t;
+}
+
+function kwScoreColor(s: number): string {
+  if (s >= 80) return '#67C23A';
+  if (s >= 50) return '#E6A23C';
+  return '#909399';
+}
+
+function openKeywordExtension(): void {
+  kwForm.keywordsText = form.keywordsText;
+  kwForm.count = 10;
+  kwResults.value = [];
+  kwError.value = '';
+  kwSelected.value = [];
+  kwDialogVisible.value = true;
+}
+
+async function doKwSuggest(): Promise<void> {
+  const keywords = kwForm.keywordsText.split(/[,\n;，；]/).map(s => s.trim()).filter(Boolean);
+  if (keywords.length === 0) {
+    ElMessage.warning('请输入至少一个种子关键词');
+    return;
+  }
+  kwLoading.value = true;
+  kwError.value = '';
+  kwResults.value = [];
+  try {
+    const res = await http.post('/keywords/suggest', { keywords, count: kwForm.count });
+    kwResults.value = res.keywords || [];
+    if (res.error) kwError.value = res.error;
+  } catch (err: any) {
+    kwError.value = err?.message || '请求失败';
+  } finally {
+    kwLoading.value = false;
+  }
+}
+
+function kwToggle(word: string): void {
+  const idx = kwSelected.value.indexOf(word);
+  if (idx >= 0) kwSelected.value.splice(idx, 1);
+  else kwSelected.value.push(word);
+}
+
+function kwApply(): void {
+  const existing = form.keywordsText.split(/[,\n;，；]/).map(s => s.trim()).filter(Boolean);
+  const merged = [...new Set([...existing, ...kwSelected.value])];
+  form.keywordsText = merged.join(', ');
+  kwDialogVisible.value = false;
+  ElMessage.success(`已添加 ${kwSelected.value.length} 个关键词`);
+}
 </script>
 
 <style scoped>
@@ -359,5 +508,84 @@ onMounted(load);
   margin-top: 4px;
   font-size: 12px;
   color: var(--text-tertiary);
+}
+
+.keywords-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.keywords-input-row .el-input {
+  flex: 1;
+}
+
+.kw-extension {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.kw-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kw-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.kw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.kw-card {
+  padding: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kw-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.kw-card--selected {
+  border-color: var(--color-primary);
+  background: rgba(94, 114, 228, 0.08);
+}
+
+.kw-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.kw-card__word {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.kw-card__reason {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>

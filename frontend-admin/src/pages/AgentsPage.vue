@@ -1,7 +1,8 @@
 <template>
   <GlassCard title="AI 智能体管理" icon="🤖" subtitle="自定义大模型智能体，配置知识库后即可生产化对外服务">
     <template #extra>
-      <el-button type="primary" :icon="Plus" @click="onCreate">创建智能体</el-button>
+      <el-button :icon="Plus" @click="onCreate">创建智能体</el-button>
+      <el-button type="primary" @click="onCreateFromTemplate" style="margin-left: 8px;">从模板创建</el-button>
     </template>
 
     <div class="agent-grid">
@@ -102,6 +103,10 @@ async function load(): Promise<void> {
 
 function onCreate(): void {
   router.push({ name: 'agent-new' });
+}
+
+function onCreateFromTemplate(): void {
+  router.push('/agent-templates');
 }
 
 function goDetail(id: number): void {

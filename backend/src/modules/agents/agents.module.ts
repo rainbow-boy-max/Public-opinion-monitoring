@@ -11,9 +11,12 @@ import {
   PrReportEntity,
   OpinionEventEntity,
   ReportScheduleEntity,
+  AgentTemplateEntity,
 } from '../../database/entities';
 import { AgentsController } from './agents.controller';
 import { AgentsService } from './agents.service';
+import { AgentTemplateController } from './agent-template.controller';
+import { AgentTemplateService } from './agent-template.service';
 import { AgentKbController } from './agent-kb.controller';
 import { AgentKbService } from './agent-kb.service';
 import { AgentKbProcessor } from './agent-kb.processor';
@@ -34,6 +37,7 @@ import { WebSearchModule } from '../admin/web-search.module';
       PrReportEntity,
       OpinionEventEntity,
       ReportScheduleEntity,
+      AgentTemplateEntity,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -63,13 +67,15 @@ import { WebSearchModule } from '../admin/web-search.module';
     AgentKbController,
     AgentKbUploadController,
     PrReportsController,
+    AgentTemplateController,
   ],
   providers: [
     AgentsService,
     AgentKbService,
     AgentKbProcessor,
     PrReportsService,
+    AgentTemplateService,
   ],
-  exports: [AgentsService, AgentKbService, PrReportsService],
+  exports: [AgentsService, AgentKbService, PrReportsService, AgentTemplateService],
 })
 export class AgentsModule {}

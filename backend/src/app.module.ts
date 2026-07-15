@@ -27,8 +27,14 @@ import { KnowledgeBasesModule } from './modules/knowledge/knowledge-bases.module
 import { HotTopicsModule } from './modules/hot-topics/hot-topics.module';
 import { AlertModule } from './modules/alert/alert.module';
 import { CompetitorModule } from './modules/competitor/competitor.module';
+import { ComparisonModule } from './modules/comparison/comparison.module';
 import { PropagationModule } from './modules/propagation/propagation.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
+import { KeywordSuggestModule } from './modules/keywords/keyword-suggest.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ExportModule } from './modules/export/export.module';
+import { ShortVideoModule } from './modules/short-video/short-video.module';
 
 @Module({
   imports: [
@@ -58,8 +64,14 @@ import { TimelineModule } from './modules/timeline/timeline.module';
     KnowledgeBasesModule,
     HotTopicsModule,
     AlertModule,
+    ComparisonModule,
     PropagationModule,
     TimelineModule,
+    KeywordSuggestModule,
+    AuditModule,
+    DashboardModule,
+    ExportModule,
+    ShortVideoModule,
   ],
   providers: [
     {

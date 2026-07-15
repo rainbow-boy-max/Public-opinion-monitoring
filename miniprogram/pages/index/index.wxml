@@ -1,0 +1,61 @@
+<view class="index-page">
+  <!-- 顶部问候与时间 -->
+  <view class="header-section">
+    <view class="greeting-area">
+      <text class="greeting-text">{{greeting}}，{{username}}</text>
+      <text class="date-text">{{currentDate}}</text>
+    </view>
+    <view class="time-area">
+      <text class="time-text">{{currentTime}}</text>
+    </view>
+  </view>
+
+  <!-- 统计卡片 -->
+  <view class="stats-grid">
+    <view class="stat-card" wx:for="{{stats}}" wx:key="label" catchtap="onStatTap" data-type="{{item.type}}">
+      <view class="stat-value" style="color: {{item.color}}">{{item.value}}</view>
+      <view class="stat-label">{{item.label}}</view>
+      <view class="stat-icon" style="background: {{item.bg}}">{{item.icon}}</view>
+    </view>
+  </view>
+
+  <!-- 最近事件 -->
+  <view class="section-header">
+    <text class="section-title">最近事件</text>
+    <text class="section-more" bindtap="onViewAllEvents">查看全部 &gt;</text>
+  </view>
+
+  <view class="event-list" wx:if="{{recentEvents.length > 0}}">
+    <view class="event-card" wx:for="{{recentEvents}}" wx:for-item="evt" wx:key="id" catchtap="onEventTap" data-id="{{evt.id}}">
+      <view class="event-header">
+        <text class="event-platform platform-{{evt.platform}}">{{getPlatformLabel(evt.platform)}}</text>
+        <text class="event-sentiment tag-{{evt.sentiment}}">{{getSentimentLabel(evt.sentiment)}}</text>
+      </view>
+      <view class="event-title">{{evt.title}}</view>
+      <view class="event-footer">
+        <text class="event-author">{{evt.author}}</text>
+        <text class="event-time">{{timeAgo(evt.publishTime || evt.matchedAt)}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:else>
+    <text class="empty-text">暂无最新事件</text>
+  </view>
+
+  <!-- 快捷操作 -->
+  <view class="quick-actions">
+    <view class="action-btn" bindtap="onGoEvents">
+      <text class="action-icon">&#x1F4CB;</text>
+      <text class="action-label">查看事件</text>
+    </view>
+    <view class="action-btn" bindtap="onGoAlerts">
+      <text class="action-icon">&#x1F514;</text>
+      <text class="action-label">预警设置</text>
+    </view>
+    <view class="action-btn" bindtap="onGoProfile">
+      <text class="action-icon">&#x1F464;</text>
+      <text class="action-label">个人中心</text>
+    </view>
+  </view>
+</view>

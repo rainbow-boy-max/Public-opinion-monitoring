@@ -1,0 +1,46 @@
+<view class="events-page">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <input class="search-input" placeholder="搜索关键词..." placeholder-class="search-placeholder"
+      value="{{searchKeyword}}" bindinput="onSearchInput" bindconfirm="onSearch" />
+    <text class="search-btn" bindtap="onSearch">搜索</text>
+  </view>
+
+  <!-- 过滤标签 -->
+  <scroll-view class="filter-tabs" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="filter-tab {{currentFilter === '' ? 'active' : ''}}" bindtap="onFilter" data-filter="">全部</view>
+    <view class="filter-tab {{currentFilter === 'positive' ? 'active' : ''}}" bindtap="onFilter" data-filter="positive">正面</view>
+    <view class="filter-tab {{currentFilter === 'negative' ? 'active' : ''}}" bindtap="onFilter" data-filter="negative">负面</view>
+    <view class="filter-tab {{currentFilter === 'neutral' ? 'active' : ''}}" bindtap="onFilter" data-filter="neutral">中性</view>
+  </scroll-view>
+
+  <!-- 事件列表 -->
+  <view class="events-list" wx:if="{{events.length > 0}}">
+    <view class="event-card" wx:for="{{events}}" wx:for-item="evt" wx:key="id" catchtap="onEventTap" data-id="{{evt.id}}">
+      <view class="event-header">
+        <view class="event-platform-info">
+          <text class="platform-dot platform-{{evt.platform}}"></text>
+          <text class="event-platform">{{getPlatformLabel(evt.platform)}}</text>
+        </view>
+        <text class="event-sentiment tag-{{evt.sentiment}}">{{getSentimentLabel(evt.sentiment)}}</text>
+      </view>
+      <view class="event-title">{{evt.title}}</view>
+      <view class="event-footer">
+        <text class="event-author">{{evt.author}}</text>
+        <text class="event-time">{{timeAgo(evt.publishTime || evt.matchedAt)}}</text>
+      </view>
+    </view>
+
+    <view class="load-more" wx:if="{{hasMore}}">
+      <text class="load-more-text" bindtap="onLoadMore">加载更多</text>
+    </view>
+    <view class="load-more" wx:else>
+      <text class="load-more-text load-end">已加载全部事件</text>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:else>
+    <text wx:if="{{loading}}" class="loading-text">加载中...</text>
+    <text wx:else class="empty-text">暂无事件数据</text>
+  </view>
+</view>
