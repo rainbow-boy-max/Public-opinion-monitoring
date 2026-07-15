@@ -48,8 +48,46 @@
       </div>
     </el-aside>
 
-    <!-- 手机抽屉菜单 -->
-    <el-drawer v-model="drawerVisible" :size="260" direction="ltr" :with-header="false">
+    <el-main class="admin-main">
+      <header class="admin-topbar">
+        <div class="admin-topbar__left">
+          <el-icon class="admin-topbar__toggle" @click="toggleCollapse">
+            <Fold v-if="!isCollapsed" />
+            <Expand v-else />
+          </el-icon>
+          <el-button class="mobile-menu-btn" :icon="Operation" @click="drawerVisible = true" />
+          <PageHeader gradient :title="currentTitle" :subtitle="currentSubtitle" />
+        </div>
+        <div class="admin-topbar__right">
+          <div class="admin-topbar__time">{{ currentTime }}</div>
+          <el-dropdown @command="onCommand">
+            <div class="admin-topbar__user">
+              <span class="admin-topbar__user-text">设置</span>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="logout">
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </header>
+      <div class="admin-content fade-in">
+        <router-view v-slot="{ Component }">
+          <keep-alive :include="keepAliveIncludes">
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
+      </div>
+    </el-main>
+  </el-container>
+
+  <!-- 手机抽屉菜单（在 el-container 外部避免 flex 干扰） -->
+  <el-drawer v-model="drawerVisible" :size="260" direction="ltr" :with-header="false">
+    <template #default>
       <div class="admin-aside" style="width:100%;height:100%;position:static;border:none;background:var(--bg-cosmic);box-shadow:none;">
         <div class="admin-aside__brand">
           <div class="admin-aside__logo">
@@ -74,47 +112,8 @@
           </div>
         </nav>
       </div>
-    </el-drawer>
-
-    <el-main class="admin-main">
-      <header class="admin-topbar">
-        <div class="admin-topbar__left">
-          <el-icon class="admin-topbar__toggle" @click="toggleCollapse">
-            <Fold v-if="!isCollapsed" />
-            <Expand v-else />
-          </el-icon>
-          <el-button class="mobile-menu-btn" :icon="Operation" @click="drawerVisible = true" />
-          <PageHeader gradient :title="currentTitle" :subtitle="currentSubtitle" />
-        </div>
-        <div class="admin-topbar__right">
-          <div class="admin-topbar__time">
-            {{ currentTime }}
-          </div>
-          <el-dropdown @command="onCommand">
-            <div class="admin-topbar__user">
-              <span class="admin-topbar__user-text">设置</span>
-            </div>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="logout">
-                  <el-icon><SwitchButton /></el-icon>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </header>
-
-      <div class="admin-content fade-in">
-        <router-view v-slot="{ Component }">
-          <keep-alive :include="keepAliveIncludes">
-            <component :is="Component" />
-          </keep-alive>
-        </router-view>
-      </div>
-    </el-main>
-  </el-container>
+    </template>
+  </el-drawer>
 </template>
 
 <script setup lang="ts">
