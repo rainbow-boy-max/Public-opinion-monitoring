@@ -77,7 +77,7 @@ export class KbScoringService {
     fileContent: string;
     kbName: string;
     kbDomain: string;
-    kbTags: string[];
+    kbTags: string[] | string;
     filePath: string;
   }): Promise<{
     score: number;
@@ -119,7 +119,7 @@ export class KbScoringService {
 }
 
 评估标准：
-- score：文档与知识库「${input.kbName}」（领域：${input.kbDomain}，标签：${(input.kbTags || []).join(', ') || '通用'}）的相关性评分
+- score：文档与知识库「${input.kbName}」（领域：${input.kbDomain}，标签：${(Array.isArray(input.kbTags) ? input.kbTags : typeof input.kbTags === 'string' ? JSON.parse(input.kbTags) : []).join(', ') || '通用'}）的相关性评分
   - 0-20：完全不相关或纯广告/垃圾内容
   - 21-50：部分相关但信息稀疏
   - 51-80：相关且信息密度中等

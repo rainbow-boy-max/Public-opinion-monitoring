@@ -9,7 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
-  Body,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -50,14 +50,18 @@ export class KnowledgeBasesUploadController {
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile() file: MulterFile,
     @CurrentUser('id') operatorId: number,
-    @Body('filename_utf8') filenameUtf8?: string,
+    @Req() req: any,
   ) {
     if (!file) throw new BadRequestException('请选择文件');
-    // multer 将中文文件名存储为 latin-1 编码，前端传 filename_utf8 覆盖
-    const decodedName: string = (filenameUtf8
-      ? filenameUtf8
-      : Buffer.from(file.originalname, 'binary').toString('utf8')
-    ).replace(/[<>:"/\\|?*]/g, '_');
+    // 优先读取前端 base64 编码的 UTF-8 文件名
+    let decodedName = file.originalname;
+    try {
+      const raw: string | undefined = req.body?.filename_b64;
+      if (raw) {
+        decodedName = decodeURIComponent(escape(Buffer.from(raw, 'base64').toString('utf8')));
+      }
+    } catch { /* fallback to originalname */ }
+    decodedName = decodedName.replace(/[<>:"/\\|?*]/g, '_');
     const ext = path.extname(decodedName).toLowerCase().replace('.', '');
     const allowed = ['pdf', 'docx', 'ppt', 'pptx', 'txt', 'md', 'html'];
     if (!allowed.includes(ext)) {

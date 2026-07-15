@@ -46,21 +46,47 @@
               <el-descriptions-item label="状态">
                 <el-tag :type="statusType(kb.status)">{{ statusLabel(kb.status) }}</el-tag>
               </el-descriptions-item>
-              <el-descriptions-item label="行业领域">
-                <code class="code-text">{{ kb.domain || '—' }}</code>
-              </el-descriptions-item>
-              <el-descriptions-item label="标签">
-                <el-tag
-                  v-for="t in kb.tags || []"
-                  :key="t"
-                  size="small"
-                  effect="dark"
-                  type="info"
-                  style="margin-right: 4px"
-                >{{ t }}</el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="AI 摘要" :span="2">
-                {{ kb.aiSummary || '（AI 尚未生成摘要）' }}
+          <el-descriptions-item label="行业领域">
+            <code class="code-text">{{ domainLabel(kb.domain) || '—' }}</code>
+            <el-button
+              v-if="kb.status === 'ready'"
+              link
+              type="primary"
+              size="small"
+              :loading="autoDomainLoading"
+              @click="onAutoDomain"
+              style="margin-left: 8px"
+            >AI 解析</el-button>
+          </el-descriptions-item>
+          <el-descriptions-item label="标签">
+            <el-tag
+              v-for="t in kb.tags || []"
+              :key="t"
+              size="small"
+              effect="dark"
+              type="info"
+              style="margin-right: 4px"
+            >{{ t }}</el-tag>
+            <el-button
+              v-if="(kb.tags || []).length === 0"
+              link
+              type="primary"
+              size="small"
+              :loading="autoTagsLoading"
+              @click="onAutoTags"
+            >AI 解析</el-button>
+          </el-descriptions-item>
+          <el-descriptions-item label="AI 摘要" :span="2">
+            <span v-if="kb.aiSummary">{{ kb.aiSummary }}</span>
+            <span v-else style="color: var(--text-tertiary)">（AI 尚未生成摘要）</span>
+            <el-button
+              link
+              type="primary"
+              size="small"
+              :loading="autoSummaryLoading"
+              @click="onAutoSummary"
+              style="margin-left: 8px"
+            >AI 解析</el-button>
               </el-descriptions-item>
             </el-descriptions>
             <div style="margin-top: 16px; text-align: right">
@@ -143,8 +169,9 @@
                 </span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="180" fixed="right">
+            <el-table-column label="操作" width="220" fixed="right">
               <template #default="{ row }">
+                <el-button size="small" :loading="rescoringId === row.id" :disabled="row.status !== 'ready'" @click="onRescoreFile(row)">重新打分</el-button>
                 <el-button size="small" @click="onPreviewFile(row)">预览</el-button>
                 <el-button size="small" type="danger" @click="onDeleteFile(row)">删除</el-button>
               </template>
@@ -253,6 +280,19 @@ const previewVisible = ref(false);
 const previewFile = ref<any>(null);
 const previewContent = ref('');
 const savingContent = ref(false);
+const rescoringId = ref(0);
+const autoDomainLoading = ref(false);
+const autoTagsLoading = ref(false);
+const autoSummaryLoading = ref(false);
+
+const DOMAIN_LABELS: Record<string, string> = {
+  technology: '科技', finance: '金融', medical: '医疗', legal: '法律',
+  education: '教育', media: '媒体', general: '通用',
+};
+
+function domainLabel(d: string | null): string {
+  return d ? DOMAIN_LABELS[d] || d : '—';
+}
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -339,8 +379,8 @@ async function onUpload(options: any): Promise<void> {
   const { file, onSuccess, onError } = options;
   const form = new FormData();
   form.append('file', file);
-  // 显式传递 UTF-8 文件名，防止后端 latin-1 截断
-  form.append('filename_utf8', file.name);
+  // UTF-8 文件名通过 base64 字段传递，绕过多部分表单编码问题
+  form.append('filename_b64', btoa(unescape(encodeURIComponent(file.name))));
   uploading.value = true;
   uploadProgress.value = 0;
   try {
@@ -427,6 +467,59 @@ async function onAutoClassify(): Promise<void> {
     ElMessage.error(err?.message || 'AI 分类失败');
   } finally {
     autoClassifying.value = false;
+  }
+}
+
+async function onRescoreFile(row: any): Promise<void> {
+  rescoringId.value = row.id;
+  try {
+    await http.post(`/admin/knowledge/${kbId.value}/files/${row.id}/rescore`);
+    ElMessage.success(`文件「${row.filename}」评分已更新`);
+    loadFiles();
+    loadKb();
+  } catch (err: any) {
+    ElMessage.error(err?.message || '重新打分失败');
+  } finally {
+    rescoringId.value = 0;
+  }
+}
+
+async function onAutoDomain(): Promise<void> {
+  autoDomainLoading.value = true;
+  try {
+    const r = await http.post(`/admin/knowledge/${kbId.value}/auto-classify`);
+    await loadKb();
+    ElMessage.success('AI 已识别行业领域');
+  } catch (err: any) {
+    ElMessage.error(err?.message || '解析失败');
+  } finally {
+    autoDomainLoading.value = false;
+  }
+}
+
+async function onAutoTags(): Promise<void> {
+  autoTagsLoading.value = true;
+  try {
+    const r = await http.post(`/admin/knowledge/${kbId.value}/auto-classify`);
+    await loadKb();
+    ElMessage.success('AI 已识别标签');
+  } catch (err: any) {
+    ElMessage.error(err?.message || '解析失败');
+  } finally {
+    autoTagsLoading.value = false;
+  }
+}
+
+async function onAutoSummary(): Promise<void> {
+  autoSummaryLoading.value = true;
+  try {
+    const r = await http.post(`/admin/knowledge/${kbId.value}/auto-classify`);
+    await loadKb();
+    ElMessage.success('AI 摘要已生成');
+  } catch (err: any) {
+    ElMessage.error(err?.message || 'AI 摘要生成失败');
+  } finally {
+    autoSummaryLoading.value = false;
   }
 }
 

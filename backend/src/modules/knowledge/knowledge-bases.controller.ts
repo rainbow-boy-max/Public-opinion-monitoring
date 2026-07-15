@@ -165,6 +165,15 @@ export class KnowledgeBasesController {
     return { ok: true };
   }
 
+  @Post(':id/files/:fileId/rescore')
+  @HttpCode(HttpStatus.OK)
+  async rescoreFile(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fileId', ParseIntPipe) fileId: number,
+  ) {
+    return this.service.rescoreFile(id, fileId);
+  }
+
   @Delete(':id/files/:fileId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeFile(

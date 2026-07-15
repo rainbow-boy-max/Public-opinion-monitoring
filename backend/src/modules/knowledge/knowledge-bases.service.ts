@@ -178,6 +178,18 @@ export class KnowledgeBasesService {
     await this.refreshKbStats(kbId);
   }
 
+  async rescoreFile(kbId: number, fileId: number): Promise<{ score: number; summary: string }> {
+    const file = await this.fileRepo.findOne({ where: { id: fileId, kbId } });
+    if (!file) throw new NotFoundException('文件不存在');
+    const text = file.parsedText || file.storagePath || '';
+    const textContent = text.length > 0 && text.length < 100000 ? text : '';
+    const result = await this.scoreFileWithAI(file, textContent);
+    file.aiScore = result.score;
+    file.parsedSummary = result.summary || file.parsedSummary;
+    await this.fileRepo.save(file);
+    return { score: result.score, summary: result.summary };
+  }
+
   async enqueueParse(kbId: number, fileId: number, filePath: string, fileType: string): Promise<void> {
     await this.parseQueue.add(
       'parse',
