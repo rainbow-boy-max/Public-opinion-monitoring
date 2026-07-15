@@ -15,6 +15,7 @@ import { XiaohongshuAdapter } from './adapters/xiaohongshu.adapter';
 import { KuaishouAdapter } from './adapters/kuaishou.adapter';
 import { BaijiahaoAdapter } from './adapters/baijiahao.adapter';
 import { WeixinVideoAdapter } from './adapters/weixin-video.adapter';
+import { MockAdapter } from './adapters/mock.adapter';
 import {
   MonitorTaskEntity,
   OpinionEventEntity,
@@ -47,6 +48,7 @@ import {
     KuaishouAdapter,
     BaijiahaoAdapter,
     WeixinVideoAdapter,
+    MockAdapter,
   ],
   exports: [CollectorService, KeywordMatcherService, AdapterRegistry],
 })
