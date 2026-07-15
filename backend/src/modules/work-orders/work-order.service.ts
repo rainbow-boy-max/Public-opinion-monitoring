@@ -183,6 +183,24 @@ export class WorkOrderService {
     return this.orderRepo.save(order);
   }
 
+  async rate(
+    id: number,
+    userId: number,
+    rating: number,
+    feedback?: string,
+  ): Promise<WorkOrderEntity> {
+    const order = await this.orderRepo.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException('Work order not found');
+    }
+    if (order.userId !== userId) {
+      throw new ForbiddenException('Only the creator can rate this work order');
+    }
+    order.rating = rating;
+    if (feedback !== undefined) order.feedback = feedback;
+    return this.orderRepo.save(order);
+  }
+
   async getStats(): Promise<{
     pending: number;
     inProgress: number;

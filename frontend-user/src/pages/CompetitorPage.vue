@@ -15,14 +15,16 @@
       </PageHeader>
     </div>
 
-    <div v-if="!hasData" class="competitor-page__empty">
-      <GlassCard>
-        <el-empty description="暂无竞品数据">
-          <el-button v-if="!loadingGroups && groups.length === 0" disabled>暂无可选竞品组</el-button>
-          <el-button v-else type="primary" @click="loadDemo">加载示例</el-button>
-        </el-empty>
-      </GlassCard>
-    </div>
+    <EmptyStateGuide
+      v-if="!hasData && !loadingGroups"
+      icon="📊"
+      title="暂无竞品数据"
+      description="请先创建监控任务，添加竞品关键词后返回此页面查看对比分析"
+      primary-action="前往创建监控任务"
+      secondary-action="加载示例数据"
+      @primary="router.push('/tasks')"
+      @secondary="loadDemo"
+    />
 
     <template v-if="hasData">
       <div class="competitor-insights">
@@ -79,12 +81,16 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
 import PageHeader from '@shared/components/PageHeader.vue';
 import GlassCard from '@shared/components/GlassCard.vue';
+import EmptyStateGuide from '@/components/EmptyStateGuide.vue';
 
 defineOptions({ name: 'CompetitorPage' });
+
+const router = useRouter();
 
 interface Competitor {
   id: number;
@@ -370,10 +376,6 @@ onMounted(async () => {
 
 .competitor-page__header {
   margin-bottom: 0;
-}
-
-.competitor-page__empty {
-  padding: 40px 0;
 }
 
 .competitor-insights {

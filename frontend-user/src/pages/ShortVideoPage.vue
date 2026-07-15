@@ -128,12 +128,20 @@
       </GlassCard>
     </template>
 
-    <el-empty v-else-if="!loading" description="请选择一个监控任务查看短视频数据" />
+    <EmptyStateGuide
+      v-else-if="!loading"
+      icon="🎬"
+      title="暂无短视频数据"
+      description="请先创建监控任务并包含短视频平台（抖音/快手/小红书），即可在此查看短视频舆情"
+      primary-action="前往创建监控任务"
+      @primary="router.push('/tasks')"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
 import { Refresh } from '@element-plus/icons-vue';
@@ -141,6 +149,7 @@ import PageHeader from '@shared/components/PageHeader.vue';
 import StatCard from '@shared/components/StatCard.vue';
 import GlassCard from '@shared/components/GlassCard.vue';
 import SentimentBadge from '@shared/components/SentimentBadge.vue';
+import EmptyStateGuide from '@/components/EmptyStateGuide.vue';
 
 interface Task { id: number; name: string }
 interface VideoStats {
@@ -155,6 +164,7 @@ interface Hashtag { tag: string; count: number }
 const tasks = ref<Task[]>([]);
 const taskId = ref<number | undefined>();
 const loading = ref(false);
+const router = useRouter();
 const videos = ref<Video[]>([]);
 const stats = ref<VideoStats | null>(null);
 const total = ref(0);

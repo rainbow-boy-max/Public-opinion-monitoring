@@ -19,7 +19,7 @@ import {
   WorkOrderPriority,
   WorkOrderType,
 } from '../../database/entities';
-import { IsString, IsOptional, IsEnum, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNumber, Min, Max } from 'class-validator';
 
 class CreateWorkOrderDto {
   @IsString()
@@ -97,6 +97,17 @@ class ChangeStatusDto {
   @IsOptional()
   @IsString()
   resolutionType?: string;
+}
+
+class RateWorkOrderDto {
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  rating: number;
+
+  @IsOptional()
+  @IsString()
+  feedback?: string;
 }
 
 @Controller('work-orders')
@@ -199,6 +210,17 @@ export class WorkOrderController {
       dto.resolution,
       dto.resolutionType,
     );
+    return { success: true, data: order };
+  }
+
+  @Post(':id/rate')
+  @HttpCode(HttpStatus.OK)
+  async rate(
+    @CurrentUser('id') userId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RateWorkOrderDto,
+  ) {
+    const order = await this.workOrderService.rate(id, userId, dto.rating, dto.feedback);
     return { success: true, data: order };
   }
 }

@@ -105,6 +105,10 @@
           <el-descriptions-item v-if="detail.resolution" label="处置方式">{{ detail.resolutionType || '—' }}</el-descriptions-item>
           <el-descriptions-item v-if="detail.resolution" label="处置内容" :span="2"><pre class="desc-text">{{ detail.resolution }}</pre></el-descriptions-item>
           <el-descriptions-item v-if="detail.resolvedAt" label="解决时间">{{ formatDate(detail.resolvedAt) }}</el-descriptions-item>
+          <el-descriptions-item v-if="detail.rating" label="用户评分" :span="2">
+            <el-rate :model-value="detail.rating" disabled size="small" show-score />
+            <span v-if="detail.feedback" style="margin-left:8px;color:var(--text-tertiary)">{{ detail.feedback }}</span>
+          </el-descriptions-item>
         </el-descriptions>
 
         <el-divider />
@@ -118,6 +122,7 @@
           </el-select>
           <el-button type="primary" @click="onChangeStatus" :loading="statusLoading">执行</el-button>
           <el-button v-if="detail.status === 'pending' || !detail.assignedTo" @click="showAssign = true">指派</el-button>
+          <el-button type="success" v-if="detail.status === 'in_progress'" @click="onResolveDirect" :loading="resolveLoading">完结工单</el-button>
         </div>
         <div v-if="statusAction === 'resolved'" class="resolution-fields">
           <el-select v-model="resolutionType" placeholder="处置类型" style="width:150px">
@@ -136,6 +141,15 @@
         <el-divider />
 
         <div class="section-title">评论 ({{ detail.comments?.length || 0 }})</div>
+        <div class="action-row" style="margin-bottom:12px">
+          <el-button type="primary" size="small" @click="showAdminReply = !showAdminReply">
+            {{ showAdminReply ? '取消' : '回复工单' }}
+          </el-button>
+        </div>
+        <div v-if="showAdminReply" class="comment-input-row" style="margin-bottom:12px">
+          <el-input v-model="adminReplyText" type="textarea" :rows="2" placeholder="输入回复内容..." style="flex:1" />
+          <el-button type="primary" @click="onAdminReply" :loading="adminReplyLoading">发送回复</el-button>
+        </div>
         <div class="comments-thread">
           <div v-for="c in detail.comments" :key="c.id" class="comment-item">
             <div class="comment-header">
@@ -176,8 +190,10 @@
             <el-option label="紧急" value="critical" />
           </el-select>
         </el-form-item>
-        <el-form-item label="指派人">
-          <el-input-number v-model="createForm.assignedTo" :min="0" placeholder="用户ID" style="width:100%" />
+        <el-form-item label="分配处理人">
+          <el-select v-model="createForm.assignedTo" placeholder="选择处理人" clearable style="width:100%">
+            <el-option v-for="u in adminUsers" :key="u.id" :label="u.username || '用户 #' + u.id" :value="u.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="截止时间">
           <el-date-picker v-model="createForm.dueAt" type="datetime" placeholder="选择截止时间" style="width:100%" />
@@ -192,7 +208,9 @@
     <el-dialog v-model="showAssign" title="指派工单" width="400">
       <el-form label-width="80px">
         <el-form-item label="指派人">
-          <el-input-number v-model="assignUserId" :min="1" placeholder="用户ID" style="width:100%" />
+          <el-select v-model="assignUserId" placeholder="选择处理人" style="width:100%">
+            <el-option v-for="u in adminUsers" :key="u.id" :label="u.username || '用户 #' + u.id" :value="u.id" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -227,6 +245,8 @@ interface WorkOrder {
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  rating: number | null;
+  feedback: string | null;
   comments?: WorkOrderComment[];
 }
 
@@ -265,6 +285,12 @@ const commentLoading = ref(false);
 const showAssign = ref(false);
 const assignUserId = ref(0);
 const assignLoading = ref(false);
+
+const adminUsers = ref<{ id: number; username: string }[]>([]);
+const showAdminReply = ref(false);
+const adminReplyText = ref('');
+const adminReplyLoading = ref(false);
+const resolveLoading = ref(false);
 
 const createVisible = ref(false);
 const createLoading = ref(false);
@@ -354,6 +380,8 @@ async function onRowClick(row: WorkOrder): Promise<void> {
     resolutionText.value = res.data.resolution || '';
     resolutionType.value = res.data.resolutionType || 'ignore';
     commentText.value = '';
+    showAdminReply.value = false;
+    adminReplyText.value = '';
     detailVisible.value = true;
   } catch (err) {
     console.error(err);
@@ -416,6 +444,43 @@ async function onAssign(): Promise<void> {
   }
 }
 
+async function onResolveDirect(): Promise<void> {
+  if (!detail.value) return;
+  resolveLoading.value = true;
+  try {
+    await http.post(`/work-orders/${detail.value.id}/status`, {
+      status: 'resolved',
+      analysis: analysisText.value || undefined,
+      resolution: resolutionText.value || undefined,
+      resolutionType: resolutionType.value || undefined,
+    });
+    await loadList();
+    await loadStats();
+    const res = await http.get(`/work-orders/${detail.value.id}`);
+    detail.value = res.data;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    resolveLoading.value = false;
+  }
+}
+
+async function onAdminReply(): Promise<void> {
+  if (!detail.value || !adminReplyText.value.trim()) return;
+  adminReplyLoading.value = true;
+  try {
+    await http.post(`/work-orders/${detail.value.id}/comment`, { content: adminReplyText.value });
+    adminReplyText.value = '';
+    showAdminReply.value = false;
+    const res = await http.get(`/work-orders/${detail.value.id}`);
+    detail.value = res.data;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    adminReplyLoading.value = false;
+  }
+}
+
 function openCreate(): void {
   createForm.title = '';
   createForm.description = '';
@@ -451,9 +516,19 @@ async function onCreate(): Promise<void> {
   });
 }
 
+async function loadAdminUsers(): Promise<void> {
+  try {
+    const res = await http.get('/users?role=admin');
+    adminUsers.value = Array.isArray(res) ? res : res.items || res.data || [];
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 onMounted(() => {
   loadStats();
   loadList();
+  loadAdminUsers();
 });
 </script>
 

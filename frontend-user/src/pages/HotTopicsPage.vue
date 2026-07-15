@@ -17,6 +17,17 @@
       </template>
     </PageHeader>
 
+    <EmptyStateGuide
+      v-if="topics.length === 0 && !loading"
+      icon="🔥"
+      title="暂无热点数据"
+      description="热点话题基于监控任务数据通过1小时滑动窗口算法实时检测，请先创建监控任务"
+      primary-action="前往创建监控任务"
+      secondary-action="加载示例数据"
+      @primary="router.push('/tasks')"
+      @secondary="loadMock"
+    />
+
     <div class="topic-grid">
       <article
         v-for="topic in topics"
@@ -113,6 +124,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
 import PageHeader from '@shared/components/PageHeader.vue';
@@ -120,6 +132,7 @@ import GlassCard from '@shared/components/GlassCard.vue';
 import PlatformTag from '@shared/components/PlatformTag.vue';
 import SentimentBadge from '@shared/components/SentimentBadge.vue';
 import { Refresh } from '@element-plus/icons-vue';
+import EmptyStateGuide from '@/components/EmptyStateGuide.vue';
 
 interface Article {
   title: string;
@@ -150,6 +163,7 @@ const loading = ref(false);
 const demoMode = ref(false);
 const topics = ref<HotTopic[]>([]);
 const expandedId = ref<number | null>(null);
+const router = useRouter();
 const sparkW = 80;
 const sparkH = 28;
 
@@ -326,6 +340,11 @@ async function fetchTopics(): Promise<void> {
 function toggleDetail(id: number): void {
   expandedId.value = expandedId.value === id ? null : id;
   nextTick(() => renderDetailCharts(id));
+}
+
+function loadMock(): void {
+  topics.value = buildMockTopics();
+  demoMode.value = true;
 }
 
 function renderDetailCharts(id: number): void {

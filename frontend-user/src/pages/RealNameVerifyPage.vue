@@ -86,6 +86,7 @@ async function loadStatus(): Promise<void> {
   try {
     const res = await http.get('/verify/status');
     if (res.authStatus === 'verified') {
+      ElMessage.info('您已完成实名认证');
       router.push('/dashboard');
     }
   } catch {

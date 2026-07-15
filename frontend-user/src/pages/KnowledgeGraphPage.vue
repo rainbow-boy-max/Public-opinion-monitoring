@@ -19,15 +19,16 @@
       <div class="kg-main">
         <GlassCard title="舆情知识图谱" bare>
           <div v-loading="loading" class="graph-container">
-            <div v-if="!graphData" class="empty-state">
-              <div class="empty-state__icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
-                </svg>
-              </div>
-              <div class="empty-state__text">点击"提取图谱"生成知识图谱</div>
-              <el-button type="primary" @click="extractGraph">提取图谱</el-button>
-            </div>
+            <EmptyStateGuide
+              v-if="!graphData && !loading"
+              icon="🔗"
+              title="暂无图谱数据"
+              description="知识图谱基于监控事件中的实体抽取构建，请先创建监控任务"
+              primary-action="前往创建监控任务"
+              secondary-action="加载示例图谱"
+              @primary="router.push('/tasks')"
+              @secondary="loadMockGraph"
+            />
             <div ref="chartEl" v-show="graphData" class="chart" />
           </div>
         </GlassCard>
@@ -77,11 +78,13 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
 import { ElMessage } from 'element-plus';
 import PageHeader from '@shared/components/PageHeader.vue';
 import GlassCard from '@shared/components/GlassCard.vue';
+import EmptyStateGuide from '@/components/EmptyStateGuide.vue';
 
 interface GraphNode {
   id: string;
@@ -113,6 +116,8 @@ interface GraphStats {
 
 const CATEGORY_COLORS = ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
 const CATEGORY_NAMES = ['人物', '组织', '地点', '产品', '事件'];
+
+const router = useRouter();
 
 const chartEl = ref<HTMLElement>();
 const pieChartEl = ref<HTMLElement>();
@@ -160,7 +165,7 @@ async function extractGraph(): Promise<void> {
   }
 }
 
-function loadMockGraph(): void {
+async function loadMockGraph(): Promise<void> {
   const mock: KnowledgeGraph = {
     nodes: [
       { id: 'huawei', name: '华为', type: 'org', weight: 60, category: 1 },
@@ -399,24 +404,6 @@ onUnmounted(() => {
 .chart {
   width: 100%;
   height: 650px;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 400px;
-  color: var(--text-tertiary);
-  gap: 16px;
-}
-
-.empty-state__icon {
-  opacity: 0.4;
-}
-
-.empty-state__text {
-  font-size: 15px;
 }
 
 .kg-sidebar {

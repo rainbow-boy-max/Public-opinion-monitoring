@@ -67,6 +67,12 @@ export class WorkOrderEntity {
   @Column({ name: 'due_at', type: 'datetime', nullable: true })
   dueAt: Date | null;
 
+  @Column({ name: 'rating', type: 'int', nullable: true })
+  rating: number | null;
+
+  @Column({ type: 'text', nullable: true })
+  feedback: string | null;
+
   @Column({ name: 'resolved_at', type: 'datetime', nullable: true })
   resolvedAt: Date | null;
 

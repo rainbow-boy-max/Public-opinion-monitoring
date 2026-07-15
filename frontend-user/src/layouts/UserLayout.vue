@@ -189,9 +189,9 @@ function onCommand(cmd: string): void {
 }
 
 .user-topbar {
-  display: grid;
-  grid-template-columns: 240px 1fr auto;
+  display: flex;
   align-items: center;
+  gap: 32px;
   padding: 12px 28px;
   background: rgba(15, 19, 47, 0.6);
   backdrop-filter: blur(20px);
@@ -230,16 +230,24 @@ function onCommand(cmd: string): void {
 
 .user-nav {
   display: flex;
-  gap: 4px;
-  justify-self: start;
-  margin-left: 32px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  flex: 1;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.user-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .user-nav__item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 8px 14px;
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-size: 14px;
@@ -264,6 +272,8 @@ function onCommand(cmd: string): void {
 .user-nav__icon {
   display: inline-flex;
   align-items: center;
+  width: 16px;
+  height: 16px;
 }
 
 .user-topbar__right {
@@ -349,9 +359,6 @@ function onCommand(cmd: string): void {
 @media (max-width: 768px) {
   .user-nav {
     display: none;
-  }
-  .user-topbar {
-    grid-template-columns: auto 1fr;
   }
 }
 </style>

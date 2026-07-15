@@ -11,10 +11,10 @@ export class CustomDashboardEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ name: 'user_id' })
   userId: number;
 
-  @Column({ length: 128 })
+  @Column({ name: 'name', length: 128 })
   name: string;
 
   @Column({ type: 'text' })

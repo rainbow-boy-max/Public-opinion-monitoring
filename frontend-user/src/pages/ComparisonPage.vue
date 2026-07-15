@@ -96,7 +96,7 @@
 
     <div v-if="!hasResult && !loading" class="empty-hint">
       <GlassCard>
-        <el-empty description="配置对比条件后点击"开始对比"">
+        <el-empty description="配置对比条件后点击「开始对比」">
           <el-button type="primary" @click="loadMock">加载示例数据</el-button>
         </el-empty>
       </GlassCard>

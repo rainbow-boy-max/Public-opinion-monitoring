@@ -1,6 +1,9 @@
 <template>
   <div class="work-orders-page">
     <GlassCard title="我的工单" subtitle="查看和处理分配给您的工单">
+      <template #extra>
+        <el-button type="primary" @click="showCreateDialog = true">提交工单</el-button>
+      </template>
       <div class="filters-row">
         <el-select v-model="filters.status" placeholder="状态" clearable style="width:130px" @change="loadList">
           <el-option label="待处理" value="pending" />
@@ -51,7 +54,7 @@
       </div>
     </GlassCard>
 
-    <el-dialog v-model="detailVisible" title="工单详情" width="700" :close-on-click-modal="false">
+    <el-dialog v-model="detailVisible" title="工单详情" width="720" :close-on-click-modal="false">
       <template v-if="detail">
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item label="工单ID">{{ detail.id }}</el-descriptions-item>
@@ -68,9 +71,27 @@
           <el-descriptions-item v-if="detail.resolution" label="处置" :span="2"><pre class="desc-text">{{ detail.resolution }}</pre></el-descriptions-item>
           <el-descriptions-item v-if="detail.resolvedAt" label="解决时间">{{ formatDate(detail.resolvedAt) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDate(detail.createdAt) }}</el-descriptions-item>
+          <el-descriptions-item v-if="detail.rating" label="评分">
+            <el-rate :model-value="detail.rating" disabled size="small" />
+          </el-descriptions-item>
         </el-descriptions>
 
         <el-divider />
+
+        <div class="action-row" v-if="detail.status === 'pending' || detail.status === 'in_progress'">
+          <el-button type="primary" @click="showReplyInput = !showReplyInput">
+            {{ showReplyInput ? '取消回复' : '回复' }}
+          </el-button>
+        </div>
+        <div class="action-row" v-if="detail.status === 'resolved'">
+          <el-button type="success" @click="onConfirmClose" :loading="closeLoading">确认完结</el-button>
+          <el-button type="warning" @click="showRatingDialog = true">评价</el-button>
+        </div>
+
+        <div v-if="showReplyInput" class="comment-input-row" style="margin-bottom:12px">
+          <el-input v-model="commentText" type="textarea" :rows="2" placeholder="输入回复内容..." style="flex:1" />
+          <el-button type="primary" @click="onAddComment" :loading="commentLoading">发送</el-button>
+        </div>
 
         <div class="section-title">评论 ({{ detail.comments?.length || 0 }})</div>
         <div class="comments-thread">
@@ -87,6 +108,41 @@
           <el-input v-model="commentText" placeholder="输入评论..." style="flex:1" />
           <el-button type="primary" @click="onAddComment" :loading="commentLoading">发送</el-button>
         </div>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showCreateDialog" title="提交工单" width="550">
+      <el-form :model="createForm" label-width="80px">
+        <el-form-item label="标题" required>
+          <el-input v-model="createForm.title" placeholder="工单标题" />
+        </el-form-item>
+        <el-form-item label="描述" required>
+          <el-input v-model="createForm.description" type="textarea" :rows="4" placeholder="详细描述问题" />
+        </el-form-item>
+        <el-form-item label="优先级">
+          <el-select v-model="createForm.priority" style="width:100%">
+            <el-option label="低" value="low" />
+            <el-option label="中" value="medium" />
+            <el-option label="高" value="high" />
+            <el-option label="严重" value="critical" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateDialog = false">取消</el-button>
+        <el-button type="primary" @click="onCreate" :loading="createLoading">提交</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showRatingDialog" title="评价工单" width="450">
+      <div style="text-align:center;padding:20px 0">
+        <div style="margin-bottom:16px;font-size:15px">请为本次工单处理评分</div>
+        <el-rate v-model="ratingValue" :max="5" show-score style="justify-content:center" />
+        <el-input v-model="ratingFeedback" type="textarea" :rows="3" placeholder="评价反馈（可选）" style="margin-top:16px" />
+      </div>
+      <template #footer>
+        <el-button @click="showRatingDialog = false">取消</el-button>
+        <el-button type="primary" @click="onSubmitRating" :loading="ratingLoading">提交评价</el-button>
       </template>
     </el-dialog>
   </div>
@@ -108,6 +164,8 @@ interface WorkOrder {
   resolution: string | null;
   resolvedAt: string | null;
   createdAt: string;
+  rating: number | null;
+  feedback: string | null;
   comments?: WorkOrderComment[];
 }
 
@@ -135,6 +193,21 @@ const detailVisible = ref(false);
 const detail = ref<WorkOrder | null>(null);
 const commentText = ref('');
 const commentLoading = ref(false);
+const showReplyInput = ref(false);
+const closeLoading = ref(false);
+
+const showCreateDialog = ref(false);
+const createLoading = ref(false);
+const createForm = reactive({
+  title: '',
+  description: '',
+  priority: 'medium',
+});
+
+const showRatingDialog = ref(false);
+const ratingValue = ref(0);
+const ratingFeedback = ref('');
+const ratingLoading = ref(false);
 
 function priorityLabel(p: string): string {
   return { low: '低', medium: '中', high: '高', critical: '紧急' }[p] || p;
@@ -190,6 +263,7 @@ async function onRowClick(row: WorkOrder): Promise<void> {
     const res = await http.get(`/work-orders/${row.id}`);
     detail.value = res.data;
     commentText.value = '';
+    showReplyInput.value = false;
     detailVisible.value = true;
   } catch (err) {
     console.error(err);
@@ -202,12 +276,69 @@ async function onAddComment(): Promise<void> {
   try {
     await http.post(`/work-orders/${detail.value.id}/comment`, { content: commentText.value });
     commentText.value = '';
+    showReplyInput.value = false;
     const res = await http.get(`/work-orders/${detail.value.id}`);
     detail.value = res.data;
   } catch (err) {
     console.error(err);
   } finally {
     commentLoading.value = false;
+  }
+}
+
+async function onCreate(): Promise<void> {
+  if (!createForm.title.trim() || !createForm.description.trim()) return;
+  createLoading.value = true;
+  try {
+    await http.post('/work-orders', {
+      title: createForm.title,
+      description: createForm.description,
+      priority: createForm.priority,
+    });
+    showCreateDialog.value = false;
+    createForm.title = '';
+    createForm.description = '';
+    createForm.priority = 'medium';
+    await loadList();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    createLoading.value = false;
+  }
+}
+
+async function onConfirmClose(): Promise<void> {
+  if (!detail.value) return;
+  closeLoading.value = true;
+  try {
+    await http.post(`/work-orders/${detail.value.id}/status`, { status: 'closed' });
+    const res = await http.get(`/work-orders/${detail.value.id}`);
+    detail.value = res.data;
+    await loadList();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    closeLoading.value = false;
+  }
+}
+
+async function onSubmitRating(): Promise<void> {
+  if (!detail.value || !ratingValue.value) return;
+  ratingLoading.value = true;
+  try {
+    await http.post(`/work-orders/${detail.value.id}/rate`, {
+      rating: ratingValue.value,
+      feedback: ratingFeedback.value || undefined,
+    });
+    showRatingDialog.value = false;
+    ratingValue.value = 0;
+    ratingFeedback.value = '';
+    const res = await http.get(`/work-orders/${detail.value.id}`);
+    detail.value = res.data;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    ratingLoading.value = false;
   }
 }
 
@@ -285,6 +416,12 @@ onMounted(() => {
 .comment-input-row {
   display: flex;
   gap: 8px;
+}
+
+.action-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 .text-muted {
