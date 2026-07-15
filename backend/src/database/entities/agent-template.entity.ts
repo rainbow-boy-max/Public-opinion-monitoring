@@ -17,7 +17,7 @@ export class AgentTemplateEntity {
   @Column({ length: 256 })
   description: string;
 
-  @Column({ type: 'text' })
+  @Column({ name: 'system_prompt', type: 'text' })
   systemPrompt: string;
 
   @Column({ name: 'capabilities', type: 'text' })
