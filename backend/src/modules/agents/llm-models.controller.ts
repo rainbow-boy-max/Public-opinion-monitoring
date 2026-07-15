@@ -18,6 +18,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AuditLog } from '../audit/audit-log.decorator';
 import { IsString, IsOptional, IsNumber, IsBoolean, IsInt, IsArray, Min, Max, IsIn } from 'class-validator';
+import { Type } from 'class-transformer';
 
 class SaveModelDto {
   @IsString()
@@ -110,10 +111,12 @@ class ReorderDto {
 
 class KgConfigDto {
   @IsInt()
+  @Type(() => Number)
   primaryModelId: number;
 
   @IsArray()
   @IsInt({ each: true })
+  @Type(() => Number)
   fallbackModelIds: number[];
 }
 

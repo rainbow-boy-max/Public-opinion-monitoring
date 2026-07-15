@@ -100,14 +100,17 @@ const configTableData = computed(() =>
 async function loadModels(): Promise<void> {
   try {
     const data = await http.get('/admin/llm-models', { params: { pageSize: 100 } });
-    models.value = (data.items || []).map((m: any) => ({
-      id: m.id,
-      displayName: m.displayName,
-      provider: m.provider,
-      model: m.model,
-      isKgPrimary: m.isKgPrimary,
-      isKgFallback: m.isKgFallback,
-    }));
+    models.value = (data.items || [])
+      .filter((m: any) => m.isEnabled)
+      .map((m: any) => ({
+        id: m.id,
+        displayName: m.displayName || m.name || m.model || '未知模型',
+        provider: m.provider,
+        model: m.model,
+        isEnabled: m.isEnabled,
+        isKgPrimary: m.isKgPrimary,
+        isKgFallback: m.isKgFallback,
+      }));
     const primary = models.value.find(m => m.isKgPrimary);
     if (primary) selectedPrimary.value = primary.id;
     selectedFallback.value = models.value.filter(m => m.isKgFallback).map(m => m.id);

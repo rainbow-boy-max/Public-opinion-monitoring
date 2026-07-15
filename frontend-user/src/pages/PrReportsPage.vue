@@ -791,11 +791,9 @@ function closeFloatingPlayer(): void {
   floatingProgress.value = 0;
 }
 
-onMounted(async () => {
-  await loadReports();
-  if (reports.value.length === 0) {
-    loadMockReport();
-  }
+onMounted(() => {
+  loadMockReport();
+  loadReports();
   loadAgents();
   loadMonitorTasks();
   loadSchedules();
