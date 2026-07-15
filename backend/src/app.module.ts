@@ -24,6 +24,7 @@ import { VerifyModule } from './modules/verify/verify.module';
 import { SystemLogsModule } from './modules/system-logs/system-logs.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { KnowledgeBasesModule } from './modules/knowledge/knowledge-bases.module';
+import { AlertModule } from './modules/alert/alert.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { KnowledgeBasesModule } from './modules/knowledge/knowledge-bases.module
     SystemLogsModule,
     AgentsModule,
     KnowledgeBasesModule,
+    AlertModule,
   ],
   providers: [
     {

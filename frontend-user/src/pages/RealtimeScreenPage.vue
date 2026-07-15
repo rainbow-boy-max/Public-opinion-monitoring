@@ -22,32 +22,43 @@
         <div class="rt-stat-card__bg" />
         <div class="rt-stat-card__label">{{ card.label }}</div>
         <div class="rt-stat-card__value">
-          <span class="rt-stat-card__num">{{ card.value }}</span>
+          <span class="rt-stat-card__num" :key="card.key">{{ card.value }}</span>
           <span v-if="card.unit" class="rt-stat-card__unit">{{ card.unit }}</span>
         </div>
-        <div class="rt-stat-card__trend">{{ card.trend }}</div>
+        <div class="rt-stat-card__trend" :style="{ color: card.trendColor }">{{ card.trend }}</div>
       </div>
     </section>
 
     <!-- 图表区 -->
     <section class="rt-charts">
+      <div class="rt-chart-block rt-chart-block--wide">
+        <div class="rt-chart-title">
+          <span class="rt-chart-bar" />情感趋势 (24h)
+        </div>
+        <div ref="sentimentTrendEl" class="rt-chart-canvas" style="height: 260px" />
+      </div>
       <div class="rt-chart-block">
         <div class="rt-chart-title">
           <span class="rt-chart-bar" />各平台舆情占比
         </div>
         <div ref="platformChartEl" class="rt-chart-canvas" style="height: 260px" />
       </div>
-      <div class="rt-chart-block">
-        <div class="rt-chart-title">
-          <span class="rt-chart-bar" />情感倾向分布
-        </div>
-        <div ref="sentimentChartEl" class="rt-chart-canvas" style="height: 260px" />
+    </section>
+
+    <section class="rt-keywords" v-if="keywords.length > 0">
+      <div class="rt-chart-title">
+        <span class="rt-chart-bar" />热门关键词
       </div>
-      <div class="rt-chart-block">
-        <div class="rt-chart-title">
-          <span class="rt-chart-bar" />24 小时趋势
-        </div>
-        <div ref="trendChartEl" class="rt-chart-canvas" style="height: 260px" />
+      <div class="rt-keywords__tags">
+        <span
+          v-for="kw in keywords"
+          :key="kw.keyword"
+          class="rt-keyword-tag"
+          :style="{ '--kw-color': kw.color, '--kw-size': kw.size }"
+        >
+          {{ kw.keyword }}
+          <sup class="rt-keyword-tag__count">{{ kw.count }}</sup>
+        </span>
       </div>
     </section>
 
@@ -57,6 +68,7 @@
         <span class="rt-chart-bar" />实时事件流
         <span class="rt-events-count">{{ events.length }} 条</span>
         <span style="flex: 1"></span>
+        <el-tag v-if="demoMode" size="small" type="warning" effect="dark" style="margin-right: 8px">演示模式</el-tag>
         <el-button
           size="small"
           type="warning"
@@ -127,6 +139,8 @@ interface EventRow {
 }
 
 const events = ref<EventRow[]>([]);
+const keywords = ref<Array<{ keyword: string; count: number; color: string; size: string }>>([]);
+const demoMode = ref(false);
 const router = useRouter();
 
 const firstEventId = computed(() => (events.value.length > 0 ? events.value[0].id : null));
@@ -144,20 +158,18 @@ async function onGeneratePR(): Promise<void> {
 }
 const wsConnected = ref(false);
 const platformChartEl = ref<HTMLElement>();
-const sentimentChartEl = ref<HTMLElement>();
-const trendChartEl = ref<HTMLElement>();
+const sentimentTrendEl = ref<HTMLElement>();
 let platformChart: echarts.ECharts | null = null;
-let sentimentChart: echarts.ECharts | null = null;
-let trendChart: echarts.ECharts | null = null;
+let sentimentTrendChart: echarts.ECharts | null = null;
 let socket: Socket | null = null;
 let clockTimer: number | null = null;
 
 const currentTime = ref('');
 const summaryCards = reactive([
-  { label: '总舆情数', value: '0', unit: '', color: '#5E72E4', trend: '▲ 12.5%' },
-  { label: '今日新增', value: '0', unit: '', color: '#7C3AED', trend: '▲ 8.3%' },
-  { label: '活跃平台', value: '0', unit: '', color: '#10B981', trend: '▲ 4.2%' },
-  { label: '负面占比', value: '0%', unit: '', color: '#EF4444', trend: '▼ 2.1%' },
+  { label: '总舆情数', value: '0', unit: '', color: '#5E72E4', trend: '实时总量', trendColor: '#9DA8E5', key: 'total' },
+  { label: '正面', value: '0', unit: '', color: '#10B981', trend: '', trendColor: '#10B981', key: 'positive' },
+  { label: '负面', value: '0', unit: '', color: '#EF4444', trend: '', trendColor: '#EF4444', key: 'negative' },
+  { label: '中性', value: '0', unit: '', color: '#94A3B8', trend: '', trendColor: '#94A3B8', key: 'neutral' },
 ]);
 
 function updateTime(): void {
@@ -191,13 +203,9 @@ function initCharts(): void {
     platformChart = echarts.init(platformChartEl.value);
     platformChart.setOption(buildPlatformOption({}));
   }
-  if (sentimentChartEl.value) {
-    sentimentChart = echarts.init(sentimentChartEl.value);
-    sentimentChart.setOption(buildSentimentOption({}));
-  }
-  if (trendChartEl.value) {
-    trendChart = echarts.init(trendChartEl.value);
-    trendChart.setOption(buildTrendOption([]));
+  if (sentimentTrendEl.value) {
+    sentimentTrendChart = echarts.init(sentimentTrendEl.value);
+    sentimentTrendChart.setOption(buildSentimentTrendOption([]));
   }
 }
 
@@ -278,23 +286,122 @@ function buildTrendOption(hourly: number[]): any {
   };
 }
 
+function buildSentimentTrendOption(sentimentTrend: any): any {
+  const trendData = sentimentTrend && sentimentTrend.length === 24 ? sentimentTrend : [];
+  return {
+    backgroundColor: 'transparent',
+    textStyle: { color: '#9DA8E5' },
+    legend: {
+      data: ['正面', '负面', '中性'],
+      textStyle: { color: '#9DA8E5' },
+      itemWidth: 8,
+      itemHeight: 8,
+      bottom: 0,
+    },
+    grid: { left: 36, right: 16, top: 16, bottom: 40 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(20,25,56,0.95)',
+      borderColor: 'rgba(94,114,228,0.3)',
+      textStyle: { color: '#E8EBFF' },
+    },
+    xAxis: {
+      type: 'category',
+      data: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+      axisLine: { lineStyle: { color: 'rgba(140,155,240,0.2)' } },
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { lineStyle: { color: 'rgba(140,155,240,0.2)' } },
+      splitLine: { lineStyle: { color: 'rgba(140,155,240,0.08)' } },
+    },
+    series: [
+      {
+        name: '正面',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 4,
+        data: trendData.map((h: any) => h.positive),
+        lineStyle: { width: 2, color: '#10B981' },
+        itemStyle: { color: '#10B981' },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(16,185,129,0.3)' },
+            { offset: 1, color: 'rgba(16,185,129,0.02)' },
+          ]),
+        },
+      },
+      {
+        name: '负面',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 4,
+        data: trendData.map((h: any) => h.negative),
+        lineStyle: { width: 2, color: '#EF4444' },
+        itemStyle: { color: '#EF4444' },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(239,68,68,0.3)' },
+            { offset: 1, color: 'rgba(239,68,68,0.02)' },
+          ]),
+        },
+      },
+      {
+        name: '中性',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 4,
+        data: trendData.map((h: any) => h.neutral),
+        lineStyle: { width: 2, color: '#94A3B8' },
+        itemStyle: { color: '#94A3B8' },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(148,163,184,0.2)' },
+            { offset: 1, color: 'rgba(148,163,184,0.02)' },
+          ]),
+        },
+      },
+    ],
+  };
+}
+
 function handleStats(stats: any): void {
   summaryCards[0].value = String(stats.total || 0);
-  const today = stats.byPlatform ? Object.values(stats.byPlatform).reduce((a: any, b: any) => Number(a) + Number(b), 0) : 0;
-  summaryCards[1].value = String(today);
-  summaryCards[2].value = String(stats.byPlatform ? Object.keys(stats.byPlatform).length : 0);
-  const total = (stats.bySentiment?.positive || 0) + (stats.bySentiment?.negative || 0) + (stats.bySentiment?.neutral || 0);
-  const neg = stats.bySentiment?.negative || 0;
-  summaryCards[3].value = total > 0 ? `${Math.round((neg / total) * 100)}%` : '0%';
+  summaryCards[1].value = String(stats.bySentiment?.positive || 0);
+  summaryCards[2].value = String(stats.bySentiment?.negative || 0);
+  summaryCards[3].value = String(stats.bySentiment?.neutral || 0);
 
   if (platformChart) platformChart.setOption(buildPlatformOption(stats));
-  if (sentimentChart) sentimentChart.setOption(buildSentimentOption(stats));
-  if (trendChart) trendChart.setOption(buildTrendOption(stats.hourlyTrend || []));
+
+  if (sentimentTrendChart && stats.sentimentTrend) {
+    sentimentTrendChart.setOption(buildSentimentTrendOption(stats.sentimentTrend));
+  }
+
+  if (stats.topKeywords && Array.isArray(stats.topKeywords)) {
+    const colors = ['#5E72E4', '#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#8B5CF6', '#F97316', '#14B8A6'];
+    const maxCount = stats.topKeywords.length > 0 ? Math.max(...stats.topKeywords.map((k: any) => k.count)) : 1;
+    keywords.value = stats.topKeywords.map((k: { keyword: string; count: number }, i: number) => ({
+      keyword: k.keyword,
+      count: k.count,
+      color: colors[i % colors.length],
+      size: `${0.7 + (k.count / maxCount) * 0.5}rem`,
+    }));
+  }
 }
 
 async function connectSocket(): Promise<void> {
   const taskIds = await fetchMyTaskIds();
   const token = localStorage.getItem('user_token') || '';
+
+  const connTimeout = setTimeout(() => {
+    if (!wsConnected.value) {
+      initMockData();
+    }
+  }, 5000);
+
   socket = io({
     path: '/socket.io',
     auth: { token },
@@ -302,6 +409,7 @@ async function connectSocket(): Promise<void> {
   });
 
   socket.on('connect', () => {
+    clearTimeout(connTimeout);
     wsConnected.value = true;
     if (taskIds.length > 0) {
       socket?.emit('subscribe:tasks', { taskIds });
@@ -310,6 +418,16 @@ async function connectSocket(): Promise<void> {
 
   socket.on('disconnect', () => {
     wsConnected.value = false;
+    if (!demoMode.value) {
+      initMockData();
+    }
+  });
+
+  socket.on('connect_error', () => {
+    clearTimeout(connTimeout);
+    if (!wsConnected.value && !demoMode.value) {
+      initMockData();
+    }
   });
 
   socket.on('opinion:new', (payload: any) => {
@@ -320,6 +438,72 @@ async function connectSocket(): Promise<void> {
   socket.on('opinion:stats', (stats: any) => {
     handleStats(stats);
   });
+}
+
+function initMockData(): void {
+  if (demoMode.value) return;
+  demoMode.value = true;
+  wsConnected.value = false;
+
+  const platforms = ['微博', '微信', '抖音', '小红书', '快手', '百家号'];
+  const sentiments: ('positive' | 'negative' | 'neutral')[] = ['positive', 'negative', 'neutral'];
+  const authors = ['财经观察', '科技前线', '社会热点', '用户小明', '大V评论', '每日资讯'];
+  const mockKeywords = ['产品质量', '消费者权益', '行业新规', '科技变革', '市场监管', '品牌口碑', '数据分析', '政策利好', '社会责任', '行业趋势'];
+  const titles = [
+    '某品牌产品质量问题引发消费者担忧',
+    '行业新规出台,市场反应积极',
+    '企业CEO在高峰论坛发表重要讲话',
+    '消费者投诉数量较上月增长明显',
+    '新技术的应用带来行业变革',
+    '市场监管部门开展专项整治行动',
+    '知名机构发布行业分析报告',
+    '社交媒体热议某事件最新进展',
+    '多家企业联合发起行业自律倡议',
+    '政策利好推动板块整体上涨',
+  ];
+
+  const mockEvents: EventRow[] = Array.from({ length: 20 }, (_, i) => ({
+    id: Date.now() + i,
+    platform: platforms[i % platforms.length],
+    title: titles[i % titles.length],
+    url: '#',
+    readCount: Math.floor(Math.random() * 100000),
+    likeCount: Math.floor(Math.random() * 5000),
+    sentiment: sentiments[i % sentiments.length],
+    matchedAt: new Date(Date.now() - i * 60000).toISOString(),
+    author: authors[i % authors.length],
+  }));
+  events.value = mockEvents;
+
+  const total = mockEvents.length;
+  const byPlatform: Record<string, number> = {};
+  const bySentiment = { positive: 0, negative: 0, neutral: 0 };
+  for (const e of mockEvents) {
+    byPlatform[e.platform] = (byPlatform[e.platform] || 0) + 1;
+    bySentiment[e.sentiment as keyof typeof bySentiment] += 1;
+  }
+  const hourlyTrend = new Array(24).fill(0);
+  const now = new Date().getHours();
+  for (let i = 0; i < 24; i++) {
+    hourlyTrend[(now - i + 24) % 24] = Math.floor(Math.random() * 15 + 3);
+  }
+
+  // sentimentTrend
+  const sentimentTrend = Array.from({ length: 24 }, (_, h) => ({
+    hour: h,
+    positive: Math.floor(Math.random() * 8 + 1),
+    negative: Math.floor(Math.random() * 5),
+    neutral: Math.floor(Math.random() * 6 + 1),
+  }));
+
+  // topKeywords
+  const topKeywords = mockKeywords.slice(0, Math.floor(Math.random() * 4 + 7)).map((kw) => ({
+    keyword: kw,
+    count: Math.floor(Math.random() * 20 + 3),
+  }));
+  topKeywords.sort((a, b) => b.count - a.count);
+
+  handleStats({ total, byPlatform, bySentiment, hourlyTrend, sentimentTrend, topKeywords });
 }
 
 async function loadInitialEvents(): Promise<void> {
@@ -367,8 +551,7 @@ onUnmounted(() => {
   if (socket) socket.disconnect();
   if (clockTimer) window.clearInterval(clockTimer);
   if (platformChart) platformChart.dispose();
-  if (sentimentChart) sentimentChart.dispose();
-  if (trendChart) trendChart.dispose();
+  if (sentimentTrendChart) sentimentTrendChart.dispose();
 });
 </script>
 
@@ -492,6 +675,12 @@ onUnmounted(() => {
   position: relative;
 }
 
+.rt-keywords__empty {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
 .rt-stat-card__num {
   font-size: 36px;
   font-weight: 800;
@@ -502,183 +691,26 @@ onUnmounted(() => {
   letter-spacing: -0.5px;
   line-height: 1.1;
   filter: drop-shadow(0 0 12px var(--card-color));
+  animation: num-pop 0.5s ease-out;
 }
 
-.rt-stat-card__unit {
-  font-size: 14px;
-  color: var(--text-tertiary);
-}
-
-.rt-stat-card__trend {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--color-success);
-  font-weight: 500;
-  position: relative;
-}
-
-.rt-charts {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.rt-chart-block {
-  padding: 18px 20px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  min-height: 320px;
-}
-
-.rt-chart-title {
-  font-size: 14px;
-  color: var(--text-primary);
-  font-weight: 600;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  position: relative;
-  padding-left: 12px;
-}
-
-.rt-chart-bar {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 14px;
-  background: var(--gradient-primary);
-  border-radius: 2px;
-}
-
-.rt-events-block {
-  padding: 18px 20px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-}
-
-.rt-events-count {
-  margin-left: 12px;
-  background: rgba(94, 114, 228, 0.18);
-  color: #A78BFA;
-  padding: 2px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.rt-events-stream {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  max-height: 480px;
-  overflow-y: auto;
-  padding: 4px;
-}
-
-.rt-event-card {
-  padding: 14px 16px;
-  background: rgba(15, 19, 47, 0.5);
-  border-left: 3px solid var(--color-primary);
-  border-radius: 8px;
-  transition: all 200ms ease;
-}
-
-.rt-event-card--positive { border-left-color: var(--color-success); }
-.rt-event-card--negative { border-left-color: var(--color-danger); }
-.rt-event-card--neutral { border-left-color: var(--color-info); }
-
-.rt-event-card__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.rt-event-card__time {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.rt-event-card__title {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-  text-decoration: none;
-  background-image: linear-gradient(90deg, #A78BFA, #5E72E4);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-height: 1.4;
-}
-
-.rt-event-card__title:hover {
-  text-decoration: underline;
-}
-
-.rt-event-card__meta {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-
-.meta-sep {
-  opacity: 0.5;
-}
-
-.rt-events-empty {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 80px 20px;
-  color: var(--text-tertiary);
-}
-
-.rt-events-empty__icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.rt-events-empty__sub {
-  font-size: 12px;
-  margin-top: 8px;
-}
-
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition: all 300ms ease;
-}
-
-.slide-up-enter-from {
-  opacity: 0;
-  transform: translateY(-12px);
-}
-
-.slide-up-leave-to {
-  opacity: 0;
-  transform: translateX(40px);
+@keyframes num-pop {
+  0% {
+    transform: scale(1.3);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @media (max-width: 1200px) {
   .rt-charts {
     grid-template-columns: 1fr;
+  }
+  .rt-chart-block--wide {
+    grid-column: span 1;
   }
   .rt-stats {
     grid-template-columns: repeat(2, 1fr);

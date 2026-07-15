@@ -52,6 +52,10 @@ const router = createRouter({
           path: 'profile',
           component: () => import('@/pages/ProfilePage.vue'),
         },
+        {
+          path: 'alert',
+          component: () => import('@/pages/AlertPage.vue'),
+        },
       ],
     },
   ],

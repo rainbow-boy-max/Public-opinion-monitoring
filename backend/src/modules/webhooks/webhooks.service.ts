@@ -44,6 +44,7 @@ export class WebhooksService {
   ) {}
 
   async create(userId: number, dto: CreateWebhookDto): Promise<WebhookEntity> {
+    this.validateWebhook(dto.url, dto.format);
     const webhook = this.webhookRepo.create({
       userId,
       name: dto.name,
@@ -86,6 +87,9 @@ export class WebhooksService {
 
   async update(userId: number, id: number, dto: UpdateWebhookDto): Promise<WebhookEntity> {
     const webhook = await this.getById(userId, id);
+    const url = dto.url ?? webhook.url;
+    const format = dto.format ?? webhook.format;
+    this.validateWebhook(url, format);
     if (dto.name !== undefined) webhook.name = dto.name;
     if (dto.url !== undefined) webhook.url = dto.url;
     if (dto.format !== undefined) webhook.format = dto.format;
@@ -155,5 +159,33 @@ export class WebhooksService {
 
   async updateLastPush(id: number): Promise<void> {
     await this.webhookRepo.update(id, { lastPushAt: new Date() });
+  }
+
+  private validateUrl(url: string, format: WebhookFormat): void {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new BadRequestException('Invalid webhook URL format');
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new BadRequestException('Webhook URL must use http or https protocol');
+    }
+    const domainPatterns: Record<WebhookFormat, RegExp | null> = {
+      [WebhookFormat.WECOM]: /qyapi\.weixin\.qq\.com/i,
+      [WebhookFormat.DINGTALK]: /oapi\.dingtalk\.com/i,
+      [WebhookFormat.FEISHU]: /open\.feishu\.cn/i,
+      [WebhookFormat.CUSTOM_JSON]: null,
+    };
+    const pattern = domainPatterns[format];
+    if (pattern && !pattern.test(parsed.hostname)) {
+      this.logger.warn(
+        `Webhook URL hostname "${parsed.hostname}" does not match expected pattern for format ${format}`,
+      );
+    }
+  }
+
+  private validateWebhook(url: string, format: WebhookFormat): void {
+    this.validateUrl(url, format);
   }
 }

@@ -75,6 +75,10 @@ const router = createRouter({
           path: 'system-logs',
           component: () => import('@/pages/SystemLogsPage.vue'),
         },
+        {
+          path: 'alert',
+          component: () => import('@/pages/AlertCenterPage.vue'),
+        },
       ],
     },
   ],

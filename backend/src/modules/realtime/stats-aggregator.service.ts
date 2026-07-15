@@ -10,6 +10,10 @@ interface UserStats {
   byPlatform: Record<string, number>;
   bySentiment: { positive: number; negative: number; neutral: number };
   hourlyTrend: number[];
+  topKeywords: Array<{ keyword: string; count: number }>;
+  platformTrend: Array<{ hour: number; platform: string; count: number }>;
+  sentimentTrend: Array<{ hour: number; positive: number; negative: number; neutral: number }>;
+  recentEvents: Array<{ title: string; platform: string; sentiment: string; matchedAt: Date }>;
   updatedAt: string;
 }
 
@@ -41,6 +45,10 @@ export class StatsAggregatorService {
         byPlatform: {},
         bySentiment: { positive: 0, negative: 0, neutral: 0 },
         hourlyTrend: new Array(24).fill(0),
+        topKeywords: [],
+        platformTrend: [],
+        sentimentTrend: Array.from({ length: 24 }, (_, i) => ({ hour: i, positive: 0, negative: 0, neutral: 0 })),
+        recentEvents: [],
         updatedAt: new Date().toISOString(),
       };
       return emptyStats;
@@ -55,7 +63,7 @@ export class StatsAggregatorService {
       .andWhere('e.status = 0')
       .getMany();
 
-    const recentEvents = allEvents.filter(
+    const timeWindowEvents = allEvents.filter(
       (e) => new Date(e.matchedAt).getTime() >= since.getTime(),
     );
 
@@ -63,18 +71,71 @@ export class StatsAggregatorService {
     const bySentiment = { positive: 0, negative: 0, neutral: 0 };
     const hourlyTrend = new Array(24).fill(0);
 
-    for (const event of recentEvents) {
+    for (const event of timeWindowEvents) {
       byPlatform[event.platform] = (byPlatform[event.platform] || 0) + 1;
       bySentiment[event.sentiment] += 1;
       const hour = new Date(event.matchedAt).getHours();
       hourlyTrend[hour] += 1;
     }
 
+    // topKeywords
+    const kwCount = new Map<string, number>();
+    for (const e of timeWindowEvents) {
+      const kws: string[] = (e as any).matchedKeywords || [];
+      for (const kw of kws) {
+        kwCount.set(kw, (kwCount.get(kw) || 0) + 1);
+      }
+    }
+    const topKeywords = Array.from(kwCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([keyword, count]) => ({ keyword, count }));
+
+    // sentimentTrend
+    const sentimentTrend = Array.from({ length: 24 }, (_, i) => ({ hour: i, positive: 0, negative: 0, neutral: 0 }));
+    for (const e of timeWindowEvents) {
+      const hour = new Date(e.matchedAt).getHours();
+      if (e.sentiment === 'positive') sentimentTrend[hour].positive += 1;
+      else if (e.sentiment === 'negative') sentimentTrend[hour].negative += 1;
+      else sentimentTrend[hour].neutral += 1;
+    }
+
+    // platformTrend
+    const platformHours = new Map<string, number[]>();
+    for (const e of timeWindowEvents) {
+      if (!platformHours.has(e.platform)) {
+        platformHours.set(e.platform, new Array(24).fill(0));
+      }
+      const hour = new Date(e.matchedAt).getHours();
+      platformHours.get(e.platform)![hour] += 1;
+    }
+    const platformTrend: Array<{ hour: number; platform: string; count: number }> = [];
+    for (const [platform, hours] of platformHours) {
+      for (let h = 0; h < 24; h++) {
+        platformTrend.push({ hour: h, platform, count: hours[h] });
+      }
+    }
+
+    // latestEvents
+    const latestEvents = [...timeWindowEvents]
+      .sort((a, b) => new Date(b.matchedAt).getTime() - new Date(a.matchedAt).getTime())
+      .slice(0, 20)
+      .map((e) => ({
+        title: e.title,
+        platform: e.platform,
+        sentiment: e.sentiment,
+        matchedAt: e.matchedAt,
+      }));
+
     const stats: UserStats = {
       total: allEvents.length,
       byPlatform,
       bySentiment,
       hourlyTrend,
+      topKeywords,
+      platformTrend,
+      sentimentTrend,
+      recentEvents: latestEvents,
       updatedAt: new Date().toISOString(),
     };
 

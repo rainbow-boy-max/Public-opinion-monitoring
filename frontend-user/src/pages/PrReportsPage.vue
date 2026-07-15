@@ -47,6 +47,7 @@
           </el-tag>
           <span class="meta-text">{{ currentReport.tokensUsed }} tokens · {{ currentReport.latencyMs }}ms</span>
           <el-button size="small" text @click="onCopyReport(currentReport)">复制结果</el-button>
+          <el-button size="small" text :icon="Download" @click="handleExport(currentReport)">导出</el-button>
         </div>
         <section class="report-section">
           <h3>📊 舆情深度分析</h3>
@@ -100,7 +101,7 @@
 import { ref, reactive, onMounted, h } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { Plus } from '@element-plus/icons-vue';
+import { Plus, Download } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 
@@ -210,6 +211,30 @@ function onCopyReport(r: any): void {
   const text = (r.analysis || '') + '\n\n' + (r.strategy || '');
   navigator.clipboard?.writeText(text);
   ElMessage.success('已复制到剪贴板');
+}
+
+function handleExport(r: any): void {
+  const data = {
+    id: r.id,
+    title: r.title || `报告 #${r.id}`,
+    status: r.status,
+    createdAt: r.createdAt,
+    modelUsed: r.modelUsed,
+    tokensUsed: r.tokensUsed,
+    latencyMs: r.latencyMs,
+    analysis: r.analysis || '',
+    strategy: r.strategy || '',
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pr-report-${r.id}-${Date.now()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  ElMessage.success('报告已导出');
 }
 
 function openCustomDialog(): void {

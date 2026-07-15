@@ -45,3 +45,10 @@ export {
   KnowledgeBaseChunkEntity,
   AgentKnowledgeBindingEntity,
 } from './knowledge-base.entity';
+export {
+  AlertRuleEntity,
+  AlertConditionType,
+  AlertChannel,
+  AlertRuleStatus,
+} from './alert-rule.entity';
+export { AlertLogEntity } from './alert-log.entity';

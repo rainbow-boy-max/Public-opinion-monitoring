@@ -13,6 +13,7 @@ import { XiaohongshuAdapter } from './xiaohongshu.adapter';
 import { KuaishouAdapter } from './kuaishou.adapter';
 import { BaijiahaoAdapter } from './baijiahao.adapter';
 import { WeixinVideoAdapter } from './weixin-video.adapter';
+import { MockAdapter } from './mock.adapter';
 
 export const PLATFORM_DECORATOR = Symbol.for('platform.adapter');
 
@@ -21,6 +22,8 @@ export class AdapterRegistry implements OnModuleInit {
   private readonly logger = new Logger(AdapterRegistry.name);
   private adapters = new Map<string, PlatformAdapter>();
   private healthCounters = new Map<string, { failures: number; healthy: boolean }>();
+
+  private readonly useMock: boolean;
 
   constructor(
     private configService: ConfigService,
@@ -31,7 +34,10 @@ export class AdapterRegistry implements OnModuleInit {
     private xiaohongshu: XiaohongshuAdapter,
     private kuaishou: KuaishouAdapter,
     private baijiahao: BaijiahaoAdapter,
-  ) {}
+    private mock: MockAdapter,
+  ) {
+    this.useMock = this.configService.get<boolean>('USE_MOCK', false);
+  }
 
   onModuleInit(): void {
     this.register(this.weibo);
@@ -41,7 +47,11 @@ export class AdapterRegistry implements OnModuleInit {
     this.register(this.xiaohongshu);
     this.register(this.kuaishou);
     this.register(this.baijiahao);
+    this.register(this.mock);
     this.logger.log(`Registered ${this.adapters.size} platform adapters`);
+    if (this.useMock) {
+      this.logger.warn('MOCK mode enabled - all platforms will return mock data');
+    }
   }
 
   register(adapter: PlatformAdapter): void {
@@ -50,7 +60,10 @@ export class AdapterRegistry implements OnModuleInit {
   }
 
   get(platform: string): PlatformAdapter | undefined {
-    return this.adapters.get(platform);
+    const adapter = this.adapters.get(platform);
+    if (adapter) return adapter;
+    if (this.useMock) return this.mock;
+    return undefined;
   }
 
   list(): PlatformAdapter[] {
@@ -58,6 +71,7 @@ export class AdapterRegistry implements OnModuleInit {
   }
 
   isHealthy(platform: string): boolean {
+    if (platform === 'mock') return true;
     const counter = this.healthCounters.get(platform);
     return counter?.healthy ?? true;
   }

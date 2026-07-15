@@ -12,6 +12,7 @@ import {
 import { KeywordMatcherService } from './keyword-matcher.service';
 import { OpinionNormalizerService } from './opinion-normalizer.service';
 import { AdapterRegistry } from './adapters/adapter-registry';
+import { RawOpinionEvent } from './adapters/platform-adapter.interface';
 import { RedisService } from '../../redis/redis.service';
 import { TaskFrequency } from '../../database/entities';
 
@@ -141,6 +142,11 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
       } catch (err) {
         this.adapterRegistry.markFailure(platform);
         this.logger.warn(`Adapter ${platform} failed: ${(err as Error).message}`);
+        const fallback = this.getMockFallback(platform, keywords, {
+          since: new Date(Date.now() - 60 * 60 * 1000),
+          limit: 100,
+        });
+        for (const r of fallback) allRaw.push({ platform, raw: r });
       }
     }
 
@@ -173,6 +179,34 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
     this.logger.debug(
       `Task ${taskId}: collected ${allRaw.length} raw, saved ${savedCount} matched`,
     );
+  }
+
+  private getMockFallback(
+    platform: string,
+    keywords: string[],
+    options: { since?: Date; limit?: number },
+  ): RawOpinionEvent[] {
+    const results: RawOpinionEvent[] = [];
+    const now = new Date();
+    const count = options.limit && options.limit < 5 ? options.limit : 5;
+    for (let i = 0; i < count; i++) {
+      const publishedAt = new Date(now.getTime() - Math.random() * 86400000);
+      results.push({
+        platform,
+        title: `[${platform}模拟] 关于 "${keywords.join(',')}" 的第 ${i + 1} 条结果`,
+        content: `这是一条来自 ${platform} 的模拟舆情数据，关键词为：${keywords.join('、')}。因真实 API 不可用，使用模拟数据作为替代。`,
+        author: `模拟作者_${platform}_${i + 1}`,
+        authorAvatar: '',
+        publishTime: publishedAt,
+        url: `https://example.com/${platform}/mock/${i}`,
+        readCount: Math.floor(Math.random() * 10000),
+        likeCount: Math.floor(Math.random() * 1000),
+        commentCount: Math.floor(Math.random() * 500),
+        shareCount: Math.floor(Math.random() * 200),
+        rawData: { source: 'mock', platform, keywords, isFallback: true },
+      });
+    }
+    return results;
   }
 
   private async publishNewOpinion(

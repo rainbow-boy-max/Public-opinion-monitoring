@@ -74,7 +74,8 @@ async function onLogin(): Promise<void> {
     try {
       await auth.login(form.username, form.password);
       ElMessage.success('登录成功 / Login successful');
-      router.push('/verify');
+      const redirectTo = auth.user?.authStatus === 'verified' ? '/dashboard' : '/verify';
+      router.push(redirectTo);
     } catch (err: any) {
       const lang = (navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'zh';
       errorMessage.value = err?.messageEn
