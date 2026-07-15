@@ -76,6 +76,14 @@ const router = createRouter({
           component: () => import('@/pages/SystemLogsPage.vue'),
         },
         {
+          path: 'competitor-tracking',
+          component: () => import('@/pages/CompetitorTrackingPage.vue'),
+        },
+        {
+          path: 'hot-topics',
+          component: () => import('@/pages/HotTopicsPage.vue'),
+        },
+        {
           path: 'alert',
           component: () => import('@/pages/AlertCenterPage.vue'),
         },

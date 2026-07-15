@@ -52,3 +52,6 @@ export {
   AlertRuleStatus,
 } from './alert-rule.entity';
 export { AlertLogEntity } from './alert-log.entity';
+export { CompetitorGroupEntity } from './competitor.entity';
+export { ReportScheduleEntity, ScheduleFreq } from './report-schedule.entity';
+export { PropagationLinkEntity } from './propagation.entity';

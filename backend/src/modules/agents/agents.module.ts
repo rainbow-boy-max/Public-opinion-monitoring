@@ -10,6 +10,7 @@ import {
   AgentKbChunkEntity,
   PrReportEntity,
   OpinionEventEntity,
+  ReportScheduleEntity,
 } from '../../database/entities';
 import { AgentsController } from './agents.controller';
 import { AgentsService } from './agents.service';
@@ -32,6 +33,7 @@ import { WebSearchModule } from '../admin/web-search.module';
       AgentKbChunkEntity,
       PrReportEntity,
       OpinionEventEntity,
+      ReportScheduleEntity,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],

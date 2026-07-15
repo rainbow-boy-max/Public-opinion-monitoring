@@ -53,8 +53,24 @@ const router = createRouter({
           component: () => import('@/pages/ProfilePage.vue'),
         },
         {
+          path: 'timeline',
+          component: () => import('@/pages/TimelinePage.vue'),
+        },
+        {
           path: 'alert',
           component: () => import('@/pages/AlertPage.vue'),
+        },
+        {
+          path: 'competitor',
+          component: () => import('@/pages/CompetitorPage.vue'),
+        },
+        {
+          path: 'propagation',
+          component: () => import('@/pages/PropagationPage.vue'),
+        },
+        {
+          path: 'hot-topics',
+          component: () => import('@/pages/HotTopicsPage.vue'),
         },
       ],
     },

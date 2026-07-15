@@ -10,12 +10,14 @@ import {
   HttpStatus,
   ParseIntPipe,
   Res,
+  Delete,
+  Patch,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { PrReportsService } from './pr-reports.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IsString, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray, IsIn, ArrayMinSize } from 'class-validator';
 
 class StartReportFromEventDto {
   @IsNumber()
@@ -72,5 +74,60 @@ export class PrReportsController {
     @Query('pageSize') pageSize = 20,
   ) {
     return this.service.listReports(userId, page, pageSize);
+  }
+
+  // P1-04: periodic report generation
+  @Post('periodic')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async generatePeriodic(
+    @CurrentUser('id') userId: number,
+    @Body() dto: { freq: 'daily' | 'weekly'; taskIds: number[] },
+  ) {
+    const r = await this.service.generatePeriodicReport(userId, dto.freq, dto.taskIds);
+    return { reportId: r.id, status: r.status };
+  }
+
+  @Get('periodic-schedule')
+  async listSchedules(@CurrentUser('id') userId: number) {
+    return this.service.listSchedules(userId);
+  }
+
+  @Post('periodic-schedule')
+  @HttpCode(HttpStatus.CREATED)
+  async createSchedule(
+    @CurrentUser('id') userId: number,
+    @Body() dto: { name: string; freq: 'daily' | 'weekly'; taskIds: number[]; time: string },
+  ) {
+    return this.service.createSchedule(userId, dto);
+  }
+
+  @Patch('periodic-schedule/:id/toggle')
+  async toggleSchedule(
+    @CurrentUser('id') userId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.toggleSchedule(userId, id);
+  }
+
+  @Delete('periodic-schedule/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteSchedule(
+    @CurrentUser('id') userId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.service.deleteSchedule(userId, id);
+  }
+
+  @Get('reports/:id/export/:format')
+  async exportReport(
+    @CurrentUser('id') userId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('format') format: string,
+    @Res() res: Response,
+  ) {
+    const result = await this.service.exportReport(id, userId, format as 'markdown' | 'pdf' | 'docx');
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.send(result.content);
   }
 }

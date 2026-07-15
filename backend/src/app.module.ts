@@ -24,7 +24,11 @@ import { VerifyModule } from './modules/verify/verify.module';
 import { SystemLogsModule } from './modules/system-logs/system-logs.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { KnowledgeBasesModule } from './modules/knowledge/knowledge-bases.module';
+import { HotTopicsModule } from './modules/hot-topics/hot-topics.module';
 import { AlertModule } from './modules/alert/alert.module';
+import { CompetitorModule } from './modules/competitor/competitor.module';
+import { PropagationModule } from './modules/propagation/propagation.module';
+import { TimelineModule } from './modules/timeline/timeline.module';
 
 @Module({
   imports: [
@@ -52,7 +56,10 @@ import { AlertModule } from './modules/alert/alert.module';
     SystemLogsModule,
     AgentsModule,
     KnowledgeBasesModule,
+    HotTopicsModule,
     AlertModule,
+    PropagationModule,
+    TimelineModule,
   ],
   providers: [
     {

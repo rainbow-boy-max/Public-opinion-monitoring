@@ -274,6 +274,34 @@ export class PrReportEntity {
   @Column({ name: 'error_message', type: 'text', nullable: true })
   errorMessage: string | null;
 
+  // P1-04: periodic report fields
+  @Column({
+    name: 'report_type',
+    type: 'varchar', length: 32,
+    default: 'single',
+  })
+  reportType: 'single' | 'periodic' | 'multi';
+
+  @Column({
+    name: 'periodic_freq',
+    type: 'varchar', length: 16,
+    nullable: true,
+  })
+  periodicFreq: 'daily' | 'weekly' | null;
+
+  @Column({ name: 'periodic_config', type: 'text', nullable: true })
+  periodicConfig: string | null;
+
+  @Column({
+    name: 'export_format',
+    type: 'varchar', length: 16,
+    default: 'markdown',
+  })
+  exportFormat: 'markdown' | 'pdf' | 'docx';
+
+  @Column({ name: 'export_url', length: 512, nullable: true })
+  exportUrl: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
