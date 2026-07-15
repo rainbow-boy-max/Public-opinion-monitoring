@@ -10,12 +10,16 @@ import {
   KnowledgeBaseChunkEntity,
   AgentKnowledgeBindingEntity,
   AgentEntity,
+  KbScoringConfigEntity,
 } from '../../database/entities';
 import { KnowledgeBasesController, AgentKnowledgeController } from './knowledge-bases.controller';
+import { KbScoringController } from './kb-scoring.controller';
 import { KnowledgeBasesService } from './knowledge-bases.service';
+import { KbScoringService } from './kb-scoring.service';
 import { KnowledgeBasesUploadController } from './knowledge-bases-upload.controller';
 import { KnowledgeProcessor } from './knowledge.processor';
 import { LlmModule } from '../agents/llm.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
@@ -25,6 +29,7 @@ import { LlmModule } from '../agents/llm.module';
       KnowledgeBaseChunkEntity,
       AgentKnowledgeBindingEntity,
       AgentEntity,
+      KbScoringConfigEntity,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -45,9 +50,15 @@ import { LlmModule } from '../agents/llm.module';
       },
     }),
     LlmModule,
+    AdminModule,
   ],
-  controllers: [KnowledgeBasesController, KnowledgeBasesUploadController, AgentKnowledgeController],
-  providers: [KnowledgeBasesService, KnowledgeProcessor],
-  exports: [KnowledgeBasesService],
+  controllers: [
+    KnowledgeBasesController,
+    KnowledgeBasesUploadController,
+    AgentKnowledgeController,
+    KbScoringController,
+  ],
+  providers: [KnowledgeBasesService, KnowledgeProcessor, KbScoringService],
+  exports: [KnowledgeBasesService, KbScoringService],
 })
 export class KnowledgeBasesModule {}

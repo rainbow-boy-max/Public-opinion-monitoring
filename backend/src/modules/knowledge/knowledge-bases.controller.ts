@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IsString, IsOptional, IsArray, IsNumber, Min, Max, MinLength, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsNumber, Min, Max, MinLength, MaxLength, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class CreateKbDto {
@@ -60,35 +60,13 @@ class UpdateKbDto {
   tags?: string[];
 
   @IsOptional()
-  @IsString()
+  @IsIn(['draft', 'processing', 'ready', 'disabled'])
   status?: string;
 }
 
 class UpdateFileContentDto {
   @IsString()
   content: string;
-}
-
-class UpdateKbDto {
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @IsOptional()
-  @IsString()
-  domain?: string;
-
-  @IsOptional()
-  @IsArray()
-  tags?: string[];
-
-  @IsOptional()
-  @IsIn(['draft', 'processing', 'ready', 'disabled'])
-  status?: KnowledgeBaseStatus;
 }
 
 class BindKbsDto {

@@ -31,8 +31,10 @@ export interface UpdateKbDto {
   description?: string;
   domain?: string;
   tags?: string[];
-  status?: KnowledgeBaseStatus;
+  status?: string;
 }
+
+import { KbScoringService } from './kb-scoring.service';
 
 @Injectable()
 export class KnowledgeBasesService {
@@ -53,6 +55,7 @@ export class KnowledgeBasesService {
     private embeddingsService: LlmEmbeddingsService,
     private llmService: LlmService,
     private llmRouterService: LlmRouterService,
+    private readonly kbScoringService: KbScoringService,
   ) {}
 
   async list(params: { page: number; pageSize: number; status?: string; q?: string }): Promise<any> {
@@ -101,7 +104,7 @@ export class KnowledgeBasesService {
     if (dto.description !== undefined) k.description = dto.description;
     if (dto.domain !== undefined) k.domain = dto.domain;
     if (dto.tags !== undefined) k.tags = dto.tags;
-    if (dto.status !== undefined) k.status = dto.status;
+    if (dto.status !== undefined) k.status = dto.status as any;
     return this.kbRepo.save(k);
   }
 
@@ -443,51 +446,26 @@ export class KnowledgeBasesService {
     file: KnowledgeBaseFileEntity,
     text: string,
   ): Promise<{ score: number; summary: string; topics: string[]; qaPairs: any[] }> {
-    const preview = text.substring(0, 2000);
-    const prompt = `你是内容质量分析专家。请对以下文档进行分析，只返回严格 JSON：
-
-{
-  "score": 0-100 的相关性/质量评分,
-  "summary": "100-150 字内容摘要",
-  "topics": ["章节主题1", "章节主题2", "章节主题3"],
-  "qaPairs": [{"q": "问题", "a": "答案"}]
-}
-
-要求：
-- score 根据文档可作为 AI 知识库的价值打分（信息密度、逻辑性、清晰度）
-- summary 通俗易懂
-- qaPairs 提 3 个常见问答对
-- topics 反映文档主要的章节或主题
-
-文件名: ${file.filename}
-
-文档内容预览（前 2000 字）:
-${preview}`;
     try {
-      const messages: ChatMessage[] = [
-        { role: 'system', content: '你是内容质量分析专家，严格返回 JSON。' },
-        { role: 'user', content: prompt },
-      ];
-      const result = await this.llmRouterService.chat({
-        primaryModelId: 0,
-        fallbackModelIds: [],
-        messages,
-        temperature: 0.3,
-        maxTokens: 1500,
+      const kb = await this.getOne(file.kbId);
+      const result = await this.kbScoringService.scoreDocument({
+        filename: file.filename,
+        fileContent: text,
+        kbName: kb.name,
+        kbDomain: kb.domain || 'general',
+        kbTags: kb.tags || [],
+        filePath: file.storagePath,
       });
-      const json = this.tryParseJson(result.content);
-      if (json && typeof json.score === 'number') {
-        return {
-          score: Math.max(0, Math.min(100, json.score)),
-          summary: json.summary || '',
-          topics: Array.isArray(json.topics) ? json.topics.slice(0, 10) : [],
-          qaPairs: Array.isArray(json.qaPairs) ? json.qaPairs.slice(0, 10) : [],
-        };
-      }
+      return {
+        score: result.score,
+        summary: result.summary,
+        topics: result.topics,
+        qaPairs: result.qaPairs,
+      };
     } catch (err) {
       this.logger.warn(`Score AI error: ${(err as Error).message}`);
     }
-    return { score: 60, summary: '', topics: [], qaPairs: [] };
+    return { score: 0, summary: '', topics: [], qaPairs: [] };
   }
 
   private splitText(text: string, chunkSize: number, overlap: number): string[] {

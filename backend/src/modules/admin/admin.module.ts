@@ -63,6 +63,7 @@ import { WebSearchModule } from './web-search.module';
     VerifyRealnameService,
     AuditService,
     DashboardService,
+    WebSearchModule,
   ],
 })
 export class AdminModule {}

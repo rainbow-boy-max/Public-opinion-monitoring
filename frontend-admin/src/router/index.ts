@@ -68,6 +68,10 @@ const router = createRouter({
           component: () => import('@/pages/WebSearchConfigPage.vue'),
         },
         {
+          path: 'config/kb-scoring',
+          component: () => import('@/pages/KbScoringConfigPage.vue'),
+        },
+        {
           path: 'system-logs',
           component: () => import('@/pages/SystemLogsPage.vue'),
         },
