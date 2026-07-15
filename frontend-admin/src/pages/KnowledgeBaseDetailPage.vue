@@ -90,6 +90,9 @@
               </el-descriptions-item>
             </el-descriptions>
             <div style="margin-top: 16px; text-align: right">
+              <el-button :loading="recalcScoreLoading" @click="onRecalcScore" style="margin-right: 8px">
+                🔄 重新计算知识库评分
+              </el-button>
               <el-button :icon="MagicStick" @click="onAutoClassify" :loading="autoClassifying">
                 AI 重新分类与摘要
               </el-button>
@@ -284,6 +287,7 @@ const rescoringId = ref(0);
 const autoDomainLoading = ref(false);
 const autoTagsLoading = ref(false);
 const autoSummaryLoading = ref(false);
+const recalcScoreLoading = ref(false);
 
 const DOMAIN_LABELS: Record<string, string> = {
   technology: '科技', finance: '金融', medical: '医疗', legal: '法律',
@@ -520,6 +524,19 @@ async function onAutoSummary(): Promise<void> {
     ElMessage.error(err?.message || 'AI 摘要生成失败');
   } finally {
     autoSummaryLoading.value = false;
+  }
+}
+
+async function onRecalcScore(): Promise<void> {
+  recalcScoreLoading.value = true;
+  try {
+    const r = await http.post(`/admin/knowledge/${kbId.value}/recalc-score`);
+    await loadKb();
+    ElMessage.success(`知识库评分已更新：${Math.round(r.kbScore)} 分`);
+  } catch (err: any) {
+    ElMessage.error(err?.message || '评分计算失败');
+  } finally {
+    recalcScoreLoading.value = false;
   }
 }
 

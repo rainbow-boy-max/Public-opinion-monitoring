@@ -196,6 +196,12 @@ export class KnowledgeBasesController {
     await this.service.refreshKbStats(id);
     return this.service.getOne(id);
   }
+
+  @Post(':id/recalc-score')
+  @HttpCode(HttpStatus.OK)
+  async recalcScore(@Param('id', ParseIntPipe) id: number) {
+    return this.service.recalcKbScore(id);
+  }
 }
 
 @Controller('admin/agents/:agentId/knowledge-bases')

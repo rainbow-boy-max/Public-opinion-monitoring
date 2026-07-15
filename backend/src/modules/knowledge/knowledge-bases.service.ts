@@ -140,18 +140,6 @@ export class KnowledgeBasesService {
     return this.fileRepo.find({ where: { kbId }, order: { id: 'DESC' } });
   }
 
-  async deleteFile(kbId: number, fileId: number): Promise<void> {
-    const file = await this.fileRepo.findOne({ where: { id: fileId, kbId } });
-    if (!file) throw new NotFoundException('文件不存在');
-    try {
-      const fs = await import('fs/promises');
-      await fs.unlink(file.storagePath);
-    } catch { /* ignore */ }
-    await this.chunkRepo.delete({ fileId });
-    await this.fileRepo.remove(file);
-    await this.refreshKbStats(kbId);
-  }
-
   async getFileContent(kbId: number, fileId: number): Promise<{ content: string }> {
     const file = await this.fileRepo.findOne({ where: { id: fileId, kbId } });
     if (!file) throw new NotFoundException('文件不存在');
@@ -172,34 +160,67 @@ export class KnowledgeBasesService {
     if (!file) throw new NotFoundException('文件不存在');
     file.parsedText = content;
     await this.fileRepo.save(file);
-    // 更新 chunks
     await this.chunkRepo.delete({ fileId });
     if (content.trim()) {
       const chunks = this.splitText(content, 1000, 200);
       const chunkEntities = chunks.map((t, i) =>
-        this.chunkRepo.create({
-          fileId,
-          kbId,
-          chunkIndex: i,
-          content: t,
-          charCount: t.length,
-        }),
+        this.chunkRepo.create({ fileId, kbId, chunkIndex: i, content: t, charCount: t.length }),
       );
       await this.chunkRepo.save(chunkEntities);
     }
     await this.refreshKbStats(kbId);
   }
 
-  async rescoreFile(kbId: number, fileId: number): Promise<{ score: number; summary: string }> {
+  async deleteFile(kbId: number, fileId: number): Promise<void> {
     const file = await this.fileRepo.findOne({ where: { id: fileId, kbId } });
     if (!file) throw new NotFoundException('文件不存在');
-    const text = file.parsedText || file.storagePath || '';
-    const textContent = text.length > 0 && text.length < 100000 ? text : '';
-    const result = await this.scoreFileWithAI(file, textContent);
+    try {
+      const fs = await import('fs/promises');
+      await fs.unlink(file.storagePath);
+    } catch { /* ignore */ }
+    await this.chunkRepo.delete({ fileId });
+    await this.fileRepo.remove(file);
+    await this.refreshKbStats(kbId);
+  }
+
+  async rescoreFile(kbId: number, fileId: number): Promise<{ score: number }> {
+    const file = await this.fileRepo.findOne({ where: { id: fileId, kbId } });
+    if (!file) throw new NotFoundException('文件不存在');
+    const text = file.parsedText || '';
+    const result = await this.scoreFileWithAI(file, text.slice(0, 10000));
     file.aiScore = result.score;
     file.parsedSummary = result.summary || file.parsedSummary;
     await this.fileRepo.save(file);
-    return { score: result.score, summary: result.summary };
+    // 异步刷新 KB 级总评分
+    this.recalcKbScore(kbId).catch((err) =>
+      this.logger.warn(`Recalc KB score after rescore failed: ${(err as Error).message}`),
+    );
+    return { score: result.score };
+  }
+
+  async recalcKbScore(kbId: number): Promise<{ kbScore: number; kbSummary: string }> {
+    const kb = await this.getOne(kbId);
+    const files = await this.fileRepo.find({ where: { kbId, status: KnowledgeFileStatus.READY } });
+    const result = await this.kbScoringService.scoreKnowledgeBase({
+      id: kb.id,
+      name: kb.name,
+      description: kb.description,
+      domain: kb.domain,
+      tags: parseTags(kb.tags),
+      fileCount: kb.fileCount,
+      chunkCount: kb.chunkCount,
+      files: files.map((f) => ({
+        filename: f.filename,
+        parsedText: f.parsedText,
+        aiScore: f.aiScore,
+      })),
+    });
+    await this.kbRepo.update(kbId, {
+      aiScore: result.kbScore,
+      aiSummary: result.kbSummary || kb.aiSummary,
+    } as any);
+    // 重新拉 KB 刷新内存缓存
+    return result;
   }
 
   async enqueueParse(kbId: number, fileId: number, filePath: string, fileType: string): Promise<void> {
@@ -295,6 +316,10 @@ export class KnowledgeBasesService {
       await this.refreshKbStats(kbId);
       this.logger.log(
         `KB file parsed: ${file.filename} → ${chunkEntities.length} chunks, ai_score=${aiScore}`,
+      );
+      // 异步更新 KB 级评分，不阻塞解析流程
+      this.recalcKbScore(kbId).catch((err) =>
+        this.logger.warn(`Recalc KB score after parse failed: ${(err as Error).message}`),
       );
     } catch (err) {
       file.status = KnowledgeFileStatus.FAILED;

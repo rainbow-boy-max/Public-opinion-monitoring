@@ -197,4 +197,81 @@ ${text}`;
       return null;
     }
   }
+
+  /**
+   * 基于知识库内所有已就绪文档，让 LLM 给出 KB 级整体评分与摘要
+   */
+  async scoreKnowledgeBase(kb: {
+    id: number;
+    name: string;
+    description: string | null;
+    domain: string | null;
+    tags: string[];
+    fileCount: number;
+    chunkCount: number;
+    files: Array<{ filename: string; parsedText: string | null; aiScore: number | null }>;
+  }): Promise<{ kbScore: number; kbSummary: string }> {
+    const cfg = await this.getConfig();
+    const modelIds = [cfg.primaryModelId, ...(cfg.fallbackModelIds || [])].filter(Boolean);
+
+    if (modelIds.length === 0) {
+      return { kbScore: 0, kbSummary: '' };
+    }
+
+    const fileList = kb.files
+      .filter((f) => f.parsedText)
+      .slice(0, 20)
+      .map((f, i) => {
+        const preview = (f.parsedText || '').slice(0, 500);
+        const scoreLabel = f.aiScore !== null ? `当前 AI 评分: ${Math.round(f.aiScore)}` : '未评分';
+        return `[文件 ${i + 1}] ${f.filename}\n${scoreLabel}\n摘要: ${preview.slice(0, 200)}`;
+      })
+      .join('\n\n---\n\n');
+
+    const prompt = `你是知识库质量分析专家。请严格按 JSON 格式回答：
+
+{
+  "kbScore": 0-100,
+  "kbSummary": "50-100 字知识库整体摘要"
+}
+
+评估要求：
+- 分析以下知识库的所有文档，给出整体质量评分 kbScore（0-100）
+- 评分依据：文档丰富度、信息密度、与知识库主题「${kb.name}」的相关性、字段完整性
+- kbSummary：知识库的整体内容摘要（涵盖所有文档主题）
+
+知识库名称: ${kb.name}
+领域: ${kb.domain || '通用'}
+标签: ${kb.tags.join(', ') || '无'}
+文件数: ${kb.fileCount}
+总文档分块数: ${kb.chunkCount}
+
+文档列表：
+${fileList || '(无已就绪文档)'}`;
+
+    try {
+      const result = await this.llmRouterService.chat({
+        primaryModelId: cfg.primaryModelId,
+        fallbackModelIds: cfg.fallbackModelIds || [],
+        messages: [
+          { role: 'system', content: '你是知识库质量分析专家，严格返回 JSON。' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.3,
+        maxTokens: 2000,
+      });
+
+      const json = this.tryParseJson(result.content);
+      if (json && typeof json.kbScore === 'number') {
+        return {
+          kbScore: Math.max(0, Math.min(100, json.kbScore)),
+          kbSummary: String(json.kbSummary || ''),
+        };
+      }
+    } catch (err) {
+      this.logger.warn(`KB score AI error: ${(err as Error).message}`);
+    }
+
+    return { kbScore: 0, kbSummary: '' };
+  }
 }
