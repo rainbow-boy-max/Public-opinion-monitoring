@@ -52,7 +52,12 @@
           <el-option v-for="v in filteredVoices" :key="v.id" :label="v.name" :value="v.id">
             <div class="voice-option">
               <div class="voice-option__name">{{ v.name }}</div>
-              <div class="voice-option__desc">{{ v.description }}</div>
+              <div class="voice-option__meta">
+                <el-tag size="small" :type="v.provider === 'xiaomi' ? 'warning' : 'primary'">
+                  {{ v.provider === 'xiaomi' ? '小米' : 'MiniMax' }}
+                </el-tag>
+                <span class="voice-option__desc">{{ v.description }}</span>
+              </div>
             </div>
           </el-option>
         </el-select>
@@ -223,6 +228,7 @@ onMounted(() => { loadData(); });
 .test-area { margin-top: 12px; }
 .voice-option { display: flex; flex-direction: column; gap: 2px; }
 .voice-option__name { font-size: 14px; font-weight: 500; }
+.voice-option__meta { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .voice-option__desc { font-size: 12px; color: var(--text-tertiary); }
 .test-error { color: var(--color-danger); font-size: 13px; margin-top: 8px; }
 .test-player { margin-top: 12px; padding: 12px; background: var(--glass-bg); border-radius: var(--radius-md); border: 1px solid var(--glass-border); }

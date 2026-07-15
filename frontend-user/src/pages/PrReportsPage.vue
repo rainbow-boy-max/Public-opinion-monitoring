@@ -249,7 +249,12 @@
             >
               <div class="voice-option">
                 <div class="voice-option__name">{{ v.name }}</div>
-                <div class="voice-option__desc">{{ v.description }}</div>
+                <div class="voice-option__meta">
+                  <el-tag size="small" :type="v.provider === 'xiaomi' ? 'warning' : 'primary'">
+                    {{ v.provider === 'xiaomi' ? '小米' : 'MiniMax' }}
+                  </el-tag>
+                  <span class="voice-option__desc">{{ v.description }}</span>
+                </div>
               </div>
             </el-option>
           </el-select>
@@ -1036,7 +1041,18 @@ void statusType;
 .voice-option__name {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary);
+}
+
+.voice-option__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.voice-option__desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .voice-option__desc {
