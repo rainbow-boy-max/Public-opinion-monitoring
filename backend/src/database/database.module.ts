@@ -13,7 +13,6 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
         const dbType = (configService.get<string>('DB_TYPE') || process.env.DB_TYPE || 'mysql').toLowerCase();
         const common = {
           autoLoadEntities: true,
-          synchronize: false,
           logging: false,
           timezone: '+08:00',
           charset: 'utf8mb4',
@@ -40,6 +39,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
           password: configService.get<string>('DB_PASSWORD') || process.env.DB_PASSWORD,
           database: configService.get<string>('DB_DATABASE') || process.env.DB_DATABASE,
           ...common,
+          synchronize: process.env.DB_SYNC === 'true' || process.env.DB_SYNCHRONIZE === 'true',
         } as TypeOrmModuleOptions;
       },
     }),
