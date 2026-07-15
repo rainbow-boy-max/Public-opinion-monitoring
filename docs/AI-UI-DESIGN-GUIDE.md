@@ -245,7 +245,39 @@ export function useBreakpoint() {
 
 ---
 
-## 6. 已存在的待修复项
+## 6. 已完成的响应式改造
+
+以下改造已在 commit `ddd5cd8` 全部落地：
+
+### 6.1 global 层
+- `frontend-admin/src/shared/styles/responsive.css` — 三断点全局覆盖（移动端侧栏隐藏、抽屉菜单、dialog 全屏、form 标签顶置、grid 单列、pagination 精简、tabs 缩窄）
+- `frontend-user/src/shared/styles/responsive.css` — 用户端同步导入
+- `main.ts` 同时导入 `responsive.css`
+
+### 6.2 AdminLayout 改造
+- 新增 `<el-drawer>` 手机左侧抽屉菜单
+- topbar 折叠按钮：手机打开抽屉，桌面切换侧栏折叠
+- 新增 `Operation` 图标按钮（仅手机可见）
+
+### 6.3 LlmModelsManagementPage
+- 引入 `useDialogWidth()` 替换 `width="760"` 硬编码
+
+### 6.4 用户端
+- `UserLayout.vue` 已有 768px 断点
+- 导入 responsive.css，全局继承手机适配规则
+
+### 当前覆盖的页面清单
+
+| 页面 | 改造内容 |
+|---|---|
+| AdminLayout | 移动抽屉菜单、折叠双模式 |
+| LoginPage | 手机单栏、brand-features 隐藏 |
+| DashboardPage | 手机 2×2 grid、单列 chart |
+| Llm 模型管理 | dialog 响应式、表格水平滚动 |
+| Agents | 手机 1 列 card grid |
+| 知识库 | 手机 1 列 card grid、全屏预览 |
+| 用户管理 | dialog 全屏手机 |
+| 短信配置/模板 | dialog 全屏手机 |
 
 | 文件 | 问题 | 修复 |
 |---|---|---|
