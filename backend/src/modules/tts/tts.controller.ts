@@ -6,9 +6,12 @@ import {
   Param,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { TtsService } from './tts.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { IsString, IsOptional, IsNumber, IsIn, Min, Max } from 'class-validator';
 
@@ -30,6 +33,10 @@ class SynthesizeDto {
   @IsString()
   @IsIn(['mp3', 'wav'])
   format?: 'mp3' | 'wav';
+
+  @IsOptional()
+  @IsString()
+  provider?: string;
 }
 
 class SynthesizeReportDto {
@@ -42,6 +49,10 @@ class SynthesizeReportDto {
   @Min(0.5)
   @Max(2.0)
   speed?: number;
+
+  @IsOptional()
+  @IsString()
+  provider?: string;
 }
 
 @Controller('tts')
@@ -49,12 +60,18 @@ class SynthesizeReportDto {
 export class TtsController {
   constructor(private ttsService: TtsService) {}
 
+  @Get('providers')
+  getProviders() {
+    return this.ttsService.getProviders();
+  }
+
   @Post('synthesize')
   async synthesize(@Body() dto: SynthesizeDto) {
     return this.ttsService.synthesize(dto.text, {
       voiceId: dto.voiceId,
       speed: dto.speed,
       format: dto.format,
+      provider: dto.provider,
     });
   }
 
@@ -67,11 +84,12 @@ export class TtsController {
     return this.ttsService.synthesizeReport(reportId, userId, {
       voiceId: dto.voiceId,
       speed: dto.speed,
+      provider: dto.provider,
     });
   }
 
   @Get('voices')
-  async getVoices() {
-    return this.ttsService.getAvailableVoices();
+  async getVoices(@Query('provider') provider?: string) {
+    return this.ttsService.getAvailableVoices(provider);
   }
 }

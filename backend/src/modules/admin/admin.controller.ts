@@ -133,15 +133,24 @@ export class AdminController {
   }
 
   @Get('config/tts')
-  async getTtsConfig() {
-    return { configured: this.ttsService.hasApiKey() };
+  async getTtsConfig(@Query('provider') provider?: string) {
+    if (provider) {
+      const p = this.ttsService.getProviders().find(p => p.name === provider);
+      return { provider, configured: p?.active ?? false, providers: this.ttsService.getProviders() };
+    }
+    return { providers: this.ttsService.getProviders() };
   }
 
   @Post('config/tts')
   @HttpCode(HttpStatus.OK)
-  async saveTtsConfig(@Body() dto: { apiKey: string }) {
-    this.ttsService.setApiKey(dto.apiKey);
-    return { message: 'TTS API key configured successfully' };
+  async saveTtsConfig(@Body() dto: { provider: string; apiKey: string; groupId?: string; endpoint?: string }) {
+    this.ttsService.updateProviderConfig(dto.provider, {
+      apiKey: dto.apiKey,
+      groupId: dto.groupId || '',
+      endpoint: dto.endpoint || '',
+    });
+    this.ttsService.setActiveProvider(dto.provider);
+    return { message: `TTS ${dto.provider} 配置已保存` };
   }
 
   @Get('users')

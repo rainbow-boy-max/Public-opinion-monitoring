@@ -4,6 +4,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TtsController } from './tts.controller';
 import { TtsService } from './tts.service';
+import { MiniMaxProvider } from './providers/minimax.provider';
+import { XiaomiProvider } from './providers/xiaomi.provider';
 import { PrReportEntity } from '../../database/entities';
 
 @Module({
@@ -18,7 +20,7 @@ import { PrReportEntity } from '../../database/entities';
     }),
   ],
   controllers: [TtsController],
-  providers: [TtsService],
+  providers: [TtsService, MiniMaxProvider, XiaomiProvider],
   exports: [TtsService],
 })
 export class TtsModule {}
