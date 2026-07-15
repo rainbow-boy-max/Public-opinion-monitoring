@@ -41,6 +41,9 @@ export class MonitorTaskEntity {
   id: number;
 
   @Index()
+  @Column({ name: 'tenant_id', nullable: true })
+  tenantId: number | null;
+
   @Column({ name: 'user_id', type: 'bigint' })
   userId: number;
 

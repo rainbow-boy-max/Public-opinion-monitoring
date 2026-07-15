@@ -35,6 +35,12 @@ import { AuditModule } from './modules/audit/audit.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ExportModule } from './modules/export/export.module';
 import { ShortVideoModule } from './modules/short-video/short-video.module';
+import { SentimentModule } from './modules/sentiment/sentiment.module';
+import { TtsModule } from './modules/tts/tts.module';
+import { WorkOrdersModule } from './modules/work-orders/work-order.module';
+import { BrandReputationModule } from './modules/brand-reputation/brand-reputation.module';
+import { KnowledgeGraphModule } from './modules/knowledge-graph/knowledge-graph.module';
+import { TenantModule } from './modules/tenant/tenant.module';
 
 @Module({
   imports: [
@@ -72,6 +78,12 @@ import { ShortVideoModule } from './modules/short-video/short-video.module';
     DashboardModule,
     ExportModule,
     ShortVideoModule,
+    SentimentModule,
+    TtsModule,
+    WorkOrdersModule,
+    BrandReputationModule,
+    KnowledgeGraphModule,
+    TenantModule,
   ],
   providers: [
     {

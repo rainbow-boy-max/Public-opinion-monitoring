@@ -18,6 +18,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AliyunConfigService, UserManagementService } from './services';
+import { TtsService } from '../tts/tts.service';
 import { VerifyRealnameService } from '../verify/verify-realname.service';
 import { SystemLogsService } from '../system-logs/system-logs.service';
 import { IsString, IsOptional, MinLength, MaxLength, IsIn, Matches } from 'class-validator';
@@ -102,6 +103,7 @@ export class AdminController {
   constructor(
     private aliyunConfigService: AliyunConfigService,
     private userManagementService: UserManagementService,
+    private ttsService: TtsService,
     private verifyRealnameService: VerifyRealnameService,
     private systemLogsService: SystemLogsService,
   ) {}
@@ -128,6 +130,18 @@ export class AdminController {
   async updateVerifyConfig(@Body() dto: VerifyConfigDto) {
     await this.aliyunConfigService.saveVerifyConfig(dto);
     return { message: 'Verify config updated successfully' };
+  }
+
+  @Get('config/tts')
+  async getTtsConfig() {
+    return { configured: this.ttsService.hasApiKey() };
+  }
+
+  @Post('config/tts')
+  @HttpCode(HttpStatus.OK)
+  async saveTtsConfig(@Body() dto: { apiKey: string }) {
+    this.ttsService.setApiKey(dto.apiKey);
+    return { message: 'TTS API key configured successfully' };
   }
 
   @Get('users')

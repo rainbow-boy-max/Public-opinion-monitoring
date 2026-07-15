@@ -37,6 +37,16 @@
                 <span v-if="r.tokensUsed"> · Tokens：{{ r.tokensUsed }}</span>
                 <span v-if="r.latencyMs"> · {{ r.latencyMs }}ms</span>
               </div>
+              <div class="report-card__actions" @click.stop>
+                <el-button
+                  v-if="r.status === 'completed'"
+                  size="small"
+                  text
+                  :icon="HeadphoneIcon"
+                  :loading="synthesizingReportId === r.id"
+                  @click="openVoiceDialog(r)"
+                >语音播报</el-button>
+              </div>
             </article>
           </div>
         </el-tab-pane>
@@ -226,14 +236,85 @@
         <el-button type="primary" :loading="submitting" @click="onCustomSubmit">开始生成</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="voiceDialogVisible" title="语音播报" width="480" top="25vh" destroy-on-close>
+      <div class="voice-dialog">
+        <div class="voice-options">
+          <el-select v-model="selectedVoice" placeholder="选择声音" style="width: 100%">
+            <el-option
+              v-for="v in voices"
+              :key="v.id"
+              :label="v.name"
+              :value="v.id"
+            >
+              <div class="voice-option">
+                <div class="voice-option__name">{{ v.name }}</div>
+                <div class="voice-option__desc">{{ v.description }}</div>
+              </div>
+            </el-option>
+          </el-select>
+        </div>
+        <div class="voice-options">
+          <el-slider
+            v-model="voiceSpeed"
+            :min="0.5"
+            :max="2.0"
+            :step="0.1"
+            show-input
+            input-size="small"
+            style="width: 100%"
+          >
+            <template #prepend>语速</template>
+          </el-slider>
+        </div>
+        <div class="voice-dialog__actions">
+          <el-button type="primary" :loading="synthesizing" @click="startSynthesis">
+            {{ currentAudio ? '重新生成' : '开始播报' }}
+          </el-button>
+        </div>
+        <div v-if="synthesisError" class="voice-error">{{ synthesisError }}</div>
+        <div v-if="currentAudio" class="voice-player-wrapper">
+          <audio
+            ref="audioPlayerRef"
+            :src="currentAudio"
+            controls
+            autoplay
+            style="width: 100%"
+            @ended="onAudioEnded"
+          ></audio>
+          <div class="voice-player-info">
+            时长: {{ formatDuration(currentDuration) }}
+          </div>
+        </div>
+      </div>
+    </el-dialog>
+
+    <div v-if="floatingReport" class="floating-player">
+      <div class="floating-player__info">
+        <div class="floating-player__title">报告 #{{ floatingReport.id }}</div>
+        <div class="floating-player__controls">
+          <el-button size="small" circle @click="toggleFloatingPlay">
+            <span v-if="floatingPlaying">⏸</span>
+            <span v-else>▶</span>
+          </el-button>
+          <el-progress
+            :percentage="floatingProgress"
+            :stroke-width="4"
+            style="width: 200px; margin: 0 12px"
+          />
+          <span class="floating-player__time">{{ formatDuration(floatingCurrentTime) }} / {{ formatDuration(floatingTotalDuration) }}</span>
+        </div>
+      </div>
+      <el-button size="small" text @click="closeFloatingPlayer">关闭</el-button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, h } from 'vue';
+import { ref, reactive, onMounted, h, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, Download } from '@element-plus/icons-vue';
+import { Plus, Download, Headphone as HeadphoneIcon } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 
@@ -536,11 +617,130 @@ defineExpose({ load: loadReports });
 
 defineComponent({ MarkdownRenderer });
 
+// Voice broadcast (P3-06)
+const voiceDialogVisible = ref(false);
+const synthesizing = ref(false);
+const synthesizingReportId = ref<number | null>(null);
+const voices = ref<Array<{ id: string; name: string; description: string }>>([]);
+const selectedVoice = ref('female-chengshu');
+const voiceSpeed = ref(1.0);
+const currentAudio = ref('');
+const currentDuration = ref(0);
+const synthesisError = ref('');
+const voiceTargetReport = ref<any>(null);
+const audioPlayerRef = ref<HTMLAudioElement | null>(null);
+
+const floatingReport = ref<any>(null);
+const floatingPlaying = ref(false);
+const floatingProgress = ref(0);
+const floatingCurrentTime = ref(0);
+const floatingTotalDuration = ref(0);
+let floatingAudioEl: HTMLAudioElement | null = null;
+
+async function loadVoices(): Promise<void> {
+  try {
+    voices.value = await http.get('/tts/voices');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function openVoiceDialog(r: any): void {
+  voiceTargetReport.value = r;
+  currentAudio.value = r.audioUrl || '';
+  currentDuration.value = r.audioDurationMs || 0;
+  synthesisError.value = '';
+  voiceDialogVisible.value = true;
+}
+
+async function startSynthesis(): Promise<void> {
+  const report = voiceTargetReport.value;
+  if (!report) return;
+  synthesizing.value = true;
+  synthesisError.value = '';
+  try {
+    const res = await http.post(`/tts/report/${report.id}`, {
+      voiceId: selectedVoice.value,
+      speed: voiceSpeed.value,
+    });
+    currentAudio.value = res.audioUrl;
+    currentDuration.value = res.durationMs;
+    report.audioUrl = res.audioUrl;
+    report.audioDurationMs = res.durationMs;
+  } catch (err: any) {
+    synthesisError.value = err?.message || '语音合成失败';
+  } finally {
+    synthesizing.value = false;
+  }
+}
+
+function onAudioEnded(): void {
+  // audio ended naturally
+}
+
+function formatDuration(ms: number): string {
+  if (!ms) return '0:00';
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+function openFloatingPlayer(r: any): void {
+  if (floatingAudioEl) {
+    floatingAudioEl.pause();
+    floatingAudioEl = null;
+  }
+  floatingReport.value = r;
+  floatingPlaying.value = true;
+  floatingProgress.value = 0;
+  floatingCurrentTime.value = 0;
+  floatingTotalDuration.value = r.audioDurationMs || 0;
+
+  if (r.audioUrl) {
+    floatingAudioEl = new Audio(r.audioUrl);
+    floatingAudioEl.play();
+    floatingAudioEl.addEventListener('timeupdate', () => {
+      if (floatingAudioEl) {
+        floatingCurrentTime.value = floatingAudioEl.currentTime * 1000;
+        floatingProgress.value = floatingAudioEl.duration
+          ? (floatingAudioEl.currentTime / floatingAudioEl.duration) * 100
+          : 0;
+      }
+    });
+    floatingAudioEl.addEventListener('ended', () => {
+      floatingPlaying.value = false;
+    });
+  }
+}
+
+function toggleFloatingPlay(): void {
+  if (!floatingAudioEl) return;
+  if (floatingPlaying.value) {
+    floatingAudioEl.pause();
+    floatingPlaying.value = false;
+  } else {
+    floatingAudioEl.play();
+    floatingPlaying.value = true;
+  }
+}
+
+function closeFloatingPlayer(): void {
+  if (floatingAudioEl) {
+    floatingAudioEl.pause();
+    floatingAudioEl = null;
+  }
+  floatingReport.value = null;
+  floatingPlaying.value = false;
+  floatingProgress.value = 0;
+}
+
 onMounted(() => {
   loadReports();
   loadAgents();
   loadMonitorTasks();
   loadSchedules();
+  loadVoices();
 });
 void router;
 void statusType;
@@ -796,5 +996,110 @@ void statusType;
   color: var(--text-tertiary);
   margin-left: 6px;
   font-weight: 400;
+}
+
+.report-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.voice-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.voice-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.voice-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.voice-option__name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.voice-option__desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.voice-dialog__actions {
+  display: flex;
+  justify-content: center;
+}
+
+.voice-error {
+  color: var(--color-danger);
+  font-size: 13px;
+  text-align: center;
+}
+
+.voice-player-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--glass-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+}
+
+.voice-player-info {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.floating-player {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--glass-border);
+}
+
+.floating-player__info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.floating-player__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 100px;
+}
+
+.floating-player__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.floating-player__time {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-family: 'JetBrains Mono', monospace;
 }
 </style>

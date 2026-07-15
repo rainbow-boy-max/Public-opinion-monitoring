@@ -31,6 +31,10 @@ export class PayloadTemplateService {
         return this.renderFeishu(event);
       case WebhookFormat.CUSTOM_JSON:
         return this.renderCustomJson(event);
+      case WebhookFormat.ZABBIX:
+        return this.renderZabbix(event);
+      case WebhookFormat.FEISHU_BOT:
+        return this.renderFeishuBot(event);
       default:
         return { msgtype: 'text', text: { content: event.title } };
     }
@@ -124,6 +128,40 @@ export class PayloadTemplateService {
       shareCount: event.shareCount,
       sentiment: event.sentiment,
       keywords: event.keywords,
+    };
+  }
+
+  private renderZabbix(event: RenderableEvent): unknown {
+    return {
+      jsonrpc: '2.0',
+      method: 'event.create',
+      params: {
+        source: '舆情监测系统',
+        object: event.title,
+        severity: event.sentiment === 'negative' ? 4 : event.sentiment === 'positive' ? 1 : 2,
+        timestamp: Math.floor(new Date(event.publishTime).getTime() / 1000),
+        body: `平台: ${event.platform}\n关键词: ${event.keywords.join(', ')}\n阅读: ${event.readCount}\n链接: ${event.url}`,
+      },
+      id: 1,
+    };
+  }
+
+  private renderFeishuBot(event: RenderableEvent): unknown {
+    const publishTime = new Date(event.publishTime).toLocaleString('zh-CN');
+    return {
+      msg_type: 'interactive',
+      card: {
+        header: {
+          title: { tag: 'plain_text', content: '舆情告警' },
+          template: event.sentiment === 'negative' ? 'red' : event.sentiment === 'positive' ? 'green' : 'blue',
+        },
+        elements: [
+          { tag: 'div', text: { tag: 'lark_md', content: `**平台**: ${event.platform}\n**关键词**: ${event.keywords.join(', ')}\n**标题**: ${event.title}` } },
+          { tag: 'hr' },
+          { tag: 'div', text: { tag: 'lark_md', content: `**阅读**: ${event.readCount} | **点赞**: ${event.likeCount} | **时间**: ${publishTime}` } },
+          { tag: 'action', actions: [{ tag: 'button', text: { tag: 'plain_text', content: '查看原文' }, url: event.url, type: 'primary' }] },
+        ],
+      },
     };
   }
 

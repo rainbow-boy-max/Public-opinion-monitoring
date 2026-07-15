@@ -176,6 +176,8 @@ export class WebhooksService {
       [WebhookFormat.DINGTALK]: /oapi\.dingtalk\.com/i,
       [WebhookFormat.FEISHU]: /open\.feishu\.cn/i,
       [WebhookFormat.CUSTOM_JSON]: null,
+      [WebhookFormat.ZABBIX]: /zabbix/i,
+      [WebhookFormat.FEISHU_BOT]: /open\.feishu\.cn/i,
     };
     const pattern = domainPatterns[format];
     if (pattern && !pattern.test(parsed.hostname)) {

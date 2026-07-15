@@ -302,6 +302,13 @@ export class PrReportEntity {
   @Column({ name: 'export_url', length: 512, nullable: true })
   exportUrl: string | null;
 
+  // P3-06: TTS audio fields
+  @Column({ name: 'audio_url', length: 512, nullable: true })
+  audioUrl: string | null;
+
+  @Column({ name: 'audio_duration_ms', type: 'int', nullable: true })
+  audioDurationMs: number | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

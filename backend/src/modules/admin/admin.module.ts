@@ -25,6 +25,7 @@ import { DashboardController } from './dashboard.controller';
 import { SystemLogsModule } from '../system-logs/system-logs.module';
 import { SmsModule } from '../sms/sms.module';
 import { WebSearchModule } from './web-search.module';
+import { TtsModule } from '../tts/tts.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { WebSearchModule } from './web-search.module';
     SystemLogsModule,
     SmsModule,
     WebSearchModule,
+    TtsModule,
   ],
   controllers: [AdminController, AuditController, DashboardController],
   providers: [

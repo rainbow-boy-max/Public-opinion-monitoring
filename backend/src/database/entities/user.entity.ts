@@ -48,6 +48,9 @@ export class UserEntity {
   })
   authStatus: AuthStatus;
 
+  @Column({ name: 'tenant_id', nullable: true })
+  tenantId: number | null;
+
   @Column({
     type: 'varchar', length: 32,
     enum: UserRole,

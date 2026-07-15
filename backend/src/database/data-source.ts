@@ -13,6 +13,8 @@ import { AuditEventEntity } from './entities/audit-event.entity';
 import { WebSearchConfigEntity } from './entities/web-search-config.entity';
 import { AgentEntity, LlmModelEntity, AgentKbFileEntity, AgentKbChunkEntity, PrReportEntity, UserDeletedEntity } from './entities/agent.entity';
 import { KnowledgeBaseEntity, KnowledgeBaseFileEntity, KnowledgeBaseChunkEntity, AgentKnowledgeBindingEntity } from './entities/knowledge-base.entity';
+import { WorkOrderEntity } from './entities/work-order.entity';
+import { WorkOrderCommentEntity } from './entities/work-order-comment.entity';
 
 const entities = [
   UserEntity,
@@ -36,6 +38,8 @@ const entities = [
   KnowledgeBaseFileEntity,
   KnowledgeBaseChunkEntity,
   AgentKnowledgeBindingEntity,
+  WorkOrderEntity,
+  WorkOrderCommentEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();

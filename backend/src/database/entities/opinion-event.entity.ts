@@ -87,6 +87,15 @@ export class OpinionEventEntity {
   @Column({ type: 'int', default: 0 })
   status: number;
 
+  @Column({ name: 'sentiment_score', type: 'decimal', precision: 5, scale: 2, nullable: true })
+  sentimentScore: number | null;
+
+  @Column({ name: 'sentiment_confidence', type: 'decimal', precision: 5, scale: 2, nullable: true })
+  sentimentConfidence: number | null;
+
+  @Column({ name: 'sentiment_source', length: 16, nullable: true })
+  sentimentSource: string | null;
+
   @Column({ name: 'matched_at', type: 'datetime' })
   matchedAt: Date;
 

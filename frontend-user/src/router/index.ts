@@ -84,6 +84,14 @@ const router = createRouter({
           path: 'short-video',
           component: () => import('@/pages/ShortVideoPage.vue'),
         },
+        {
+          path: 'work-orders',
+          component: () => import('@/pages/WorkOrdersPage.vue'),
+        },
+        {
+          path: 'knowledge-graph',
+          component: () => import('@/pages/KnowledgeGraphPage.vue'),
+        },
       ],
     },
   ],

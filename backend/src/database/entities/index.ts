@@ -1,3 +1,4 @@
+export { TenantEntity } from './tenant.entity';
 export { UserEntity, UserRole, AuthStatus } from './user.entity';
 export { AliyunConfigEntity } from './aliyun-config.entity';
 export {
@@ -58,3 +59,10 @@ export { PropagationLinkEntity } from './propagation.entity';
 export { CustomDashboardEntity } from './dashboard.entity';
 export { AgentTemplateEntity } from './agent-template.entity';
 export { ShortVideoEntity } from './short-video.entity';
+export {
+  WorkOrderEntity,
+  WorkOrderStatus,
+  WorkOrderPriority,
+  WorkOrderType,
+} from './work-order.entity';
+export { WorkOrderCommentEntity } from './work-order-comment.entity';

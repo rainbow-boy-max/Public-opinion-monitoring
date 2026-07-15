@@ -15,6 +15,8 @@ export enum WebhookFormat {
   DINGTALK = 'dingtalk',
   FEISHU = 'feishu',
   CUSTOM_JSON = 'custom_json',
+  ZABBIX = 'zabbix',
+  FEISHU_BOT = 'feishu_bot',
 }
 
 export enum PeriodicFreq {
@@ -35,6 +37,9 @@ export class WebhookEntity {
   id: number;
 
   @Index()
+  @Column({ name: 'tenant_id', nullable: true })
+  tenantId: number | null;
+
   @Column({ name: 'user_id', type: 'bigint' })
   userId: number;
 

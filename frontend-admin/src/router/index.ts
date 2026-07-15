@@ -76,6 +76,10 @@ const router = createRouter({
           component: () => import('@/pages/KbScoringConfigPage.vue'),
         },
         {
+          path: 'config/tts',
+          component: () => import('@/pages/TtsConfigPage.vue'),
+        },
+        {
           path: 'system-logs',
           component: () => import('@/pages/SystemLogsPage.vue'),
         },
@@ -106,6 +110,26 @@ const router = createRouter({
         {
           path: 'short-video',
           component: () => import('@/pages/ShortVideoPage.vue'),
+        },
+        {
+          path: 'sentiment',
+          component: () => import('@/pages/SentimentConfigPage.vue'),
+        },
+        {
+          path: 'work-orders',
+          component: () => import('@/pages/WorkOrdersPage.vue'),
+        },
+        {
+          path: 'brand-reputation',
+          component: () => import('@/pages/BrandReputationPage.vue'),
+        },
+        {
+          path: 'knowledge-graph',
+          component: () => import('@/pages/KnowledgeGraphPage.vue'),
+        },
+        {
+          path: 'tenants',
+          component: () => import('@/pages/TenantsPage.vue'),
         },
       ],
     },

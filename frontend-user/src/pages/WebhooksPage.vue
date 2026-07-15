@@ -1,12 +1,12 @@
 <template>
-  <GlassCard title="Webhook 机器人" icon="🔔" subtitle="实时推送告警到企业微信/钉钉/飞书/自定义">
+  <GlassCard title="Webhook 机器人" icon="🔔" subtitle="实时推送告警到企业微信/钉钉/飞书/Zabbix/自定义">
     <template #extra>
       <el-button type="primary" :icon="Plus" @click="openCreate">创建 Webhook</el-button>
     </template>
 
     <el-alert type="info" :closable="false" show-icon style="margin-bottom: 20px">
-      <template #title>支持 4 种格式</template>
-      企业微信 markdown、钉钉 actionCard、飞书 interactive、自定义 JSON。可选 HMAC 签名、自动重试、定时推送、短信告警。
+      <template #title>支持 6 种格式</template>
+      企业微信 markdown、钉钉 actionCard、飞书 interactive、Zabbix 告警、飞书自定义机器人、自定义 JSON。可选 HMAC 签名、自动重试、定时推送、短信告警。
     </el-alert>
 
     <div class="format-tabs">
@@ -70,6 +70,8 @@
           <el-radio-button label="wecom">企业微信</el-radio-button>
           <el-radio-button label="dingtalk">钉钉</el-radio-button>
           <el-radio-button label="feishu">飞书</el-radio-button>
+          <el-radio-button label="zabbix">Zabbix 告警</el-radio-button>
+          <el-radio-button label="feishu_bot">飞书自定义机器人</el-radio-button>
           <el-radio-button label="custom_json">自定义 JSON</el-radio-button>
         </el-radio-group>
       </el-form-item>
@@ -144,13 +146,15 @@ const formatList = [
   { value: 'wecom', label: '企业微信', color: '#10B981' },
   { value: 'dingtalk', label: '钉钉', color: '#3B82F6' },
   { value: 'feishu', label: '飞书', color: '#A78BFA' },
+  { value: 'zabbix', label: 'Zabbix', color: '#EF4444' },
+  { value: 'feishu_bot', label: '飞书机器人', color: '#EC4899' },
   { value: 'custom_json', label: '自定义', color: '#F59E0B' },
 ];
 
 const form = reactive({
   name: '',
   url: '',
-  format: 'dingtalk' as 'wecom' | 'dingtalk' | 'feishu' | 'custom_json',
+  format: 'dingtalk' as 'wecom' | 'dingtalk' | 'feishu' | 'zabbix' | 'feishu_bot' | 'custom_json',
   secretKey: '',
   taskIds: [] as number[],
   pushOnMatch: true,
@@ -166,15 +170,15 @@ const rules = {
 };
 
 function formatLabel(f: string): string {
-  return ({ wecom: '企业微信', dingtalk: '钉钉', feishu: '飞书', custom_json: '自定义 JSON' } as Record<string, string>)[f] || f;
+  return ({ wecom: '企业微信', dingtalk: '钉钉', feishu: '飞书', zabbix: 'Zabbix 告警', feishu_bot: '飞书自定义机器人', custom_json: '自定义 JSON' } as Record<string, string>)[f] || f;
 }
 
 function formatIcon(f: string): string {
-  return ({ wecom: '💬', dingtalk: '📢', feishu: '🚀', custom_json: '⚙️' } as Record<string, string>)[f] || '📨';
+  return ({ wecom: '💬', dingtalk: '📢', feishu: '🚀', zabbix: '📊', feishu_bot: '🤖', custom_json: '⚙️' } as Record<string, string>)[f] || '📨';
 }
 
 function formatColor(f: string): string {
-  return ({ wecom: 'linear-gradient(135deg, #10B981, #059669)', dingtalk: 'linear-gradient(135deg, #3B82F6, #2563EB)', feishu: 'linear-gradient(135deg, #A78BFA, #7C3AED)', custom_json: 'linear-gradient(135deg, #F59E0B, #EF4444)' } as Record<string, string>)[f] || 'var(--gradient-primary)';
+  return ({ wecom: 'linear-gradient(135deg, #10B981, #059669)', dingtalk: 'linear-gradient(135deg, #3B82F6, #2563EB)', feishu: 'linear-gradient(135deg, #A78BFA, #7C3AED)', zabbix: 'linear-gradient(135deg, #EF4444, #DC2626)', feishu_bot: 'linear-gradient(135deg, #EC4899, #DB2777)', custom_json: 'linear-gradient(135deg, #F59E0B, #EF4444)' } as Record<string, string>)[f] || 'var(--gradient-primary)';
 }
 
 function statusLabel(s: string): string {
