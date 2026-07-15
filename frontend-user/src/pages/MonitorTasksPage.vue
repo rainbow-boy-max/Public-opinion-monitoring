@@ -81,13 +81,32 @@
       </el-table-column>
     </el-table>
 
-    <el-empty v-if="!loading && filteredTasks.length === 0" description="暂无监控任务" />
+    <EmptyStateGuide v-if="!loading && tasks.length === 0" 
+      icon="📡"
+      title="暂无监控任务"
+      description="创建监控任务后，系统将自动监测各大平台的相关舆情信息"
+      primary-action="创建任务"
+      @primary="openCreate" />
   </GlassCard>
 
   <el-dialog v-model="dialogVisible" title="创建监控任务" width="640">
     <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
       <el-form-item label="任务名称" prop="name">
         <el-input v-model="form.name" placeholder="给任务起一个名字" />
+      </el-form-item>
+      <el-form-item label="任务类型">
+        <div class="task-type-grid">
+          <div v-for="t in taskTypes" :key="t.id" 
+            class="task-type-card" 
+            :class="{ 'task-type-card--active': selectedTaskType === t.id }"
+            @click="selectTaskType(t.id)">
+            <div class="task-type-card__icon">{{ t.icon }}</div>
+            <div class="task-type-card__info">
+              <div class="task-type-card__name">{{ t.name }}</div>
+              <div class="task-type-card__desc">{{ t.desc }}</div>
+            </div>
+          </div>
+        </div>
       </el-form-item>
       <el-form-item label="关键词" prop="keywords">
         <div class="keywords-input-row">
@@ -188,6 +207,7 @@ import { Plus } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import PlatformTag from '@shared/components/PlatformTag.vue';
+import EmptyStateGuide from '@/components/EmptyStateGuide.vue';
 
 interface TaskRow {
   id: number;
@@ -225,6 +245,21 @@ const form = reactive({
   platforms: [] as string[],
   frequency: '15min',
 });
+
+const taskTypes = [
+  { id: 'full', name: '全网舆情监测', desc: '覆盖微博、微信、抖音等全平台', icon: '🌐', platforms: ['weibo','weixin','douyin','xiaohongshu','kuaishou','baijiahao'] },
+  { id: 'short-video', name: '短视频监测', desc: '专注抖音、快手、小红书平台', icon: '🎬', platforms: ['douyin','kuaishou','xiaohongshu'] },
+  { id: 'social', name: '社交媒体监测', desc: '专注微博、微信公众号', icon: '💬', platforms: ['weibo','weixin'] },
+  { id: 'competitor', name: '竞品监测', desc: '全平台监测竞品动态', icon: '🏢', platforms: ['weibo','weixin','douyin','xiaohongshu','kuaishou','baijiahao'] },
+];
+
+const selectedTaskType = ref('');
+
+function selectTaskType(id: string) {
+  selectedTaskType.value = id;
+  const t = taskTypes.find(t => t.id === id);
+  if (t) form.platforms = [...t.platforms];
+}
 
 const rules = {
   name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
@@ -286,6 +321,7 @@ async function load(): Promise<void> {
 }
 
 function openCreate(): void {
+  selectedTaskType.value = '';
   Object.assign(form, {
     name: '',
     keywordsText: '',
@@ -587,5 +623,62 @@ function kwApply(): void {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.task-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.task-type-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.task-type-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.task-type-card--active {
+  border-color: var(--color-primary);
+  background: rgba(94, 114, 228, 0.1);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.task-type-card__icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.task-type-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.task-type-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.task-type-card__desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

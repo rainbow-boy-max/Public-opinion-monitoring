@@ -9,6 +9,7 @@ import {
   Header,
 } from '@nestjs/common';
 import { HotTopicsService } from './hot-topics.service';
+import { PlatformHotService } from './platform-hot.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../../common/decorators/current-user.decorator';
@@ -39,7 +40,15 @@ class HotTopicsQueryDto {
 @Controller('hot-topics')
 @UseGuards(JwtAuthGuard)
 export class HotTopicsController {
-  constructor(private readonly hotTopicsService: HotTopicsService) {}
+  constructor(
+    private readonly hotTopicsService: HotTopicsService,
+    private readonly platformHotService: PlatformHotService,
+  ) {}
+
+  @Get('platform')
+  async platform() {
+    return this.platformHotService.getPlatformHotTopics();
+  }
 
   @Get()
   async list(@CurrentUser() user: CurrentUserPayload, @Query() query: HotTopicsQueryDto) {

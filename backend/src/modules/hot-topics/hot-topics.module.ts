@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HotTopicsController } from './hot-topics.controller';
 import { HotTopicsService } from './hot-topics.service';
+import { PlatformHotService } from './platform-hot.service';
 import { OpinionEventEntity, MonitorTaskEntity } from '../../database/entities';
 
 @Module({
@@ -18,7 +19,7 @@ import { OpinionEventEntity, MonitorTaskEntity } from '../../database/entities';
     }),
   ],
   controllers: [HotTopicsController],
-  providers: [HotTopicsService],
-  exports: [HotTopicsService],
+  providers: [HotTopicsService, PlatformHotService],
+  exports: [HotTopicsService, PlatformHotService],
 })
 export class HotTopicsModule {}

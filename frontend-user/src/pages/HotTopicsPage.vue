@@ -1,8 +1,55 @@
 <template>
   <div class="hot-topics-page">
-    <PageHeader title="热点话题发现" subtitle="实时上升热点追踪">
-      <template #actions>
-        <div class="hot-topics-controls">
+    <PageHeader title="热点话题发现" subtitle="实时上升热点追踪" />
+
+    <el-tabs v-model="activeTab" class="hot-topics-tabs">
+      <el-tab-pane label="平台热点" name="platform">
+        <div class="platform-hot-topics">
+          <div v-for="(platformData, key) in platformTopics" :key="key" class="platform-section glass-card">
+            <div class="platform-section__header">
+              <PlatformTag :platform="key as string" :label="platformData.name" />
+              <span class="platform-section__time">{{ platformData.topics.length }} 条热点</span>
+            </div>
+            <div class="platform-topic-list">
+              <a
+                v-for="topic in platformData.topics"
+                :key="topic.rank"
+                :href="topic.url"
+                target="_blank"
+                class="platform-topic-item"
+              >
+                <span class="platform-topic__rank" :class="{ 'is-top3': topic.rank <= 3 }">{{ topic.rank }}</span>
+                <span class="platform-topic__title">{{ topic.title }}</span>
+                <span class="platform-topic__category" v-if="topic.category">{{ topic.category }}</span>
+                <div class="platform-topic__hot-bar-wrapper">
+                  <div class="platform-topic__hot-bar" :style="{ width: (topic.hot / 100000) + '%' }" />
+                </div>
+                <span class="platform-topic__hot">{{ formatHot(topic.hot) }}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
+      <el-tab-pane label="任务热点" name="tasks">
+        <template #label>
+          <span>
+            任务热点
+            <el-tag v-if="demoMode" type="warning" effect="dark" size="small" style="margin-left:4px">演示</el-tag>
+          </span>
+        </template>
+
+        <EmptyStateGuide
+          v-if="topics.length === 0 && !loading"
+          icon="🔥"
+          title="暂无热点数据"
+          description="热点话题基于监控任务数据通过1小时滑动窗口算法实时检测，请先创建监控任务"
+          primary-action="前往创建监控任务"
+          secondary-action="加载示例数据"
+          @primary="router.push('/tasks')"
+          @secondary="loadMock"
+        />
+
+        <div v-if="topics.length > 0" class="task-topics-controls">
           <el-select v-model="timeWindow" size="small" style="width: 100px" @change="fetchTopics">
             <el-option label="1 小时" :value="1" />
             <el-option label="6 小时" :value="6" />
@@ -11,114 +58,102 @@
           </el-select>
           <el-input-number v-model="minMentions" :min="1" :max="10000" size="small" style="width: 100px" @change="fetchTopics" />
           <el-switch v-model="autoRefresh" active-text="自动刷新" size="small" />
-          <el-tag v-if="demoMode" type="warning" effect="dark" size="small">演示模式</el-tag>
           <el-button size="small" :icon="Refresh" :loading="loading" @click="fetchTopics" />
         </div>
-      </template>
-    </PageHeader>
 
-    <EmptyStateGuide
-      v-if="topics.length === 0 && !loading"
-      icon="🔥"
-      title="暂无热点数据"
-      description="热点话题基于监控任务数据通过1小时滑动窗口算法实时检测，请先创建监控任务"
-      primary-action="前往创建监控任务"
-      secondary-action="加载示例数据"
-      @primary="router.push('/tasks')"
-      @secondary="loadMock"
-    />
-
-    <div class="topic-grid">
-      <article
-        v-for="topic in topics"
-        :key="topic.id"
-        class="topic-card glass-card"
-        :class="{ 'topic-card--expanded': expandedId === topic.id }"
-        @click="toggleDetail(topic.id)"
-      >
-        <div class="topic-card__header">
-          <div class="topic-card__score">{{ topic.score.toFixed(0) }}</div>
-          <div class="topic-card__title-area">
-            <div class="topic-card__title">{{ topic.title }}</div>
-            <div class="topic-card__keywords">
-              <span v-for="kw in topic.keywords.slice(0, 3)" :key="kw" class="topic-card__keyword">{{ kw }}</span>
-            </div>
-          </div>
-          <div class="topic-card__growth" :class="topic.growthRate >= 0 ? 'is-up' : 'is-down'">
-            <svg v-if="topic.growthRate >= 0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
-            <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-            <span>{{ Math.abs(topic.growthRate).toFixed(1) }}%</span>
-          </div>
-        </div>
-
-        <div class="topic-card__body">
-          <div class="topic-card__sparkline">
-            <svg :width="sparkW" :height="sparkH" viewBox="0 0 80 28">
-              <polyline
-                :points="sparklinePoints(topic.hourlyVolume)"
-                fill="none"
-                :stroke="topic.growthRate >= 0 ? '#F87171' : '#34D399'"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </div>
-          <div class="topic-card__volume">{{ formatVolume(topic.volume) }}</div>
-          <div class="topic-card__platforms">
-            <PlatformTag
-              v-for="p in topic.platforms.slice(0, 4)"
-              :key="p"
-              :platform="p"
-              :label="p === 'weixin' ? '微信' : p === 'weibo' ? '微博' : p === 'douyin' ? '抖音' : p === 'xiaohongshu' ? '小红书' : p === 'kuaishou' ? '快手' : p === 'baijiahao' ? '百家号' : p"
-            />
-          </div>
-        </div>
-
-        <div class="topic-card__sentiment">
-          <div class="sentiment-bar">
-            <span class="sentiment-bar__segment sentiment-bar__positive" :style="{ width: topic.sentiment.positive + '%' }" />
-            <span class="sentiment-bar__segment sentiment-bar__neutral" :style="{ width: topic.sentiment.neutral + '%' }" />
-            <span class="sentiment-bar__segment sentiment-bar__negative" :style="{ width: topic.sentiment.negative + '%' }" />
-          </div>
-          <div class="sentiment-labels">
-            <span class="sentiment-label sentiment-label--pos">{{ topic.sentiment.positive.toFixed(0) }}%</span>
-            <span class="sentiment-label sentiment-label--neu">{{ topic.sentiment.neutral.toFixed(0) }}%</span>
-            <span class="sentiment-label sentiment-label--neg">{{ topic.sentiment.negative.toFixed(0) }}%</span>
-          </div>
-        </div>
-
-        <div class="topic-card__footer">
-          <span class="topic-card__article-label">热门文章</span>
-          <span class="topic-card__article-title">{{ topic.topArticle.title }}</span>
-        </div>
-
-        <div v-if="expandedId === topic.id" class="topic-detail">
-          <div class="topic-detail__charts">
-            <GlassCard title="24h 趋势" icon="📈" bare>
-              <div ref="trendChartRefs" :data-id="topic.id" style="height: 200px" />
-            </GlassCard>
-            <GlassCard title="情感分布" icon="🎭" bare>
-              <div ref="sentimentChartRefs" :data-id="topic.id" style="height: 200px" />
-            </GlassCard>
-            <GlassCard title="平台分布" icon="🌐" bare>
-              <div ref="platformChartRefs" :data-id="topic.id" style="height: 200px" />
-            </GlassCard>
-          </div>
-          <GlassCard title="相关文章" icon="📰" subtitle="按时间排序">
-            <div v-if="topic.articles && topic.articles.length" class="topic-detail__articles">
-              <div v-for="art in topic.articles" :key="art.title" class="article-row">
-                <PlatformTag :platform="art.platform" :label="art.platform === 'weixin' ? '微信' : art.platform === 'weibo' ? '微博' : art.platform === 'douyin' ? '抖音' : art.platform === 'xiaohongshu' ? '小红书' : art.platform" />
-                <a :href="art.url" target="_blank" class="article-row__title">{{ art.title }}</a>
-                <SentimentBadge :type="(art.sentiment as 'positive' | 'negative' | 'neutral')" />
-                <span class="article-row__time">{{ formatTime(art.publishedAt) }}</span>
+        <div class="topic-grid">
+          <article
+            v-for="topic in topics"
+            :key="topic.id"
+            class="topic-card glass-card"
+            :class="{ 'topic-card--expanded': expandedId === topic.id }"
+            @click="toggleDetail(topic.id)"
+          >
+            <div class="topic-card__header">
+              <div class="topic-card__score">{{ topic.score.toFixed(0) }}</div>
+              <div class="topic-card__title-area">
+                <div class="topic-card__title">{{ topic.title }}</div>
+                <div class="topic-card__keywords">
+                  <span v-for="kw in topic.keywords.slice(0, 3)" :key="kw" class="topic-card__keyword">{{ kw }}</span>
+                </div>
+              </div>
+              <div class="topic-card__growth" :class="topic.growthRate >= 0 ? 'is-up' : 'is-down'">
+                <svg v-if="topic.growthRate >= 0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span>{{ Math.abs(topic.growthRate).toFixed(1) }}%</span>
               </div>
             </div>
-            <el-empty v-else description="暂无相关文章" />
-          </GlassCard>
+
+            <div class="topic-card__body">
+              <div class="topic-card__sparkline">
+                <svg :width="sparkW" :height="sparkH" viewBox="0 0 80 28">
+                  <polyline
+                    :points="sparklinePoints(topic.hourlyVolume)"
+                    fill="none"
+                    :stroke="topic.growthRate >= 0 ? '#F87171' : '#34D399'"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </div>
+              <div class="topic-card__volume">{{ formatVolume(topic.volume) }}</div>
+              <div class="topic-card__platforms">
+                <PlatformTag
+                  v-for="p in topic.platforms.slice(0, 4)"
+                  :key="p"
+                  :platform="p"
+                  :label="p === 'weixin' ? '微信' : p === 'weibo' ? '微博' : p === 'douyin' ? '抖音' : p === 'xiaohongshu' ? '小红书' : p === 'kuaishou' ? '快手' : p === 'baijiahao' ? '百家号' : p"
+                />
+              </div>
+            </div>
+
+            <div class="topic-card__sentiment">
+              <div class="sentiment-bar">
+                <span class="sentiment-bar__segment sentiment-bar__positive" :style="{ width: topic.sentiment.positive + '%' }" />
+                <span class="sentiment-bar__segment sentiment-bar__neutral" :style="{ width: topic.sentiment.neutral + '%' }" />
+                <span class="sentiment-bar__segment sentiment-bar__negative" :style="{ width: topic.sentiment.negative + '%' }" />
+              </div>
+              <div class="sentiment-labels">
+                <span class="sentiment-label sentiment-label--pos">{{ topic.sentiment.positive.toFixed(0) }}%</span>
+                <span class="sentiment-label sentiment-label--neu">{{ topic.sentiment.neutral.toFixed(0) }}%</span>
+                <span class="sentiment-label sentiment-label--neg">{{ topic.sentiment.negative.toFixed(0) }}%</span>
+              </div>
+            </div>
+
+            <div class="topic-card__footer">
+              <span class="topic-card__article-label">热门文章</span>
+              <span class="topic-card__article-title">{{ topic.topArticle.title }}</span>
+            </div>
+
+            <div v-if="expandedId === topic.id" class="topic-detail">
+              <div class="topic-detail__charts">
+                <GlassCard title="24h 趋势" icon="📈" bare>
+                  <div ref="trendChartRefs" :data-id="topic.id" style="height: 200px" />
+                </GlassCard>
+                <GlassCard title="情感分布" icon="🎭" bare>
+                  <div ref="sentimentChartRefs" :data-id="topic.id" style="height: 200px" />
+                </GlassCard>
+                <GlassCard title="平台分布" icon="🌐" bare>
+                  <div ref="platformChartRefs" :data-id="topic.id" style="height: 200px" />
+                </GlassCard>
+              </div>
+              <GlassCard title="相关文章" icon="📰" subtitle="按时间排序">
+                <div v-if="topic.articles && topic.articles.length" class="topic-detail__articles">
+                  <div v-for="art in topic.articles" :key="art.title" class="article-row">
+                    <PlatformTag :platform="art.platform" :label="art.platform === 'weixin' ? '微信' : art.platform === 'weibo' ? '微博' : art.platform === 'douyin' ? '抖音' : art.platform === 'xiaohongshu' ? '小红书' : art.platform" />
+                    <a :href="art.url" target="_blank" class="article-row__title">{{ art.title }}</a>
+                    <SentimentBadge :type="(art.sentiment as 'positive' | 'negative' | 'neutral')" />
+                    <span class="article-row__time">{{ formatTime(art.publishedAt) }}</span>
+                  </div>
+                </div>
+                <el-empty v-else description="暂无相关文章" />
+              </GlassCard>
+            </div>
+          </article>
         </div>
-      </article>
-    </div>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -163,6 +198,9 @@ const loading = ref(false);
 const demoMode = ref(false);
 const topics = ref<HotTopic[]>([]);
 const expandedId = ref<number | null>(null);
+const activeTab = ref('platform');
+const platformTopics = ref<Record<string, { name: string; topics: any[] }>>({});
+const platformLoading = ref(false);
 const router = useRouter();
 const sparkW = 80;
 const sparkH = 28;
@@ -185,6 +223,12 @@ function sparklinePoints(data: number[]): string {
 function formatVolume(v: number): string {
   if (v >= 10000) return (v / 10000).toFixed(1) + 'w';
   if (v >= 1000) return (v / 1000).toFixed(1) + 'k';
+  return String(v);
+}
+
+function formatHot(v: number): string {
+  if (v >= 100000000) return (v / 100000000).toFixed(1) + '亿';
+  if (v >= 10000) return (v / 10000).toFixed(0) + '万';
   return String(v);
 }
 
@@ -311,6 +355,60 @@ function buildMockTopics(): HotTopic[] {
   ];
 }
 
+async function fetchPlatformTopics(): Promise<void> {
+  platformLoading.value = true;
+  try {
+    const data = await http.get('/hot-topics/platform');
+    platformTopics.value = data.platforms || {};
+  } catch {
+    // Fallback to mock data on error
+    platformTopics.value = buildMockPlatformTopics();
+  } finally {
+    platformLoading.value = false;
+  }
+}
+
+function buildMockPlatformTopics(): Record<string, { name: string; topics: any[] }> {
+  const now = Date.now();
+  return {
+    weibo: { name: '微博热搜', topics: [
+      { rank: 1, title: '官方回应网传医保缴费年限延长', hot: 8520000, url: '#', category: '社会' },
+      { rank: 2, title: '多家银行下调存款利率', hot: 7680000, url: '#', category: '财经' },
+      { rank: 3, title: '知名男星被曝新恋情', hot: 7210000, url: '#', category: '娱乐' },
+      { rank: 4, title: '全国多个城市出现雾霾天气', hot: 6950000, url: '#', category: '社会' },
+      { rank: 5, title: '2026年高考报名人数再创新高', hot: 6580000, url: '#', category: '教育' },
+    ]},
+    douyin: { name: '抖音热榜', topics: [
+      { rank: 1, title: '挑战全网最丝滑转身', hot: 9250000, url: '#' },
+      { rank: 2, title: '街头采访：你月薪多少', hot: 8720000, url: '#' },
+      { rank: 3, title: '美食探店本期打卡重庆', hot: 8350000, url: '#' },
+      { rank: 4, title: '宠物犬救落水儿童全过程', hot: 7980000, url: '#' },
+      { rank: 5, title: '素人翻唱惊艳全场', hot: 7560000, url: '#' },
+    ]},
+    baidu: { name: '百度热搜', topics: [
+      { rank: 1, title: '2026年春运购票日历公布', hot: 9800000, url: '#', category: '社会' },
+      { rank: 2, title: 'A股三大指数集体收涨', hot: 9100000, url: '#', category: '财经' },
+      { rank: 3, title: '较强冷空气来袭多地降温', hot: 8750000, url: '#', category: '天气' },
+      { rank: 4, title: '中国空间站最新实验成果', hot: 8320000, url: '#', category: '科技' },
+      { rank: 5, title: '国际油价大幅下跌', hot: 7950000, url: '#', category: '财经' },
+    ]},
+    zhihu: { name: '知乎热榜', topics: [
+      { rank: 1, title: '2026年做什么行业最有前景？', hot: 12500000, url: '#', category: '职场' },
+      { rank: 2, title: '如何评价最近大火的国产AI应用？', hot: 11200000, url: '#', category: '科技' },
+      { rank: 3, title: '房价持续下跌，现在该买房还是观望？', hot: 10800000, url: '#', category: '房产' },
+      { rank: 4, title: '30岁转行来得及吗？真实经历分享', hot: 9850000, url: '#', category: '职场' },
+      { rank: 5, title: '《三体》动画版口碑两极分化', hot: 9200000, url: '#', category: '文化' },
+    ]},
+    xiaohongshu: { name: '小红书热门', topics: [
+      { rank: 1, title: '冬季护肤全攻略干皮必看', hot: 6500000, url: '#', category: '美妆' },
+      { rank: 2, title: '5平米小卧室改造前后对比', hot: 6200000, url: '#', category: '家居' },
+      { rank: 3, title: '减脂餐一周不重样食谱', hot: 5880000, url: '#', category: '美食' },
+      { rank: 4, title: '冬季氛围感穿搭合集', hot: 5550000, url: '#', category: '穿搭' },
+      { rank: 5, title: '周末Citywalk路线推荐', hot: 5220000, url: '#', category: '旅行' },
+    ]},
+  };
+}
+
 async function fetchTopics(): Promise<void> {
   loading.value = true;
   try {
@@ -405,6 +503,7 @@ function renderDetailCharts(id: number): void {
 }
 
 onMounted(() => {
+  fetchPlatformTopics();
   fetchTopics();
 });
 
@@ -675,5 +774,125 @@ onUnmounted(() => {
   .topic-detail__charts {
     grid-template-columns: 1fr;
   }
+}
+
+.hot-topics-tabs {
+  margin-top: 0;
+}
+
+.task-topics-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.platform-hot-topics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+.platform-section {
+  padding: 16px;
+}
+
+.platform-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.platform-section__time {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.platform-topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.platform-topic-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.platform-topic-item:hover {
+  background: rgba(94, 114, 228, 0.08);
+}
+
+.platform-topic__rank {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 4px;
+}
+
+.platform-topic__rank.is-top3 {
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(94, 114, 228, 0.35);
+}
+
+.platform-topic__title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-topic__category {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.platform-topic__hot-bar-wrapper {
+  flex-shrink: 0;
+  width: 80px;
+  height: 4px;
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.platform-topic__hot-bar {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+  transition: width var(--transition-normal);
+}
+
+.platform-topic__hot {
+  flex-shrink: 0;
+  width: 52px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 </style>

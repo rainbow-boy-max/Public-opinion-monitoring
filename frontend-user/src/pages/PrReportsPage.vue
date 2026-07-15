@@ -7,9 +7,12 @@
 
       <el-tabs v-model="activeTab" class="pr-tabs">
         <el-tab-pane label="单事件报告" name="single">
-          <el-empty v-if="reports.length === 0 && !loading" description="还没有报告，从实时大屏或下方入口生成第一份公关方案">
-            <el-button type="primary" @click="$router.push('/realtime')">前往实时大屏</el-button>
-          </el-empty>
+          <div v-if="!loading && reports.length === 0" class="empty-state">
+            <el-empty description="暂无公关报告">
+              <el-button type="primary" @click="loadMockReport">加载示例报告</el-button>
+              <el-button @click="$router.push('/realtime')">前往实时大屏</el-button>
+            </el-empty>
+          </div>
 
           <div class="report-list">
             <article
@@ -407,6 +410,17 @@ async function loadReports(): Promise<void> {
   } finally {
     loading.value = false;
   }
+}
+
+function loadMockReport() {
+  reports.value = [{
+    id: 0,
+    title: '示例：品牌危机公关分析报告',
+    eventId: null,
+    agentId: null,
+    analysis: '## 一、舆情深度分析\n\n事件性质：产品质量负面舆情，涉及食品安全问题。\n当前传播态势：事件已在微博、微信、抖音等多平台传播，微博话题阅读量突破 2 亿，讨论量 15 万+。\n关键情绪词：愤怒、失望、担忧、质疑\n可能蔓延方向：可能从产品问题蔓延至品牌信任危机',
+    strategy: '## 二、潜在风险评估\n\n商业风险：高 - 已有电商平台下架相关产品\n品牌风险：中高 - 品牌口碑指数下降 30%\n\n## 三、公关应对方案\n\n### 短期（24小时内）行动：\n1. 立即发布官方声明，表明态度\n2. 成立专项调查组\n3. 启动消费者热线\n\n### 公开声明话术：\n「我们高度重视消费者反馈，已第一时间成立专项工作组进行全面核查。如有任何问题，我们将依法承担相应责任。」',
+  }];
 }
 
 async function loadAgents(): Promise<void> {

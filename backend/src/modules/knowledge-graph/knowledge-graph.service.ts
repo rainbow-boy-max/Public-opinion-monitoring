@@ -102,8 +102,13 @@ export class KnowledgeGraphService {
   }
 
   async extractFromText(text: string, maxNodes?: number): Promise<KnowledgeGraph> {
-    const entities = await this.extractEntities(text);
-    return this.buildGraph(entities, maxNodes);
+    try {
+      const entities = await this.extractEntities(text);
+      return this.buildGraph(entities, maxNodes);
+    } catch (err) {
+      this.logger.warn(`LLM extraction from text failed, using mock: ${err instanceof Error ? err.message : err}`);
+      return this.getMockGraph();
+    }
   }
 
   async extractEntities(text: string): Promise<{ entities: ExtractedEntity[]; relations: Array<{ source: string; target: string; relation: string; strength: number }> }> {
