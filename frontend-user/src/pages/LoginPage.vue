@@ -74,7 +74,11 @@ async function onLogin(): Promise<void> {
     try {
       await auth.login(form.username, form.password);
       ElMessage.success('登录成功 / Login successful');
-      const redirectTo = auth.user?.authStatus === 'verified' ? '/dashboard' : '/verify';
+      const isVerified = auth.user?.authStatus === 'verified';
+      if (!isVerified) {
+        ElMessage.info('请先完成实名认证后再使用系统功能');
+      }
+      const redirectTo = isVerified ? '/dashboard' : '/verify';
       router.push(redirectTo);
     } catch (err: any) {
       const lang = (navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'zh';

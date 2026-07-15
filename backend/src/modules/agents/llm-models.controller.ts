@@ -16,6 +16,7 @@ import { LlmModelsService } from './llm-models.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AuditLog } from '../audit/audit-log.decorator';
 import { IsString, IsOptional, IsNumber, IsBoolean, IsInt, IsArray, Min, Max, IsIn } from 'class-validator';
 
 class SaveModelDto {
@@ -146,12 +147,14 @@ export class LlmModelsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @AuditLog({ module: 'llm_models', action: 'create', resourceType: 'llm_model', titleExpr: '保存 LLM 模型配置' })
   async save(@Body() dto: SaveModelDto) {
     return this.service.save(dto);
   }
 
   @Put('batch')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'llm_models', action: 'batch', resourceType: 'llm_model', titleExpr: '批量操作 LLM 模型' })
   async batch(@Body() body: any) {
     if (!Array.isArray(body?.ids) || body.ids.length === 0) {
       return { ok: false, message: 'ids 不能为空' };

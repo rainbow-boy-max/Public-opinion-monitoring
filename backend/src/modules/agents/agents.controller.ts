@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AuditLog } from '../audit/audit-log.decorator';
 import { IsString, IsOptional, IsNumber, IsArray, IsEnum, IsInt, Min, IsBoolean, ValidateNested, IsObject } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
@@ -184,17 +185,20 @@ export class AgentsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @AuditLog({ module: 'agents', action: 'create', resourceType: 'agent', titleExpr: '创建智能体' })
   async create(@Body() dto: CreateAgentDto) {
     return this.service.create(dto);
   }
 
   @Put(':id')
+  @AuditLog({ module: 'agents', action: 'update', resourceType: 'agent', resourceIdParam: 'id', titleExpr: '更新智能体' })
   async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAgentDto) {
     return this.service.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @AuditLog({ module: 'agents', action: 'delete', resourceType: 'agent', resourceIdParam: 'id', titleExpr: '删除智能体' })
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.service.remove(id);
   }

@@ -214,7 +214,7 @@ export class AdminController {
       phone: dto.phone,
       password: dto.password,
       role: (dto.role as any) || 'user',
-      authStatus: (dto.authStatus as any) || AuthStatus.UNVERIFIED,
+      authStatus: AuthStatus.VERIFIED,
     });
     return r;
   }

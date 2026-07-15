@@ -16,6 +16,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AuditLog } from '../audit/audit-log.decorator';
 import { AlertRuleService, CreateAlertRuleDto, UpdateAlertRuleDto } from './alert-rule.service';
 import { AlertCheckerService } from './alert-checker.service';
 import { AlertLogEntity, AlertRuleEntity } from '../../database/entities';
@@ -112,6 +113,7 @@ export class AlertController {
 
   @Post('rules')
   @HttpCode(HttpStatus.CREATED)
+  @AuditLog({ module: 'alert', action: 'create', resourceType: 'alert_rule', titleExpr: '创建告警规则' })
   async createRule(@CurrentUser('id') userId: number, @Body() dto: CreateRuleDto) {
     const rule = await this.alertRuleService.create(userId, dto);
     return this.serializeRule(rule);
@@ -119,6 +121,7 @@ export class AlertController {
 
   @Put('rules/:id')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'alert', action: 'update', resourceType: 'alert_rule', resourceIdParam: 'id', titleExpr: '更新告警规则' })
   async updateRule(
     @CurrentUser('id') userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -130,6 +133,7 @@ export class AlertController {
 
   @Delete('rules/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @AuditLog({ module: 'alert', action: 'delete', resourceType: 'alert_rule', resourceIdParam: 'id', titleExpr: '删除告警规则' })
   async deleteRule(
     @CurrentUser('id') userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -139,6 +143,7 @@ export class AlertController {
 
   @Post('rules/:id/toggle')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'alert', action: 'toggle', resourceType: 'alert_rule', resourceIdParam: 'id', titleExpr: '切换告警规则状态' })
   async toggleRule(
     @CurrentUser('id') userId: number,
     @Param('id', ParseIntPipe) id: number,

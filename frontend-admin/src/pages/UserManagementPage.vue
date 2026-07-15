@@ -36,10 +36,14 @@
       </el-table-column>
       <el-table-column prop="username" label="用户名">
         <template #default="{ row }">
-          <div class="user-cell">
-            <div class="user-avatar">{{ (row.username || '?').charAt(0).toUpperCase() }}</div>
-            <span style="font-weight: 500">{{ row.username }}</span>
-          </div>
+          <span class="username-cell">{{ row.username }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="role" label="用户类型" width="100">
+        <template #default="{ row }">
+          <el-tag :type="row.role === 'admin' ? 'danger' : row.role === 'operator' ? 'success' : 'primary'" size="small">
+            {{ row.role === 'admin' ? '管理员' : row.role === 'operator' ? '运营' : '普通用户' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="phone" label="手机号" min-width="120">

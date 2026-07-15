@@ -15,6 +15,7 @@ import {
 import { MonitorTasksService } from './monitor-tasks.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AuditLog } from '../audit/audit-log.decorator';
 import { IsString, IsArray, IsOptional, IsEnum, IsNumber, Min, ArrayMinSize } from 'class-validator';
 import { MatchMode, SentimentFilter, TaskFrequency, TaskStatus } from '../../database/entities';
 import { Transform } from 'class-transformer';
@@ -110,6 +111,7 @@ export class MonitorTasksController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @AuditLog({ module: 'monitor_tasks', action: 'create', resourceType: 'monitor_task', titleExpr: '创建监控任务' })
   async create(@CurrentUser('id') userId: number, @Body() dto: CreateTaskDto) {
     return this.tasksService.createTask(userId, dto);
   }
@@ -129,6 +131,7 @@ export class MonitorTasksController {
 
   @Put(':id')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'monitor_tasks', action: 'update', resourceType: 'monitor_task', resourceIdParam: 'id', titleExpr: '更新监控任务' })
   async update(
     @CurrentUser('id') userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -139,6 +142,7 @@ export class MonitorTasksController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @AuditLog({ module: 'monitor_tasks', action: 'delete', resourceType: 'monitor_task', resourceIdParam: 'id', titleExpr: '删除监控任务' })
   async delete(
     @CurrentUser('id') userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -148,6 +152,7 @@ export class MonitorTasksController {
 
   @Put(':id/toggle')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'monitor_tasks', action: 'toggle', resourceType: 'monitor_task', resourceIdParam: 'id', titleExpr: '切换监控任务状态' })
   async toggle(
     @CurrentUser('id') userId: number,
     @Param('id', ParseIntPipe) id: number,
