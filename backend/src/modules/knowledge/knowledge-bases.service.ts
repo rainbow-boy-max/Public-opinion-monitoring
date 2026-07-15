@@ -36,6 +36,15 @@ export interface UpdateKbDto {
 
 import { KbScoringService } from './kb-scoring.service';
 
+function parseTags(tags: unknown): string[] {
+  if (Array.isArray(tags)) return tags as string[];
+  if (typeof tags === 'string') {
+    try { const p = JSON.parse(tags); return Array.isArray(p) ? p as string[] : []; }
+    catch { return tags ? [tags] : []; }
+  }
+  return [];
+}
+
 @Injectable()
 export class KnowledgeBasesService {
   private readonly logger = new Logger(KnowledgeBasesService.name);
@@ -68,7 +77,7 @@ export class KnowledgeBasesService {
     return {
       items: items.map((k) => ({
         ...k,
-        tags: k.tags || [],
+        tags: parseTags(k.tags),
       })),
       total,
       page,
@@ -76,10 +85,13 @@ export class KnowledgeBasesService {
     };
   }
 
-  async getOne(id: number): Promise<KnowledgeBaseEntity> {
+  async getOne(id: number): Promise<any> {
     const k = await this.kbRepo.findOne({ where: { id } });
     if (!k) throw new NotFoundException('知识库不存在');
-    return k;
+    return {
+      ...k,
+      tags: parseTags(k.tags),
+    };
   }
 
   async create(dto: CreateKbDto, operatorId: number): Promise<KnowledgeBaseEntity> {
