@@ -73,6 +73,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
     ComparisonModule,
     PropagationModule,
     TimelineModule,
+    CompetitorModule,
     KeywordSuggestModule,
     AuditModule,
     DashboardModule,
