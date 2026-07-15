@@ -1,6 +1,7 @@
 <template>
   <div class="hot-topics-page">
     <PageHeader title="热点话题发现" subtitle="实时上升热点追踪" />
+    <p class="page-guide">查看各大平台实时热搜榜单和基于监控任务的热点发现</p>
 
     <el-tabs v-model="activeTab" class="hot-topics-tabs">
       <el-tab-pane label="平台热点" name="platform">
@@ -31,13 +32,24 @@
                 target="_blank"
                 class="platform-topic-item"
               >
-                <span class="platform-topic__rank" :class="{ 'is-top3': topic.rank <= 3 }">{{ topic.rank }}</span>
+                <div class="platform-topic__rank-group">
+                  <span class="value-label">排名</span>
+                  <span class="platform-topic__rank" :class="{ 'is-top3': topic.rank <= 3 }">{{ topic.rank }}</span>
+                </div>
                 <span class="platform-topic__title">{{ topic.title }}</span>
                 <span class="platform-topic__category" v-if="topic.category">{{ topic.category }}</span>
-                <div class="platform-topic__hot-bar-wrapper">
-                  <div class="platform-topic__hot-bar" :style="{ width: (topic.hot / 100000) + '%' }" />
+                <div class="platform-topic__hot-group">
+                  <span class="value-label">热度值</span>
+                  <div class="platform-topic__hot-row">
+                    <div class="platform-topic__hot-bar-wrapper">
+                      <div class="platform-topic__hot-bar" :style="{ width: (topic.hot / 100000) + '%' }" />
+                    </div>
+                    <div class="platform-topic__hot-value">
+                      <span class="value-label">热度</span>
+                      <span class="platform-topic__hot">{{ formatHot(topic.hot) }}</span>
+                    </div>
+                  </div>
                 </div>
-                <span class="platform-topic__hot">{{ formatHot(topic.hot) }}</span>
               </a>
             </div>
           </div>
@@ -110,7 +122,10 @@
                   />
                 </svg>
               </div>
-              <div class="topic-card__volume">{{ formatVolume(topic.volume) }}</div>
+              <div class="topic-card__volume">
+                <span class="value-label">热度</span>
+                <span>{{ formatVolume(topic.volume) }}</span>
+              </div>
               <div class="topic-card__platforms">
                 <PlatformTag
                   v-for="p in topic.platforms.slice(0, 4)"
@@ -576,6 +591,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .hot-topics-page {
   animation: fade-in 300ms ease-out;
 }
@@ -711,6 +733,10 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .topic-card__platforms {
@@ -957,6 +983,7 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 100px;
 }
 
 .platform-topic__category {
@@ -966,6 +993,19 @@ onUnmounted(() => {
   padding: 1px 6px;
   border-radius: 4px;
   background: rgba(148, 163, 184, 0.1);
+}
+
+.platform-topic__hot-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.platform-topic__hot-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .platform-topic__hot-bar-wrapper {
@@ -984,6 +1024,13 @@ onUnmounted(() => {
   transition: width var(--transition-normal);
 }
 
+.platform-topic__hot-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
 .platform-topic__hot {
   flex-shrink: 0;
   width: 52px;
@@ -992,5 +1039,18 @@ onUnmounted(() => {
   font-weight: 500;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+.value-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+
+.platform-topic__rank-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
 }
 </style>

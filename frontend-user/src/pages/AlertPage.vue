@@ -72,6 +72,8 @@
       </el-tabs>
     </GlassCard>
 
+    <p class="page-guide">设置预警规则，当舆情指标触发阈值时自动发送通知</p>
+
     <el-dialog v-model="dialogVisible" :title="editing ? '编辑规则' : '新建规则'" width="660">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="110px">
         <el-form-item label="规则名称" prop="name">
@@ -377,6 +379,13 @@ onMounted(() => { loadRules(); loadWebhooks(); loadLogs(); });
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .rule-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));

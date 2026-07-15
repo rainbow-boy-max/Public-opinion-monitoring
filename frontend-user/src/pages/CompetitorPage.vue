@@ -15,6 +15,8 @@
       </PageHeader>
     </div>
 
+    <p class="page-guide">创建竞品组后，可对比各竞品的声量、情感和平台分布</p>
+
     <EmptyStateGuide
       v-if="!hasData && !loadingGroups"
       icon="📊"
@@ -368,6 +370,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .competitor-page {
   display: flex;
   flex-direction: column;

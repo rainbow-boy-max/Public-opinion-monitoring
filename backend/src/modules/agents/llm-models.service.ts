@@ -449,6 +449,17 @@ export class LlmModelsService implements OnModuleInit {
     return { models, count: models.length };
   }
 
+  async setKgConfig(dto: { primaryModelId: number; fallbackModelIds: number[] }): Promise<{ ok: boolean }> {
+    await this.repo.update({}, { isKgPrimary: 0, isKgFallback: 0 });
+    const primary = await this.repo.findOne({ where: { id: dto.primaryModelId } });
+    if (!primary) throw new NotFoundException('主模型不存在');
+    await this.repo.update(dto.primaryModelId, { isKgPrimary: 1 });
+    if (dto.fallbackModelIds.length > 0) {
+      await this.repo.update(dto.fallbackModelIds, { isKgFallback: 1 });
+    }
+    return { ok: true };
+  }
+
   private applyIsEnabledByKey(
     entity: LlmModelEntity,
     dto: any,
@@ -533,6 +544,8 @@ export class LlmModelsService implements OnModuleInit {
       toolSupported: m.toolSupported ?? null,
       sortOrder: m.sortOrder ?? 0,
       apiStyle: m.apiStyle,
+      isKgPrimary: m.isKgPrimary === 1,
+      isKgFallback: m.isKgFallback === 1,
       createdAt: m.createdAt,
       updatedAt: m.updatedAt,
     };

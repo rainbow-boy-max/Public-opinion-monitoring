@@ -108,6 +108,15 @@ class ReorderDto {
   sortOrder: number;
 }
 
+class KgConfigDto {
+  @IsInt()
+  primaryModelId: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  fallbackModelIds: number[];
+}
+
 interface BatchInput {
   ids: number[];
   isEnabled: boolean;
@@ -198,6 +207,13 @@ export class LlmModelsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.service.remove(id);
+  }
+
+  @Post('kg-config')
+  @HttpCode(HttpStatus.OK)
+  @AuditLog({ module: 'llm_models', action: 'kg_config', resourceType: 'llm_model', titleExpr: '配置知识图谱模型' })
+  async setKgConfig(@Body() dto: KgConfigDto) {
+    return this.service.setKgConfig(dto);
   }
 
   @Post(':id/test')

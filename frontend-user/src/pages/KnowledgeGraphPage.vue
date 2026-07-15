@@ -3,10 +3,13 @@
     <PageHeader title="知识图谱" subtitle="舆情实体关系网络">
       <template #actions>
         <div class="kg-controls">
-          <el-tag v-if="activeModel" type="success" size="small" effect="dark">
-            🧠 {{ activeModel.name }} ({{ activeModel.provider }})
+          <el-tag v-if="activeModel?.primary" type="success" size="small" effect="dark">
+            主模型 {{ activeModel.primary.name }} ({{ activeModel.primary.provider }})
           </el-tag>
-          <el-tag v-else type="info" size="small">🧠 未配置 LLM</el-tag>
+          <el-tag v-if="activeModel?.fallback?.length" type="info" size="small">
+            备用 {{ activeModel.fallback.length }} 个
+          </el-tag>
+          <el-tag v-else type="info" size="small">未配置 LLM</el-tag>
           <el-select v-model="timeRange" size="small" style="width: 100px">
             <el-option label="24小时" :value="24" />
             <el-option label="7天" :value="168" />
@@ -18,6 +21,8 @@
         </div>
       </template>
     </PageHeader>
+
+    <p class="page-guide">从舆情事件中自动抽取实体和关系，构建行业知识图谱</p>
 
     <div class="kg-layout">
       <div class="kg-main">
@@ -129,7 +134,7 @@ const loading = ref(false);
 const graphData = ref<KnowledgeGraph | null>(null);
 const stats = ref<GraphStats | null>(null);
 const timeRange = ref(168);
-const activeModel = ref<{ name: string; provider: string } | null>(null);
+const activeModel = ref<{ primary: { id: number; name: string; provider: string } | null; fallback: Array<{ id: number; name: string; provider: string }> } | null>(null);
 
 let chartInstance: echarts.ECharts | null = null;
 let pieInstance: echarts.ECharts | null = null;
@@ -154,7 +159,7 @@ const connectedNodes = computed(() => {
 async function fetchActiveModel(): Promise<void> {
   try {
     const data = await http.get('/knowledge-graph/active-model');
-    activeModel.value = data.name ? data : null;
+    activeModel.value = data.primary ? data : null;
   } catch {
     activeModel.value = null;
   }
@@ -398,6 +403,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .kg-controls {
   display: flex;
   gap: 8px;

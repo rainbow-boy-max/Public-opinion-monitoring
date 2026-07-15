@@ -67,21 +67,11 @@ export class KnowledgeGraphController {
 
   @Get('active-model')
   async activeModel() {
-    const models = await this.llmModelRepo.find({
-      where: { isEnabled: 1 } as any,
-      order: { sortOrder: 'ASC' as any },
-      take: 1,
-    });
-    if (models.length === 0) {
-      return { name: null, message: '未配置 LLM 模型' };
-    }
-    const m = models[0];
+    const primary = await this.llmModelRepo.findOne({ where: { isKgPrimary: 1 } as any });
+    const fallback = await this.llmModelRepo.find({ where: { isKgFallback: 1 } as any, order: { id: 'ASC' } });
     return {
-      name: m.displayName || m.model,
-      model: m.model,
-      provider: m.provider,
-      apiStyle: m.apiStyle,
-      isEnabled: true,
+      primary: primary ? { id: primary.id, name: primary.displayName || primary.model, provider: primary.provider } : null,
+      fallback: fallback.map(m => ({ id: m.id, name: m.displayName || m.model, provider: m.provider })),
     };
   }
 

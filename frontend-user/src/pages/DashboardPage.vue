@@ -1,5 +1,6 @@
 <template>
   <div class="dashboard-page">
+    <p class="page-guide">查看全网舆情态势总览，了解声量趋势、情感分布和最新事件</p>
     <div class="dashboard-stats">
       <StatCard
         v-for="card in cards"
@@ -162,6 +163,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .dashboard-page {
   display: flex;
   flex-direction: column;

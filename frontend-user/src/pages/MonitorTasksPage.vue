@@ -89,6 +89,8 @@
       @primary="openCreate" />
   </GlassCard>
 
+  <p class="page-guide">创建监控任务后，系统将自动采集各大平台的相关舆情信息</p>
+
   <el-dialog v-model="dialogVisible" title="创建监控任务" width="640">
     <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
       <el-form-item label="任务名称" prop="name">
@@ -493,6 +495,13 @@ function kwApply(): void {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .toolbar {
   margin-bottom: 20px;
   display: flex;

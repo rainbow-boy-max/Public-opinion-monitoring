@@ -72,6 +72,12 @@ export class LlmModelEntity {
   @Column({ name: 'sort_order', type: 'int', default: 0 })
   sortOrder: number;
 
+  @Column({ name: 'is_kg_primary', type: 'tinyint', default: 0 })
+  isKgPrimary: number;
+
+  @Column({ name: 'is_kg_fallback', type: 'tinyint', default: 0 })
+  isKgFallback: number;
+
   @Column({
     name: 'api_style',
     type: 'varchar', length: 32,

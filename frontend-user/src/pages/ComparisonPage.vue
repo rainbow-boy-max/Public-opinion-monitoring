@@ -7,6 +7,8 @@
       </template>
     </PageHeader>
 
+    <p class="page-guide">选择多个关键词组和时间范围进行声量与情感的对比分析</p>
+
     <GlassCard title="查询条件" padded>
       <div class="query-builder">
         <div v-for="(group, idx) in queryGroups" :key="idx" class="query-group">
@@ -413,6 +415,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .comparison-page {
   display: flex;
   flex-direction: column;

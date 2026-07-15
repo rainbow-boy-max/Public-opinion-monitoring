@@ -180,6 +180,8 @@
       </el-tabs>
     </GlassCard>
 
+    <p class="page-guide">使用 AI 生成舆情分析报告、公关应对方案和声明话术</p>
+
     <el-dialog
       v-model="reportVisible"
       :title="`AI 公关方案 · 报告 #${currentReport?.id || '-'}`"
@@ -789,8 +791,11 @@ function closeFloatingPlayer(): void {
   floatingProgress.value = 0;
 }
 
-onMounted(() => {
-  loadReports();
+onMounted(async () => {
+  await loadReports();
+  if (reports.value.length === 0) {
+    loadMockReport();
+  }
   loadAgents();
   loadMonitorTasks();
   loadSchedules();
@@ -801,6 +806,13 @@ void statusType;
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .pr-page {
   display: flex;
   flex-direction: column;

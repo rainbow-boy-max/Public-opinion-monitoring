@@ -57,6 +57,8 @@
     <el-empty v-if="!loading && filteredWebhooks.length === 0" description="暂无 Webhook 机器人" />
   </GlassCard>
 
+  <p class="page-guide">配置 Webhook 后，当有新的舆情事件时系统将自动推送通知</p>
+
   <el-dialog v-model="dialogVisible" title="创建 Webhook 机器人" width="700">
     <el-form ref="formRef" :model="form" :rules="rules" label-width="140px">
       <el-form-item label="机器人名称" prop="name">
@@ -271,6 +273,13 @@ onMounted(load);
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .format-tabs {
   display: flex;
   flex-wrap: wrap;

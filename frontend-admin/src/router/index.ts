@@ -132,6 +132,10 @@ const router = createRouter({
           component: () => import('@/pages/KnowledgeGraphPage.vue'),
         },
         {
+          path: 'config/knowledge-graph',
+          component: () => import('@/pages/KnowledgeGraphConfigPage.vue'),
+        },
+        {
           path: 'tenants',
           component: () => import('@/pages/TenantsPage.vue'),
         },

@@ -18,6 +18,8 @@
       </template>
     </PageHeader>
 
+    <p class="page-guide">查看舆情事件在不同平台间的传播扩散路径和关键节点</p>
+
     <GlassCard title="传播图谱" bare>
       <div v-loading="loading" class="graph-container">
         <div v-if="!hasData && !loading" class="empty-state">
@@ -288,6 +290,13 @@ function renderChart() {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .propagation-page {
   max-width: 1400px;
   margin: 0 auto;

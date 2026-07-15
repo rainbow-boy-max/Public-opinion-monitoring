@@ -54,6 +54,8 @@
       </div>
     </GlassCard>
 
+    <p class="page-guide">提交舆情研判工单，由管理员进行人工分析和处置</p>
+
     <el-dialog v-model="detailVisible" title="工单详情" width="720" :close-on-click-modal="false">
       <template v-if="detail">
         <el-descriptions :column="2" border size="small">
@@ -409,6 +411,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .filters-row {
   display: flex;
   gap: 12px;

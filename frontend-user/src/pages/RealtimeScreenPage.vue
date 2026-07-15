@@ -16,6 +16,8 @@
       </div>
     </header>
 
+    <p class="page-guide">实时展示舆情数据，支持 Socket.IO 实时推送和自动刷新</p>
+
     <!-- 核心指标卡 -->
     <section class="rt-stats">
       <div v-for="card in summaryCards" :key="card.label" class="rt-stat-card" :style="{ '--card-color': card.color }">
@@ -556,6 +558,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .rt-screen {
   display: flex;
   flex-direction: column;

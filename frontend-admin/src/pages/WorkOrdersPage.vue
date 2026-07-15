@@ -34,6 +34,17 @@
         <el-button @click="loadList">查询</el-button>
       </div>
 
+      <div v-if="!loading && list.length === 0" class="empty-guide">
+        <el-empty description="暂无工单，点击「新建工单」创建第一个工单进行人工研判。">
+          <template #image>
+            <div class="empty-guide-image">
+              <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 14l2 2 4-4"></path></svg>
+            </div>
+          </template>
+          <el-button type="primary" :icon="Plus" @click="openCreate">新建工单</el-button>
+        </el-empty>
+      </div>
+
       <el-table :data="list" v-loading="loading" stripe style="width:100%" @row-click="onRowClick">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
@@ -668,6 +679,15 @@ onMounted(() => {
 .text-muted {
   color: var(--text-tertiary);
   font-size: 13px;
+}
+
+.empty-guide {
+  margin: 40px 0;
+}
+
+.empty-guide-image {
+  opacity: 0.3;
+  margin-bottom: 8px;
 }
 
 .attachment-list {

@@ -19,6 +19,8 @@
       </div>
     </div>
 
+    <p class="page-guide">自由拖拽布局，打造专属的舆情监控仪表盘</p>
+
     <div v-if="editMode" class="widget-palette">
       <div class="widget-palette__title">组件列表</div>
       <div class="widget-palette__grid">
@@ -365,6 +367,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .custom-dashboard {
   display: flex;
   flex-direction: column;

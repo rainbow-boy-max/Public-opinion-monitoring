@@ -21,8 +21,9 @@
       </template>
     </PageHeader>
 
-    <template v-if="stats">
-      <div class="sv-stats">
+    <p class="page-guide">专项监控抖音、快手、小红书平台的短视频舆情</p>
+
+    <div class="sv-stats">
         <StatCard label="短视频总数" :value="stats.totalVideos" icon="🎬" icon-bg="var(--gradient-primary)" :glow="'rgba(94, 114, 228, 0.4)'" />
         <StatCard label="总播放量" :value="formatNum(stats.totalPlays)" icon="▶️" icon-bg="var(--gradient-cool)" :glow="'rgba(6, 182, 212, 0.4)'" />
         <StatCard label="总点赞数" :value="formatNum(stats.totalLikes)" icon="❤️" icon-bg="var(--gradient-warm)" :glow="'rgba(245, 158, 11, 0.4)'" />
@@ -339,6 +340,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .short-video-page { animation: fade-in 250ms ease-out both; }
 .sv-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .sv-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }

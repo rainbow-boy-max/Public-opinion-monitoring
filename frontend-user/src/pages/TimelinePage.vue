@@ -37,6 +37,8 @@
       </div>
     </div>
 
+    <p class="page-guide">按时间轴查看舆情事件的发展脉络和关键里程碑</p>
+
     <div v-if="loading" class="timeline-loading">
       <el-skeleton :rows="6" animated />
     </div>
@@ -492,6 +494,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.page-guide {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .timeline-page {
   display: flex;
   flex-direction: column;
