@@ -153,8 +153,12 @@ interface CompetitorCompItem {
   totalMentions: number;
   sentimentScore: number;
   shareOfVoice: number;
-  sentiment: { positive: number; negative: number; neutral: number };
-  platformDistribution: { platform: string; count: number }[];
+  totalEngagement: number;
+  avgEngagement: number;
+  topKeywords: { keyword: string; count: number }[];
+  hourlyTrend: number[];
+  bySentiment: { positive: number; negative: number; neutral: number };
+  byPlatform: Record<string, number>;
 }
 
 interface KeywordItem {
@@ -299,8 +303,25 @@ async function loadComparison() {
   try {
     const data = await http.get(`/competitor/groups/${selectedGroupId.value}/comparison`, {
       params: { timeRange: timeRange.value },
-    }) as ComparisonResponse;
-    comparisonData.value = data;
+    });
+    const raw = data as any;
+    comparisonData.value = {
+      competitors: (raw.competitors || []).map((c: any, i: number) => ({
+        id: i + 1,
+        name: c.name,
+        totalMentions: c.stats?.total ?? 0,
+        sentimentScore: c.stats?.sentimentScore ?? 0,
+        shareOfVoice: c.stats?.shareOfVoice ?? 0,
+        totalEngagement: c.stats?.totalEngagement ?? 0,
+        avgEngagement: c.stats?.avgEngagement ?? 0,
+        topKeywords: c.stats?.topKeywords ?? [],
+        hourlyTrend: c.stats?.hourlyTrend ?? [],
+        bySentiment: c.stats?.bySentiment ?? { positive: 0, negative: 0, neutral: 0 },
+        byPlatform: c.stats?.byPlatform ?? {},
+      })),
+      keywords: raw.keywords || [],
+      hourlyTrend: raw.hourlyTrend || [],
+    };
     await nextTick();
     initCharts();
   } catch {
@@ -387,9 +408,9 @@ function drawSentimentStacked(competitors: CompetitorCompItem[]) {
     xAxis: { type: 'category', data: names, axisLine: { lineStyle: { color: 'rgba(140,155,240,0.2)' } } },
     yAxis: { type: 'value', axisLine: { lineStyle: { color: 'rgba(140,155,240,0.2)' } }, splitLine: { lineStyle: { color: 'rgba(140,155,240,0.08)' } } },
     series: [
-      { name: '正面', type: 'bar', stack: 'sentiment', data: competitors.map(c => c.sentiment.positive), itemStyle: { color: '#34D399' } },
-      { name: '负面', type: 'bar', stack: 'sentiment', data: competitors.map(c => c.sentiment.negative), itemStyle: { color: '#F87171' } },
-      { name: '中性', type: 'bar', stack: 'sentiment', data: competitors.map(c => c.sentiment.neutral), itemStyle: { color: '#94A3B8' } },
+      { name: '正面', type: 'bar', stack: 'sentiment', data: competitors.map(c => c.bySentiment.positive), itemStyle: { color: '#34D399' } },
+      { name: '负面', type: 'bar', stack: 'sentiment', data: competitors.map(c => c.bySentiment.negative), itemStyle: { color: '#F87171' } },
+      { name: '中性', type: 'bar', stack: 'sentiment', data: competitors.map(c => c.bySentiment.neutral), itemStyle: { color: '#94A3B8' } },
     ],
   });
 }
@@ -415,8 +436,9 @@ function drawRadar(competitors: CompetitorCompItem[]) {
       type: 'radar',
       data: competitors.map((c, i) => ({
         value: platforms.map(p => {
-          const dist = c.platformDistribution.find(d => d.platform === p);
-          return dist ? Math.min(100, +(dist.count / Math.max(...c.platformDistribution.map(d => d.count), 1) * 100).toFixed(0)) : 0;
+          const count = c.byPlatform[p] || 0;
+          const maxCount = Math.max(...platforms.map(pf => c.byPlatform[pf] || 0), 1);
+          return Math.min(100, +(count / maxCount * 100).toFixed(0));
         }),
         name: c.name,
         itemStyle: { color: colors[i % colors.length] },
@@ -461,39 +483,35 @@ function getMockData(): ComparisonResponse {
     competitors: [
       {
         id: 1, name: '竞品A', totalMentions: 15230, sentimentScore: 6.8, shareOfVoice: 0.35,
-        sentiment: { positive: 8230, negative: 2800, neutral: 4200 },
-        platformDistribution: [
-          { platform: 'weibo', count: 5200 }, { platform: 'weixin', count: 3800 },
-          { platform: 'douyin', count: 3100 }, { platform: 'xiaohongshu', count: 1800 },
-          { platform: 'kuaishou', count: 830 }, { platform: 'baijiahao', count: 500 },
-        ],
+        totalEngagement: 45600, avgEngagement: 125.4,
+        topKeywords: [{ keyword: '新品发布', count: 342 }, { keyword: '用户体验', count: 189 }],
+        hourlyTrend: [120, 95, 78, 45, 32, 28, 56, 89, 145, 230, 320, 410, 380, 350, 420, 510, 580, 620, 550, 480, 390, 310, 240, 180],
+        bySentiment: { positive: 8230, negative: 2800, neutral: 4200 },
+        byPlatform: { weibo: 5200, weixin: 3800, douyin: 3100, xiaohongshu: 1800, kuaishou: 830, baijiahao: 500 },
       },
       {
         id: 2, name: '竞品B', totalMentions: 9840, sentimentScore: 7.2, shareOfVoice: 0.28,
-        sentiment: { positive: 6200, negative: 1240, neutral: 2400 },
-        platformDistribution: [
-          { platform: 'weibo', count: 3200 }, { platform: 'weixin', count: 2600 },
-          { platform: 'douyin', count: 2100 }, { platform: 'xiaohongshu', count: 1200 },
-          { platform: 'kuaishou', count: 540 }, { platform: 'baijiahao', count: 200 },
-        ],
+        totalEngagement: 29500, avgEngagement: 98.7,
+        topKeywords: [{ keyword: '技术创新', count: 256 }, { keyword: '品牌升级', count: 156 }],
+        hourlyTrend: [80, 62, 45, 28, 20, 18, 35, 58, 95, 150, 210, 280, 260, 230, 280, 340, 380, 410, 360, 320, 260, 200, 160, 120],
+        bySentiment: { positive: 6200, negative: 1240, neutral: 2400 },
+        byPlatform: { weibo: 3200, weixin: 2600, douyin: 2100, xiaohongshu: 1200, kuaishou: 540, baijiahao: 200 },
       },
       {
         id: 3, name: '竞品C', totalMentions: 7210, sentimentScore: 5.4, shareOfVoice: 0.20,
-        sentiment: { positive: 3100, negative: 2100, neutral: 2010 },
-        platformDistribution: [
-          { platform: 'weibo', count: 2400 }, { platform: 'weixin', count: 1800 },
-          { platform: 'douyin', count: 1500 }, { platform: 'xiaohongshu', count: 800 },
-          { platform: 'kuaishou', count: 410 }, { platform: 'baijiahao', count: 300 },
-        ],
+        totalEngagement: 21600, avgEngagement: 72.5,
+        topKeywords: [{ keyword: '价格战', count: 198 }, { keyword: '营销活动', count: 142 }],
+        hourlyTrend: [55, 42, 30, 18, 12, 10, 22, 38, 62, 98, 140, 180, 170, 150, 180, 220, 250, 270, 240, 210, 170, 130, 100, 75],
+        bySentiment: { positive: 3100, negative: 2100, neutral: 2010 },
+        byPlatform: { weibo: 2400, weixin: 1800, douyin: 1500, xiaohongshu: 800, kuaishou: 410, baijiahao: 300 },
       },
       {
         id: 4, name: '竞品D', totalMentions: 4350, sentimentScore: 8.1, shareOfVoice: 0.17,
-        sentiment: { positive: 3100, negative: 400, neutral: 850 },
-        platformDistribution: [
-          { platform: 'weibo', count: 1400 }, { platform: 'weixin', count: 1200 },
-          { platform: 'douyin', count: 900 }, { platform: 'xiaohongshu', count: 500 },
-          { platform: 'kuaishou', count: 250 }, { platform: 'baijiahao', count: 100 },
-        ],
+        totalEngagement: 13000, avgEngagement: 45.2,
+        topKeywords: [{ keyword: '用户口碑', count: 168 }, { keyword: '创新设计', count: 112 }],
+        hourlyTrend: [32, 25, 18, 10, 8, 6, 14, 24, 40, 62, 88, 115, 108, 92, 110, 135, 155, 168, 145, 128, 105, 82, 62, 45],
+        bySentiment: { positive: 3100, negative: 400, neutral: 850 },
+        byPlatform: { weibo: 1400, weixin: 1200, douyin: 900, xiaohongshu: 500, kuaishou: 250, baijiahao: 100 },
       },
     ],
     keywords: [
