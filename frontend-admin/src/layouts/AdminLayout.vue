@@ -48,13 +48,42 @@
       </div>
     </el-aside>
 
+    <!-- 手机抽屉菜单 -->
+    <el-drawer v-model="drawerVisible" :size="260" direction="ltr" :with-header="false">
+      <div class="admin-aside" style="width:100%;height:100%;position:static;border:none;background:var(--bg-cosmic);box-shadow:none;">
+        <div class="admin-aside__brand">
+          <div class="admin-aside__logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <defs><linearGradient id="dlgGrad" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#5E72E4" /><stop offset="100%" stop-color="#7C3AED" /></linearGradient></defs>
+              <rect width="32" height="32" rx="8" fill="url(#dlgGrad)" />
+              <path d="M8 20L14 12L18 16L24 10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <circle cx="24" cy="10" r="2" fill="white" />
+            </svg>
+          </div>
+          <div class="admin-aside__title">
+            <div class="admin-aside__title-main">舆情监测</div>
+            <div class="admin-aside__title-sub">Super Admin</div>
+          </div>
+        </div>
+        <nav class="admin-aside__nav">
+          <div v-for="item in menuItems" :key="item.path" class="menu-item"
+            :class="{ 'menu-item--active': isMenuActive(item.path) }"
+            @click="navigateTo(item.path); drawerVisible = false">
+            <span class="menu-item__icon" :innerHTML="item.icon" />
+            <span class="menu-item__text">{{ item.label }}</span>
+          </div>
+        </nav>
+      </div>
+    </el-drawer>
+
     <el-main class="admin-main">
       <header class="admin-topbar">
         <div class="admin-topbar__left">
-          <el-icon class="admin-topbar__toggle" @click="isCollapsed = !isCollapsed">
+          <el-icon class="admin-topbar__toggle" @click="toggleCollapse">
             <Fold v-if="!isCollapsed" />
             <Expand v-else />
           </el-icon>
+          <el-button class="mobile-menu-btn" :icon="Operation" @click="drawerVisible = true" />
           <PageHeader gradient :title="currentTitle" :subtitle="currentSubtitle" />
         </div>
         <div class="admin-topbar__right">
@@ -92,7 +121,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAdminAuthStore } from '@/store/auth';
-import { Expand, Fold, SwitchButton } from '@element-plus/icons-vue';
+import { Expand, Fold, SwitchButton, Operation } from '@element-plus/icons-vue';
 import PageHeader from '@shared/components/PageHeader.vue';
 
 const route = useRoute();
@@ -196,6 +225,16 @@ function navigateTo(path: string): void {
     router.push(path);
   }
 }
+
+function toggleCollapse(): void {
+  if (window.innerWidth <= 767) {
+    drawerVisible.value = true;
+  } else {
+    isCollapsed.value = !isCollapsed.value;
+  }
+}
+
+const drawerVisible = ref(false);
 
 function updateTime(): void {
   const now = new Date();

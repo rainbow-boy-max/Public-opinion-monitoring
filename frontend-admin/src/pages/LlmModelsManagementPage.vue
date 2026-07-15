@@ -246,6 +246,7 @@ import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import ModelsTable from './ModelsTable.vue';
 import CustomModelForm from './CustomModelForm.vue';
+import { useDialogWidth } from '@/utils/responsive';
 
 defineOptions({ name: 'LlmModelsManagementPage' });
 
