@@ -166,6 +166,44 @@ export class PrReportsService {
     await this.prRepo.remove(report);
   }
 
+  async fetchUrlContent(url: string): Promise<string> {
+    try {
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OpinionMonitor/1.0)' },
+        signal: AbortSignal.timeout(10000),
+      });
+      const html = await response.text();
+      const text = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 10000);
+      if (!text) throw new Error('无法从链接中提取内容');
+      return text;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '未知错误';
+      throw new BadRequestException(`无法获取链接内容: ${msg}`);
+    }
+  }
+
+  async searchEvents(userId: number, query: string, limit = 20): Promise<OpinionEventEntity[]> {
+    const where: any = {};
+    if (query) {
+      where.title = Like(`%${query}%`);
+    }
+    return this.eventRepo.find({
+      where,
+      order: { matchedAt: 'DESC' },
+      take: Math.min(limit, 50),
+    });
+  }
+
   // P1-04: periodic report generation
   async generatePeriodicReport(
     userId: number,

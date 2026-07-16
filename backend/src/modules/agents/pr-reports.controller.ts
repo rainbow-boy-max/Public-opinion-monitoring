@@ -1,26 +1,11 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Param,
-  Body,
-  Query,
-  UseGuards,
-  HttpCode,
-  HttpStatus,
-  ParseIntPipe,
-  Res,
-  Delete,
-  Patch,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { PrReportsService } from './pr-reports.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IsString, IsOptional, IsNumber, IsArray, IsIn, ArrayMinSize } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray, IsIn, ArrayMinSize, MinLength } from 'class-validator';
 
 class StartReportFromEventDto {
   @IsNumber()
@@ -32,11 +17,21 @@ class StartReportFromEventDto {
 }
 
 class StartReportFromTextDto {
+  @IsOptional()
   @IsString()
-  title: string;
+  title?: string;
 
+  @IsOptional()
   @IsString()
-  text: string;
+  text?: string;
+
+  @IsOptional()
+  @IsString()
+  url?: string;
+
+  @IsOptional()
+  @IsString()
+  fileText?: string;
 
   @IsOptional()
   @IsNumber()
@@ -55,10 +50,26 @@ export class PrReportsController {
     @Body() dto: StartReportFromEventDto | StartReportFromTextDto,
   ) {
     if ('eventId' in dto) {
-      const r = await this.service.startReportFromEvent(userId, dto.eventId, dto.agentId);
+      const r = await this.service.startReportFromEvent(userId, dto.eventId, (dto as any).agentId);
       return { reportId: r.id, status: r.status };
     }
-    const r = await this.service.startReportFromText(userId, dto.text, dto.title, dto.agentId);
+    const textDto = dto as StartReportFromTextDto;
+    let analyzeText = textDto.text || '';
+    let title = textDto.title || '';
+
+    if (textDto.url && !analyzeText) {
+      analyzeText = await this.service.fetchUrlContent(textDto.url);
+      title = title || `链接分析: ${textDto.url.substring(0, 60)}`;
+    }
+    if (textDto.fileText) {
+      analyzeText = (analyzeText ? analyzeText + '\n\n' : '') + textDto.fileText;
+      title = title || '文档分析';
+    }
+    if (!analyzeText) {
+      throw new BadRequestException('请提供分析内容（文本/链接/文档）');
+    }
+
+    const r = await this.service.startReportFromText(userId, analyzeText, title || '舆情分析', textDto.agentId);
     return { reportId: r.id, status: r.status };
   }
 
@@ -154,5 +165,23 @@ export class PrReportsController {
   @Roles('admin')
   async adminDelete(@Param('id', ParseIntPipe) id: number) {
     await this.service.adminDelete(id);
+  }
+
+  // Fetch URL content
+  @Post('fetch-url')
+  @HttpCode(HttpStatus.OK)
+  async fetchUrl(@Body() dto: { url: string }) {
+    const text = await this.service.fetchUrlContent(dto.url);
+    return { text, length: text.length };
+  }
+
+  // Search events for analysis
+  @Get('events/search')
+  async searchEvents(
+    @CurrentUser('id') userId: number,
+    @Query('q') q = '',
+    @Query('limit') limit = 20,
+  ) {
+    return this.service.searchEvents(userId, q, limit);
   }
 }
