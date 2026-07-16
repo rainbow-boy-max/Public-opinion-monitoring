@@ -100,6 +100,10 @@ const router = createRouter({
           component: () => import('@/pages/HotTopicsPage.vue'),
         },
         {
+          path: 'pr-reports',
+          component: () => import('@/pages/PrReportsPage.vue'),
+        },
+        {
           path: 'alert',
           component: () => import('@/pages/AlertCenterPage.vue'),
         },

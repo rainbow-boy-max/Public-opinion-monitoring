@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, In, MoreThanOrEqual } from 'typeorm';
+import { Repository, LessThan, In, MoreThanOrEqual, Like } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   PrReportEntity,
@@ -139,6 +139,32 @@ export class PrReportsService {
       take: pageSize,
     });
     return { items, total, page, pageSize };
+  }
+
+  async adminList(
+    page = 1,
+    pageSize = 20,
+    filters?: { status?: string; search?: string },
+  ): Promise<{ items: PrReportEntity[]; total: number; page: number; pageSize: number }> {
+    const where: any = {};
+    if (filters?.status) where.status = filters.status;
+    if (filters?.search) {
+      where.title = Like(`%${filters.search}%`);
+    }
+    const [items, total] = await this.prRepo.findAndCount({
+      where,
+      order: { id: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      relations: ['user'],
+    });
+    return { items, total, page, pageSize };
+  }
+
+  async adminDelete(id: number): Promise<void> {
+    const report = await this.prRepo.findOne({ where: { id } });
+    if (!report) throw new NotFoundException('报告不存在');
+    await this.prRepo.remove(report);
   }
 
   // P1-04: periodic report generation

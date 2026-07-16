@@ -12,10 +12,13 @@ import {
   Res,
   Delete,
   Patch,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { PrReportsService } from './pr-reports.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { IsString, IsOptional, IsNumber, IsArray, IsIn, ArrayMinSize } from 'class-validator';
 
@@ -129,5 +132,27 @@ export class PrReportsController {
     res.setHeader('Content-Type', result.contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
     res.send(result.content);
+  }
+
+  // Admin: list all reports
+  @Get('admin/all')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  async adminList(
+    @Query('page') page = 1,
+    @Query('pageSize') pageSize = 20,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.service.adminList(page, pageSize, { status, search });
+  }
+
+  // Admin: delete report
+  @Delete('admin/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  async adminDelete(@Param('id', ParseIntPipe) id: number) {
+    await this.service.adminDelete(id);
   }
 }

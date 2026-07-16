@@ -194,6 +194,11 @@ const menuItems: MenuItem[] = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>',
   },
   {
+    path: '/pr-reports',
+    label: 'AI 公关报告',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>',
+  },
+  {
     path: '/config/aliyun-verify',
     label: '三要素认证',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>',
@@ -264,6 +269,7 @@ const META: Record<string, { title: string; subtitle: string }> = {
   '/comparison': { title: '多维对比分析', subtitle: '多关键词组对比分析' },
   '/hot-topics': { title: '热点话题', subtitle: '上升热点发现与聚合管理' },
   '/config/hot-topics': { title: '热点话题配置', subtitle: '数据源选择与刷新策略' },
+  '/pr-reports': { title: 'AI 公关报告', subtitle: '全量用户报告管理与审核' },
   '/short-video': { title: '短视频监控', subtitle: '多平台短视频数据监控与分析' },
   '/competitor-tracking': { title: '竞品追踪', subtitle: '竞品动态对比分析' },
   '/work-orders': { title: '工单管理', subtitle: '人工分析与处置工作流' },

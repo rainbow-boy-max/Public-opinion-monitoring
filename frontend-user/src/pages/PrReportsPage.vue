@@ -16,10 +16,14 @@
               <div class="report-card__title">报告 #{{ r.id }}</div>
               <div class="report-card__time">{{ formatDate(r.createdAt) }}</div>
             </div>
+            <el-tag v-if="r.status === 'completed'" type="success" size="small">已完成</el-tag>
+            <el-tag v-else-if="r.status === 'generating'" type="warning" size="small">生成中</el-tag>
+            <el-tag v-else-if="r.status === 'failed'" type="danger" size="small">失败</el-tag>
           </div>
           <div class="report-card__body">
             <span v-if="r.modelUsed">模型：<code>{{ r.modelUsed }}</code></span>
             <span v-if="r.tokensUsed"> · Tokens：{{ r.tokensUsed }}</span>
+            <span v-if="r.latencyMs"> · {{ (r.latencyMs / 1000).toFixed(1) }}s</span>
           </div>
         </article>
       </div>
@@ -30,6 +34,38 @@
         </el-empty>
       </div>
     </GlassCard>
+
+    <el-dialog v-model="customVisible" title="自定义舆情分析" width="640" :close-on-click-modal="false">
+      <el-form :model="customForm" label-width="0">
+        <el-form-item>
+          <el-input v-model="customForm.title" placeholder="事件标题（可选，自动生成）" :disabled="submitting" />
+        </el-form-item>
+        <el-form-item>
+          <el-input
+            v-model="customForm.text"
+            type="textarea"
+            :rows="6"
+            placeholder="输入舆情事件描述、新闻链接内容、或粘贴需要分析的文本..."
+            :disabled="submitting"
+          />
+        </el-form-item>
+        <el-form-item v-if="agents.length > 0">
+          <el-select v-model="customForm.agentId" placeholder="选择 AI 智能体（可选）" style="width: 100%" :disabled="submitting" clearable>
+            <el-option v-for="a in agents" :key="a.id" :label="a.name" :value="a.id" />
+          </el-select>
+        </el-form-item>
+        <div v-if="submitting" class="generating-hint">
+          <el-progress :percentage="progressPercent" :stroke-width="6" status="warning" />
+          <p>AI 正在分析中，请稍候...</p>
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="customVisible = false" :disabled="submitting">取消</el-button>
+        <el-button type="primary" :loading="submitting" :disabled="!customForm.text.trim()" @click="onSubmitAnalysis">
+          {{ submitting ? '分析中...' : '提交分析' }}
+        </el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="reportVisible" title="报告详情" width="800" top="5vh">
       <div v-if="currentReport" class="report-detail">
@@ -46,7 +82,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'PrReportsPage' });
-import { ref, onMounted } from 'vue';
+import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import http from '@/utils/http';
@@ -56,6 +92,14 @@ const loading = ref(false);
 const reports = ref<any[]>([]);
 const reportVisible = ref(false);
 const currentReport = ref<any>(null);
+const customVisible = ref(false);
+const submitting = ref(false);
+const progressPercent = ref(0);
+const agents = ref<Array<{ id: number; name: string }>>([]);
+
+const customForm = reactive({ title: '', text: '', agentId: 0 });
+
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 function formatDate(s: string): string {
   if (!s) return '';
@@ -103,18 +147,91 @@ async function loadReports(): Promise<void> {
   }
 }
 
+async function loadAgents(): Promise<void> {
+  try {
+    const res = await http.get('/agents');
+    agents.value = (res.items || []).map((a: any) => ({ id: a.id, name: a.name }));
+  } catch { /* ignore */ }
+}
+
 function openReport(r: any) {
   currentReport.value = r;
   reportVisible.value = true;
 }
 
-function openCustomDialog() {
-  ElMessage.info('自定义分析功能即将上线');
+async function openCustomDialog() {
+  customForm.title = '';
+  customForm.text = '';
+  customForm.agentId = 0;
+  progressPercent.value = 0;
+  customVisible.value = true;
+}
+
+async function onSubmitAnalysis() {
+  if (!customForm.text.trim()) return;
+  submitting.value = true;
+  progressPercent.value = 10;
+  try {
+    const res = await http.post('/pr/analyze', {
+      title: customForm.title || undefined,
+      text: customForm.text,
+      agentId: customForm.agentId || undefined,
+    });
+    const reportId = res.reportId;
+    progressPercent.value = 30;
+    await pollReport(reportId);
+  } catch (err: any) {
+    ElMessage.error(err?.message || '提交分析失败');
+    submitting.value = false;
+    progressPercent.value = 0;
+  }
+}
+
+async function pollReport(reportId: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let elapsed = 0;
+    const maxWait = 120000;
+    const interval = 2000;
+    pollTimer = setInterval(async () => {
+      elapsed += interval;
+      progressPercent.value = Math.min(90, 30 + Math.floor(elapsed / maxWait * 60));
+      try {
+        const r = await http.get(`/pr/reports/${reportId}`);
+        if (r.status === 'completed') {
+          clearInterval(pollTimer!);
+          pollTimer = null;
+          progressPercent.value = 100;
+          setTimeout(() => { submitting.value = false; }, 500);
+          await loadReports();
+          ElMessage.success('分析完成');
+          currentReport.value = r;
+          reportVisible.value = true;
+          resolve();
+        } else if (r.status === 'failed') {
+          clearInterval(pollTimer!);
+          pollTimer = null;
+          submitting.value = false;
+          ElMessage.error(r.errorMessage || '分析失败');
+          reject(new Error(r.errorMessage || '分析失败'));
+        }
+      } catch {
+        clearInterval(pollTimer!);
+        pollTimer = null;
+        submitting.value = false;
+        reject(new Error('查询报告状态失败'));
+      }
+    }, interval);
+  });
 }
 
 onMounted(() => {
   loadMockReport();
   loadReports();
+  loadAgents();
+});
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer);
 });
 </script>
 
@@ -128,7 +245,7 @@ onMounted(() => {
   border: 1px solid var(--glass-border); cursor: pointer; transition: all var(--transition-fast);
 }
 .report-card:hover { border-color: var(--color-primary-dark); transform: translateY(-1px); }
-.report-card__head { margin-bottom: 8px; }
+.report-card__head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
 .report-card__title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .report-card__time { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
 .report-card__body { font-size: 12px; color: var(--text-secondary); }
@@ -139,4 +256,6 @@ onMounted(() => {
 .render-markdown li { margin: 4px 0; }
 .render-markdown code { background: rgba(94,114,228,0.1); padding: 2px 6px; border-radius: 3px; font-size: 13px; }
 .render-markdown strong { color: var(--color-primary-light); }
+.generating-hint { text-align: center; padding: 12px 0; }
+.generating-hint p { font-size: 13px; color: var(--text-secondary); margin-top: 8px; }
 </style>
