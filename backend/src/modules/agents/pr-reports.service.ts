@@ -156,7 +156,6 @@ export class PrReportsService {
       order: { id: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
-      relations: ['user'],
     });
     return { items, total, page, pageSize };
   }

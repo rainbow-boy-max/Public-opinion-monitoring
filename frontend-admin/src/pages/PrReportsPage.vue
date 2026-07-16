@@ -19,7 +19,7 @@
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
       <el-table-column label="用户" width="120">
-        <template #default="{ row }"><code>{{ row.user?.username || '—' }}</code></template>
+        <template #default="{ row }"><code>#{{ row.userId }}</code></template>
       </el-table-column>
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
