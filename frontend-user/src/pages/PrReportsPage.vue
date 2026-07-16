@@ -32,7 +32,8 @@
       </div>
     </GlassCard>
 
-    <el-dialog v-model="customVisible" title="自定义舆情分析" width="700" :close-on-click-modal="false" top="8vh">
+    <el-dialog v-model="customVisible" title="自定义舆情分析" width="700" :close-on-click-modal="false" top="5vh" class="pr-dialog">
+      <div class="pr-dialog__body">
       <el-tabs v-model="inputTab" @tab-change="onTabChange">
         <el-tab-pane label="📋 选择事件" name="event">
           <p class="tab-desc">从正在监控的舆情事件中选择分析对象</p>
@@ -44,7 +45,7 @@
               <div class="event-item__meta">
                 <PlatformTag :platform="e.platform" size="small" />
                 <span>{{ e.sentiment === 'positive' ? '😊' : e.sentiment === 'negative' ? '😡' : '😐' }}</span>
-                <span>{{ formatDate(e.matchedAt) }}</span>
+                <span class="event-item__time">{{ formatDate(e.matchedAt) }}</span>
               </div>
             </div>
             <div v-if="searchResults.length === 0 && !eventSearch" class="text-muted" style="text-align:center;padding:20px">输入关键词搜索已有舆情事件</div>
@@ -54,17 +55,17 @@
         <el-tab-pane label="🔗 输入链接" name="url">
           <p class="tab-desc">输入网页链接，系统将自动抓取内容进行分析</p>
           <el-input v-model="urlInput" placeholder="https://..." clearable />
-          <div v-if="fetchingUrl" class="fetch-status"><el-progress :percentage="50" :stroke-width="4" status="success" />正在抓取链接内容...</div>
+          <div v-if="fetchingUrl" class="fetch-status"><el-progress :percentage="50" :stroke-width="4" status="success" /><span>正在抓取链接内容...</span></div>
         </el-tab-pane>
 
         <el-tab-pane label="📎 上传文档" name="doc">
           <p class="tab-desc">上传舆情相关文档（PDF/Word/图片/TXT），提取文字后分析</p>
-          <el-upload ref="uploadRef" :action="`http://localhost:3000/api/upload`" :headers="uploadHeaders" :on-success="onUploadSuccess" :on-error="onUploadError" :limit="1" :accept="'.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp'" :auto-upload="true">
+          <el-upload ref="uploadRef" action="/api/upload" :headers="uploadHeaders" :on-success="onUploadSuccess" :on-error="onUploadError" :limit="1" :accept="'.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp'" :auto-upload="true">
             <el-button type="primary">选择文件</el-button>
             <template #tip><div class="upload-tip">支持 PDF / Word / TXT / 图片，单个文件最大 20MB</div></template>
           </el-upload>
           <div v-if="uploadedFile" class="upload-status">
-            <el-tag type="success" closable @close="uploadedFile = ''">{{ uploadedFile }}</el-tag>
+            <el-tag type="success" closable @close="uploadedFile = ''" class="upload-tag">{{ uploadedFile }}</el-tag>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -82,6 +83,7 @@
           <p>AI 正在分析中，请稍候...</p>
         </div>
       </el-form>
+      </div>
 
       <template #footer>
         <el-button @click="customVisible = false" :disabled="submitting">取消</el-button>
@@ -292,16 +294,21 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
 .report-card__title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .report-card__time { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
 .report-card__body { font-size: 12px; color: var(--text-secondary); }
+.pr-dialog :deep(.el-dialog__body) { padding: 16px 24px; max-height: 70vh; overflow-y: auto; }
+.pr-dialog__body { overflow-y: auto; }
 .tab-desc { font-size: 13px; color: var(--text-tertiary); margin-bottom: 12px; }
-.event-list { max-height: 280px; overflow-y: auto; }
+.event-list { max-height: 220px; overflow-y: auto; }
 .event-item { padding: 10px 12px; margin-bottom: 6px; background: var(--glass-bg); border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; }
 .event-item:hover { border-color: var(--color-primary-dark); }
 .event-item.selected { border-color: var(--color-primary); background: rgba(94,114,228,0.08); }
-.event-item__title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
-.event-item__meta { display: flex; gap: 8px; font-size: 12px; color: var(--text-tertiary); align-items: center; }
+.event-item__title { font-size: 14px; font-weight: 500; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-item__meta { display: flex; gap: 8px; font-size: 12px; color: var(--text-tertiary); align-items: center; flex-wrap: wrap; }
+.event-item__time { white-space: nowrap; }
 .loading-events { padding: 20px; }
-.fetch-status { margin-top: 12px; text-align: center; font-size: 13px; color: var(--text-secondary); }
+.fetch-status { margin-top: 12px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.fetch-status .el-progress { width: 120px; flex-shrink: 0; }
 .upload-status { margin-top: 12px; }
+.upload-tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .upload-tip { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
 .generating-hint { text-align: center; padding: 12px 0; }
 .generating-hint p { font-size: 13px; color: var(--text-secondary); margin-top: 8px; }
