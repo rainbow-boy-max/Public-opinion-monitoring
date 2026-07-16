@@ -43,7 +43,7 @@
               <div class="event-item__title">{{ e.title }}</div>
               <div class="event-item__meta">
                 <PlatformTag :platform="e.platform" size="small" />
-                <span>{{ e.sentiment === 'positive' ? '😊' : e.sentiment === 'negative' : '😡' : '😐' }}</span>
+                <span>{{ e.sentiment === 'positive' ? '😊' : e.sentiment === 'negative' ? '😡' : '😐' }}</span>
                 <span>{{ formatDate(e.matchedAt) }}</span>
               </div>
             </div>
