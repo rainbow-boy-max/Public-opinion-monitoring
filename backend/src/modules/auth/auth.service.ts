@@ -33,34 +33,72 @@ export class AuthService {
     private auditService: AuditService,
   ) {}
 
-  async login(username: string, password: string): Promise<LoginResult> {
+  async login(dto: { username?: string; phone?: string; password?: string; code?: string }): Promise<LoginResult> {
+    if (dto.username) {
+      return this.loginByUsername(dto.username, dto.password || '');
+    }
+    if (dto.phone && dto.password) {
+      return this.loginByPhonePassword(dto.phone, dto.password);
+    }
+    if (dto.phone && dto.code) {
+      return this.loginByPhoneCode(dto.phone, dto.code);
+    }
+    throwBusiness('AUTH_INVALID_CREDENTIALS', { reason: 'missing_credentials' });
+  }
+
+  private async loginByUsername(username: string, password: string): Promise<LoginResult> {
     const user = await this.userRepo.findOne({ where: { username } });
-    if (!user) {
-      throwBusiness('AUTH_INVALID_CREDENTIALS', { username });
-    }
-
-    if (user.authStatus === AuthStatus.BANNED) {
-      throwBusiness('AUTH_USER_DISABLED', { username });
-    }
-
+    if (!user) throwBusiness('AUTH_INVALID_CREDENTIALS', { username });
+    if (user.authStatus === AuthStatus.BANNED) throwBusiness('AUTH_USER_DISABLED', { username });
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       const minutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
       throwBusiness('AUTH_USER_LOCKED', { minutesLeft: minutes });
     }
-
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
     if (!passwordValid) {
       await this.recordFailedLogin(user);
       const remainingAttempts = this.MAX_LOGIN_ATTEMPTS - user.loginAttempts;
       if (remainingAttempts > 0) {
-        throwBusiness('AUTH_INVALID_CREDENTIALS', {
-          username,
-          remainingAttempts,
-        });
+        throwBusiness('AUTH_INVALID_CREDENTIALS', { username, remainingAttempts });
       }
       throwBusiness('AUTH_USER_LOCKED', { minutesLeft: this.LOCK_DURATION_MIN });
     }
+    return this.finalizeLogin(user);
+  }
 
+  private async loginByPhonePassword(phone: string, password: string): Promise<LoginResult> {
+    const user = await this.userRepo.findOne({ where: { phone } });
+    if (!user) throwBusiness('AUTH_INVALID_CREDENTIALS', { phone });
+    if (user.authStatus === AuthStatus.BANNED) throwBusiness('AUTH_USER_DISABLED', { phone });
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const minutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+      throwBusiness('AUTH_USER_LOCKED', { minutesLeft: minutes });
+    }
+    const passwordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordValid) {
+      await this.recordFailedLogin(user);
+      const remainingAttempts = this.MAX_LOGIN_ATTEMPTS - user.loginAttempts;
+      if (remainingAttempts > 0) {
+        throwBusiness('AUTH_INVALID_CREDENTIALS', { phone, remainingAttempts });
+      }
+      throwBusiness('AUTH_USER_LOCKED', { minutesLeft: this.LOCK_DURATION_MIN });
+    }
+    return this.finalizeLogin(user);
+  }
+
+  private async loginByPhoneCode(phone: string, code: string): Promise<LoginResult> {
+    await this.verifySmsCode(phone, 'login', code);
+    const user = await this.userRepo.findOne({ where: { phone } });
+    if (!user) throwBusiness('AUTH_INVALID_CREDENTIALS', { phone });
+    if (user.authStatus === AuthStatus.BANNED) throwBusiness('AUTH_USER_DISABLED', { phone });
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const minutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+      throwBusiness('AUTH_USER_LOCKED', { minutesLeft: minutes });
+    }
+    return this.finalizeLogin(user);
+  }
+
+  private async finalizeLogin(user: UserEntity): Promise<LoginResult> {
     user.loginAttempts = 0;
     user.lockedUntil = null;
     user.lastLoginAt = new Date();

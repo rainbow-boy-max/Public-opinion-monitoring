@@ -14,8 +14,8 @@ export const useUserAuthStore = defineStore('userAuth', () => {
     JSON.parse(localStorage.getItem('user_info') || 'null'),
   );
 
-  async function login(username: string, password: string): Promise<void> {
-    const data = await http.post('/auth/login', { username, password });
+  async function login(payload: { username?: string; phone?: string; password?: string; code?: string }): Promise<void> {
+    const data = await http.post('/auth/login', payload);
     token.value = data.token;
     user.value = {
       id: data.user.id,

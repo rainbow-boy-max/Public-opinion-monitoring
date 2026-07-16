@@ -10,7 +10,7 @@ import {
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
 
 interface LoginResult {
   token: string;
@@ -19,15 +19,28 @@ interface LoginResult {
 }
 
 class LoginDto {
+  @IsOptional()
   @IsString()
   @MinLength(3)
   @MaxLength(64)
-  username: string;
+  username?: string;
 
+  @IsOptional()
+  @IsString()
+  @Matches(/^1[3-9]\d{9}$/, { message: '手机号格式不正确' })
+  phone?: string;
+
+  @IsOptional()
   @IsString()
   @MinLength(6)
   @MaxLength(64)
-  password: string;
+  password?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  @MaxLength(6)
+  code?: string;
 }
 
 class RegisterDto {
@@ -99,7 +112,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto): Promise<LoginResult> {
-    return this.authService.login(dto.username, dto.password);
+    return this.authService.login(dto);
   }
 
   @Post('register')
