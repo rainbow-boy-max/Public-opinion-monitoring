@@ -167,6 +167,18 @@ const router = createRouter({
           path: 'export-config',
           component: () => import('@/pages/ExportConfigPage.vue'),
         },
+        {
+          path: 'duty',
+          component: () => import('@/pages/DutyDashboardPage.vue'),
+        },
+        {
+          path: 'api-management',
+          component: () => import('@/pages/ApiManagementPage.vue'),
+        },
+        {
+          path: 'api-docs',
+          component: () => import('@/pages/ApiDocsPage.vue'),
+        },
       ],
     },
   ],

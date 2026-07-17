@@ -68,3 +68,5 @@ export {
 export { WorkOrderCommentEntity } from './work-order-comment.entity';
 export { ReportTemplateEntity, type TemplateType } from './report-template.entity';
 export { EcommerceConfigEntity } from './ecommerce-config.entity';
+export { ApiKeyEntity } from './api-key.entity';
+export { ApiUsageLogEntity } from './api-usage.entity';
