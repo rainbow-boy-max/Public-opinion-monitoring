@@ -1,5 +1,41 @@
 <template>
   <div class="pr-page">
+    <GlassCard title="一句话舆情分析" subtitle="输入一句话，系统自动完成监控→分析→追踪→报告">
+      <div class="oneclick-area">
+        <el-input
+          v-model="oneClickQuery"
+          type="textarea"
+          :rows="2"
+          placeholder="输入分析需求，例如：帮我分析一下最近一周关于华为Mate 70的舆情"
+          :disabled="oneClickRunning"
+        />
+        <div class="oneclick-actions">
+          <el-button type="primary" :loading="oneClickRunning" :disabled="!oneClickQuery.trim()" @click="startOneClickAnalysis">
+            {{ oneClickRunning ? '分析中...' : '开始分析' }}
+          </el-button>
+        </div>
+        <div v-if="oneClickRunning" class="oneclick-progress">
+          <div class="progress-steps">
+            <div
+              v-for="s in oneClickSteps"
+              :key="s.key"
+              class="progress-step"
+              :class="{
+                active: s.key === oneClickStage,
+                done: oneClickStageIndex > oneClickStepIndex(s.key),
+                failed: oneClickStage === 'failed'
+              }"
+            >
+              <span class="step-dot"></span>
+              <span class="step-label">{{ s.label }}</span>
+            </div>
+          </div>
+          <el-progress :percentage="oneClickPercent" :stroke-width="4" status="success" />
+          <p class="progress-msg">{{ oneClickMessage }}</p>
+        </div>
+      </div>
+    </GlassCard>
+
     <GlassCard title="AI 公关方案" subtitle="舆情报告与周期性分析">
       <template #extra>
         <el-button type="primary" :icon="Plus" @click="openCustomDialog">自定义舆情分析</el-button>
@@ -111,6 +147,32 @@ import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import PlatformTag from '@shared/components/PlatformTag.vue';
 
+const oneClickQuery = ref('');
+const oneClickRunning = ref(false);
+const oneClickStage = ref('');
+const oneClickPercent = ref(0);
+const oneClickMessage = ref('');
+const oneClickResult = ref<any>(null);
+
+const oneClickSteps = [
+  { key: 'understand', label: '理解需求' },
+  { key: 'monitor', label: '搜索事件' },
+  { key: 'analyze', label: '分析数据' },
+  { key: 'track', label: '追踪传播' },
+  { key: 'report', label: '生成报告' },
+];
+
+const oneClickStageOrder = ['understand', 'monitor', 'analyze', 'track', 'report', 'done'];
+
+const oneClickStageIndex = computed(() => {
+  const idx = oneClickStageOrder.indexOf(oneClickStage.value);
+  return idx >= 0 ? idx : -1;
+});
+
+function oneClickStepIndex(key: string): number {
+  return oneClickSteps.findIndex((s) => s.key === key);
+}
+
 const loading = ref(false);
 const reports = ref<any[]>([]);
 const reportVisible = ref(false);
@@ -163,6 +225,71 @@ function loadMockReport() {
     { id: 1, status: 'completed', createdAt: new Date().toISOString(), modelUsed: 'DeepSeek-V3', tokensUsed: 2856, analysis: '## 舆情深度分析\n\n事件性质：产品质量负面舆情。\n当前传播态势：已在微博、微信、抖音等多平台传播。', strategy: '## 应对方案\n\n1. 立即发布官方声明\n2. 成立专项调查组' },
     { id: 2, status: 'completed', createdAt: new Date(Date.now() - 86400000).toISOString(), modelUsed: 'GPT-4o', tokensUsed: 4120, analysis: '## 本周舆情综述\n\nAI 相关讨论占比 38%，环比上升 12%' },
   ];
+}
+
+async function startOneClickAnalysis() {
+  if (!oneClickQuery.value.trim()) return;
+  oneClickRunning.value = true;
+  oneClickResult.value = null;
+  oneClickStage.value = 'understand';
+  oneClickPercent.value = 0;
+
+  try {
+    const response = await fetch('/api/agents/orchestrate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('user_token') || ''}`,
+      },
+      body: JSON.stringify({ query: oneClickQuery.value.trim() }),
+    });
+
+    if (!response.ok) throw new Error('请求失败');
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('无法读取响应流');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6).trim());
+            if (data.stage) {
+              oneClickStage.value = data.stage;
+              oneClickPercent.value = data.progress || 0;
+              oneClickMessage.value = data.message || '';
+            }
+          } catch {}
+        }
+      }
+    }
+
+    ElMessage.success('分析完成');
+    oneClickStage.value = 'done';
+    oneClickPercent.value = 100;
+    oneClickMessage.value = '分析完成';
+    await loadReports();
+    const lastReport = reports.value[0];
+    if (lastReport) {
+      currentReport.value = lastReport;
+      reportVisible.value = true;
+    }
+  } catch (err: any) {
+    oneClickStage.value = 'failed';
+    ElMessage.error(err?.message || '分析失败');
+  } finally {
+    oneClickRunning.value = false;
+  }
 }
 
 async function loadReports(): Promise<void> {
@@ -282,6 +409,19 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
 
 <style scoped>
 .pr-page { display: flex; flex-direction: column; gap: 20px; }
+.oneclick-area { padding: 8px 0; }
+.oneclick-actions { margin-top: 12px; }
+.oneclick-progress { margin-top: 16px; padding: 12px; background: var(--glass-bg); border-radius: var(--radius-sm); }
+.progress-steps { display: flex; gap: 16px; margin-bottom: 12px; justify-content: center; }
+.progress-step { display: flex; align-items: center; gap: 4px; }
+.step-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--el-fill-color-lighter); display: inline-block; }
+.progress-step.active .step-dot { background: var(--color-primary); }
+.progress-step.done .step-dot { background: var(--el-color-success); }
+.progress-step.failed .step-dot { background: var(--el-color-danger); }
+.step-label { font-size: 12px; color: var(--text-tertiary); }
+.progress-step.active .step-label { color: var(--color-primary); font-weight: 600; }
+.progress-step.done .step-label { color: var(--el-color-success); }
+.progress-msg { font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 8px; }
 .loading-area { padding: 40px; }
 .empty-state { margin: 40px 0; }
 .report-list { display: flex; flex-direction: column; gap: 12px; }

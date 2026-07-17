@@ -199,6 +199,87 @@
       </el-button>
     </template>
   </el-dialog>
+
+  <GlassCard title="历史回溯" icon="📅" subtitle="按时间范围回溯查询历史舆情数据" style="margin-top: 24px">
+    <div class="history-backtrack">
+      <div class="backtrack-row">
+        <div class="backtrack-field">
+          <label class="backtrack-label">选择任务</label>
+          <el-select v-model="historyTaskId" placeholder="选择监控任务" style="width: 240px">
+            <el-option v-for="t in tasks" :key="t.id" :label="t.name" :value="t.id" />
+          </el-select>
+        </div>
+        <div class="backtrack-field">
+          <label class="backtrack-label">时间范围</label>
+          <el-date-picker
+            v-model="historyDateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            :disabled-date="(d: Date) => d > new Date()"
+            style="width: 300px"
+          />
+        </div>
+        <div class="backtrack-field">
+          <label class="backtrack-label">平台</label>
+          <el-select v-model="historyPlatform" placeholder="全部" clearable style="width: 140px">
+            <el-option v-for="p in allPlatforms" :key="p.value" :label="p.label" :value="p.value" />
+          </el-select>
+        </div>
+        <div class="backtrack-field">
+          <label class="backtrack-label">&nbsp;</label>
+          <el-button type="primary" :loading="historyLoading" @click="queryHistory">
+            查询回溯
+          </el-button>
+        </div>
+      </div>
+
+      <div v-if="historyResult.length > 0" class="backtrack-results">
+        <div class="backtrack-result-header">
+          <span>共找到 <strong>{{ historyTotal }}</strong> 条历史舆情</span>
+          <el-button size="small" @click="exportHistory">导出 CSV</el-button>
+        </div>
+        <el-table :data="historyResult" stripe size="small" max-height="400" style="width: 100%">
+          <el-table-column label="平台" width="90">
+            <template #default="{ row }">
+              <PlatformTag :platform="row.platform" :label="platformLabel(row.platform)" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="author" label="作者" width="120" />
+          <el-table-column label="情感" width="70" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.sentiment === 'positive' ? 'success' : row.sentiment === 'negative' ? 'danger' : 'info'" size="small" effect="dark">
+                {{ row.sentiment === 'positive' ? '正面' : row.sentiment === 'negative' ? '负面' : '中性' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="readCount" label="阅读" width="80" align="center" sortable />
+          <el-table-column label="时间" width="160">
+            <template #default="{ row }">
+              {{ formatDate(row.publishTime || row.matchedAt) }}
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          v-if="historyTotal > historyPageSize"
+          v-model:current-page="historyPage"
+          :page-size="historyPageSize"
+          :total="historyTotal"
+          layout="prev, pager, next"
+          small
+          style="margin-top: 12px; justify-content: flex-end"
+          @current-change="queryHistory"
+        />
+      </div>
+
+      <div v-else-if="!historyLoading" class="backtrack-empty">
+        <p>选择任务和时间范围后，点击「查询回溯」查看历史数据</p>
+      </div>
+    </div>
+  </GlassCard>
 </template>
 
 <script setup lang="ts">
@@ -418,6 +499,68 @@ async function exportTasks(): Promise<void> {
 }
 
 onMounted(load);
+
+// History backtracking
+const historyTaskId = ref<number | null>(null);
+const historyDateRange = ref<[string, string] | null>(null);
+const historyPlatform = ref('');
+const historyLoading = ref(false);
+const historyResult = ref<any[]>([]);
+const historyTotal = ref(0);
+const historyPage = ref(1);
+const historyPageSize = 20;
+
+async function queryHistory() {
+  if (!historyTaskId.value) {
+    ElMessage.warning('请先选择监控任务');
+    return;
+  }
+  if (!historyDateRange.value || !historyDateRange.value[0] || !historyDateRange.value[1]) {
+    ElMessage.warning('请选择时间范围');
+    return;
+  }
+  historyLoading.value = true;
+  try {
+    const params: Record<string, any> = {
+      page: historyPage.value,
+      pageSize: historyPageSize,
+      startDate: historyDateRange.value[0],
+      endDate: historyDateRange.value[1],
+    };
+    if (historyPlatform.value) params.platform = historyPlatform.value;
+    const res = await http.get(`/monitor-tasks/${historyTaskId.value}/events`, { params });
+    historyResult.value = res.items || [];
+    historyTotal.value = res.total || 0;
+  } catch {
+    historyResult.value = [];
+    historyTotal.value = 0;
+    ElMessage.warning('未查询到历史数据');
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
+async function exportHistory() {
+  if (!historyTaskId.value || !historyDateRange.value) return;
+  try {
+    const blob = await http.post('/export/events', {
+      taskId: historyTaskId.value,
+      format: 'csv',
+      startDate: historyDateRange.value[0],
+      endDate: historyDateRange.value[1],
+      platform: historyPlatform.value || undefined,
+    }, { responseType: 'blob' }) as Blob;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `history_backtrack_${historyTaskId.value}_${historyDateRange.value[0]}_${historyDateRange.value[1]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ElMessage.success('导出成功');
+  } catch (err: any) {
+    ElMessage.error(err?.message || '导出失败');
+  }
+}
 
 // Keyword extension
 interface KwItem {
@@ -689,5 +832,51 @@ function kwApply(): void {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.history-backtrack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.backtrack-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.backtrack-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.backtrack-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.backtrack-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.backtrack-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.backtrack-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
 }
 </style>

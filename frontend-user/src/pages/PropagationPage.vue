@@ -63,6 +63,40 @@
         </el-table-column>
       </el-table>
     </GlassCard>
+
+    <GlassCard v-if="hasData" title="关键意见领袖 (KOL)" subtitle="参与该传播话题的核心影响力作者" style="margin-top: 24px">
+      <div v-if="kols.length === 0" class="empty-state">
+        <div class="empty-state__text">暂无 KOL 数据</div>
+        <el-button size="small" @click="loadMockKols">加载示例</el-button>
+      </div>
+      <div v-else class="kol-grid">
+        <div v-for="kol in kols" :key="kol.id" class="kol-card">
+          <div class="kol-card__avatar">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div class="kol-card__info">
+            <div class="kol-card__name">{{ kol.name }}</div>
+            <PlatformTag :platform="kol.platform" :label="kol.platform" />
+          </div>
+          <div class="kol-card__stats">
+            <div class="kol-stat">
+              <span class="kol-stat__value">{{ kol.totalMentions }}</span>
+              <span class="kol-stat__label">提及</span>
+            </div>
+            <div class="kol-stat">
+              <span class="kol-stat__value">{{ kol.influenceScore }}</span>
+              <span class="kol-stat__label">影响力</span>
+            </div>
+          </div>
+          <div class="kol-card__engagement">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            {{ formatKolNum(kol.totalEngagement) }}
+          </div>
+        </div>
+      </div>
+    </GlassCard>
   </div>
 </template>
 
@@ -96,6 +130,15 @@ interface TaskItem {
   name: string;
 }
 
+interface KolProfile {
+  id: string;
+  name: string;
+  platform: string;
+  totalMentions: number;
+  totalEngagement: number;
+  influenceScore: number;
+}
+
 const chartEl = ref<HTMLElement>();
 const selectedTaskId = ref<number | null>(null);
 const timeWindow = ref<number>(24);
@@ -104,6 +147,7 @@ const tasks = ref<TaskItem[]>([]);
 const nodes = ref<GraphNode[]>([]);
 const links = ref<GraphLink[]>([]);
 const isDemo = ref(false);
+const kols = ref<KolProfile[]>([]);
 
 let chartInstance: echarts.ECharts | null = null;
 
@@ -171,6 +215,7 @@ async function loadGraph() {
     links.value = res.links || [];
     await nextTick();
     renderChart();
+    loadKols();
   } catch {
     nodes.value = [];
     links.value = [];
@@ -188,6 +233,7 @@ async function showDemo() {
     links.value = res.links || [];
     await nextTick();
     renderChart();
+    loadMockKols();
   } catch {
     nodes.value = [];
     links.value = [];
@@ -205,6 +251,38 @@ function exportGraph() {
   a.download = `propagation-graph-${selectedTaskId.value || 'demo'}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function formatKolNum(n: number): string {
+  if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+async function loadKols() {
+  if (!selectedTaskId.value) return;
+  try {
+    const data = await http.get('/kol/top', {
+      params: { taskIds: selectedTaskId.value, days: timeWindow.value, limit: 10 },
+    }) as KolProfile[];
+    kols.value = data || [];
+  } catch {
+    kols.value = [];
+  }
+}
+
+async function loadMockKols() {
+  try {
+    const data = await http.get('/kol/mock') as KolProfile[];
+    kols.value = data || [];
+  } catch {
+    kols.value = [
+      { id: '1', name: '热门话题君', platform: 'weibo', totalMentions: 156, totalEngagement: 850000, influenceScore: 92 },
+      { id: '2', name: '科技早报', platform: 'weixin', totalMentions: 89, totalEngagement: 320000, influenceScore: 85 },
+      { id: '3', name: '消费预警', platform: 'douyin', totalMentions: 203, totalEngagement: 1200000, influenceScore: 95 },
+      { id: '4', name: '品牌观察', platform: 'xiaohongshu', totalMentions: 112, totalEngagement: 280000, influenceScore: 88 },
+    ];
+  }
 }
 
 function renderChart() {
@@ -329,5 +407,89 @@ function renderChart() {
 .empty-state__text {
   font-size: 16px;
   color: var(--text-tertiary);
+}
+
+.kol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.kol-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.kol-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.kol-card__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(94, 114, 228, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #A5B4FC;
+  flex-shrink: 0;
+}
+
+.kol-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.kol-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kol-card__stats {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.kol-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.kol-stat__value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.kol-stat__label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.kol-card__engagement {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 </style>

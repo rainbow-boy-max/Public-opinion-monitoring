@@ -154,6 +154,11 @@ const menuItems: MenuItem[] = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 14l2 2 4-4"></path></svg>',
   },
   {
+    path: '/kol',
+    label: 'KOL 分析',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>',
+  },
+  {
     path: '/users',
     label: '用户管理',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
@@ -288,6 +293,7 @@ const META: Record<string, { title: string; subtitle: string }> = {
   '/short-video': { title: '短视频监控', subtitle: '多平台短视频数据监控与分析' },
   '/competitor-tracking': { title: '竞品追踪', subtitle: '竞品动态对比分析' },
   '/work-orders': { title: '工单管理', subtitle: '人工分析与处置工作流' },
+  '/kol': { title: 'KOL 分析', subtitle: '关键意见领袖影响力分析' },
   '/brand-reputation': { title: '品牌声誉', subtitle: '品牌声量 / NPS 趋势 / 竞品排名' },
   '/knowledge-graph': { title: '知识图谱', subtitle: '行业实体知识图谱可视化分析' },
   '/config/knowledge-graph': { title: '知识图谱模型配置', subtitle: '选择知识图谱 LLM 模型' },

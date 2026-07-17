@@ -29,6 +29,9 @@
           <el-option label="24小时" :value="24" />
           <el-option label="48小时" :value="48" />
           <el-option label="7天" :value="168" />
+          <el-option label="30天" :value="720" />
+          <el-option label="90天" :value="2160" />
+          <el-option label="12个月" :value="8760" />
         </el-select>
         <el-button size="small" @click="loadData">
           <template #icon><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></template>

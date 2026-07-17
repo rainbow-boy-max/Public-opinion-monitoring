@@ -26,7 +26,15 @@
     </div>
 
     <div class="dashboard-row">
-      <GlassCard title="趋势分析" icon="📈" subtitle="最近 7 天舆情趋势" class="dashboard-row__left">
+      <GlassCard title="趋势分析" icon="📈" subtitle="舆情趋势" class="dashboard-row__left">
+        <template #extra>
+          <el-radio-group v-model="dashboardRange" size="small" @change="loadDashboard">
+            <el-radio-button :value="7">7天</el-radio-button>
+            <el-radio-button :value="30">30天</el-radio-button>
+            <el-radio-button :value="90">90天</el-radio-button>
+            <el-radio-button :value="365">12个月</el-radio-button>
+          </el-radio-group>
+        </template>
         <div ref="trendChartEl" style="height: 320px" />
       </GlassCard>
 
@@ -81,6 +89,7 @@ import { startMark, endMark } from '@/utils/perf-metrics';
 const router = useRouter();
 const trendChartEl = ref<HTMLElement>();
 const platformChartEl = ref<HTMLElement>();
+const dashboardRange = ref(7);
 let trendChart: echarts.ECharts | null = null;
 let platformChart: echarts.ECharts | null = null;
 
@@ -114,6 +123,10 @@ function onRoleFilterChange(): void {
 function onReconnect(): void {
   activities.reconnect?.();
   loadOverview(true);
+}
+
+function loadDashboard() {
+  loadOverview();
 }
 
 const activities = useRecentActivities(20);

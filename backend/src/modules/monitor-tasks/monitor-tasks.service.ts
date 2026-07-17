@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import {
@@ -156,10 +156,25 @@ export class MonitorTasksService {
     taskId: number,
     page: number,
     pageSize: number,
+    options?: {
+      startDate?: string;
+      endDate?: string;
+      platform?: string;
+    },
   ): Promise<{ items: OpinionEventEntity[]; total: number }> {
     const task = await this.getTask(userId, taskId);
+    const where: any = { taskId: task.id, status: 0 };
+    if (options?.startDate) {
+      where.publishTime = MoreThanOrEqual(new Date(options.startDate));
+    }
+    if (options?.endDate) {
+      where.publishTime = LessThanOrEqual(new Date(options.endDate + 'T23:59:59'));
+    }
+    if (options?.platform) {
+      where.platform = options.platform;
+    }
     const [items, total] = await this.eventRepo.findAndCount({
-      where: { taskId: task.id, status: 0 },
+      where,
       order: { matchedAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,

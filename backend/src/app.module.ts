@@ -42,6 +42,7 @@ import { BrandReputationModule } from './modules/brand-reputation/brand-reputati
 import { KnowledgeGraphModule } from './modules/knowledge-graph/knowledge-graph.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { KolModule } from './modules/kol/kol.module';
 import { OcrModule } from './modules/ocr/ocr.module';
 import { EcommerceModule } from './modules/ecommerce/ecommerce.module';
 import { ReportTemplatesModule } from './modules/report-templates/report-template.module';
@@ -91,6 +92,7 @@ import { ReportTemplatesModule } from './modules/report-templates/report-templat
     TenantModule,
     UploadModule,
     ReportTemplatesModule,
+    KolModule,
     OcrModule,
     EcommerceModule,
   ],

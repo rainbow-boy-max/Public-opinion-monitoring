@@ -25,6 +25,7 @@
             <el-radio-button value="7">7天</el-radio-button>
             <el-radio-button value="30">30天</el-radio-button>
             <el-radio-button value="90">90天</el-radio-button>
+            <el-radio-button value="365">12个月</el-radio-button>
           </el-radio-group>
         </div>
       </div>

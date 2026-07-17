@@ -23,7 +23,7 @@
           <el-select v-model="selectedPlatforms" multiple placeholder="平台过滤" style="width: 240px" size="small" clearable>
             <el-option v-for="p in platforms" :key="p.value" :label="p.label" :value="p.value" />
           </el-select>
-          <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始" end-placeholder="结束" size="small" style="width: 240px" />
+          <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始" end-placeholder="结束" size="small" style="width: 240px" :shortcuts="dateShortcuts" />
           <el-radio-group v-model="interval" size="small">
             <el-radio-button value="hour">按小时</el-radio-button>
             <el-radio-button value="day">按天</el-radio-button>
@@ -119,6 +119,13 @@ const queryGroups = ref<QueryGroup[]>([
 const selectedPlatforms = ref<string[]>([]);
 const dateRange = ref<[Date, Date]>([new Date(Date.now() - 6 * 86400000), new Date()]);
 const interval = ref<'hour' | 'day'>('day');
+
+const dateShortcuts = [
+  { text: '近 7 天', value: () => [new Date(Date.now() - 6 * 86400000), new Date()] as [Date, Date] },
+  { text: '近 30 天', value: () => [new Date(Date.now() - 29 * 86400000), new Date()] as [Date, Date] },
+  { text: '近 90 天', value: () => [new Date(Date.now() - 89 * 86400000), new Date()] as [Date, Date] },
+  { text: '近 12 个月', value: () => [new Date(Date.now() - 364 * 86400000), new Date()] as [Date, Date] },
+];
 
 const platforms = [
   { label: '微博', value: 'weibo' },

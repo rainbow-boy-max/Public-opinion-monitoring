@@ -44,6 +44,10 @@ const router = createRouter({
           component: () => import('@/pages/AgentDetailPage.vue'),
         },
         {
+          path: 'agent-workflow',
+          component: () => import('@/pages/AgentWorkflowPage.vue'),
+        },
+        {
           path: 'llm-models',
           component: () => import('@/pages/LlmModelsManagementPage.vue'),
         },
@@ -130,6 +134,10 @@ const router = createRouter({
         {
           path: 'brand-reputation',
           component: () => import('@/pages/BrandReputationPage.vue'),
+        },
+        {
+          path: 'kol',
+          component: () => import('@/pages/KolManagementPage.vue'),
         },
         {
           path: 'knowledge-graph',

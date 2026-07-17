@@ -17,7 +17,15 @@
     </div>
 
     <div class="dashboard-row">
-      <GlassCard title="我的订阅统计" icon="📈" subtitle="最近 7 天命中次数">
+      <GlassCard title="我的订阅统计" subtitle="舆情命中统计">
+        <template #extra>
+          <el-radio-group v-model="dashboardRange" size="small" @change="refreshDashboard">
+            <el-radio-button :value="7">7天</el-radio-button>
+            <el-radio-button :value="30">30天</el-radio-button>
+            <el-radio-button :value="90">90天</el-radio-button>
+            <el-radio-button :value="365">12个月</el-radio-button>
+          </el-radio-group>
+        </template>
         <div ref="trendChartEl" style="height: 280px" />
       </GlassCard>
 
@@ -67,6 +75,7 @@ import StatCard from '@shared/components/StatCard.vue';
 
 const router = useRouter();
 const trendChartEl = ref<HTMLElement>();
+const dashboardRange = ref(7);
 
 const cards = ref([
   {
@@ -123,6 +132,11 @@ async function load(): Promise<void> {
   } catch (err) {
     /* ignore */
   }
+}
+
+function refreshDashboard() {
+  initChart();
+  load();
 }
 
 function initChart(): void {

@@ -177,7 +177,14 @@ export class MonitorTasksController {
     @Param('id', ParseIntPipe) id: number,
     @Query('page') page = 1,
     @Query('pageSize') pageSize = 20,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('platform') platform?: string,
   ) {
-    return this.tasksService.listEvents(userId, id, page, pageSize);
+    return this.tasksService.listEvents(userId, id, page, pageSize, {
+      startDate,
+      endDate,
+      platform,
+    });
   }
 }
