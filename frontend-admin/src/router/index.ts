@@ -140,6 +140,18 @@ const router = createRouter({
           component: () => import('@/pages/KnowledgeGraphConfigPage.vue'),
         },
         {
+          path: 'config/ocr',
+          component: () => import('@/pages/OcrConfigPage.vue'),
+        },
+        {
+          path: 'ecommerce',
+          component: () => import('@/pages/EcommerceConfigPage.vue'),
+        },
+        {
+          path: 'report-templates',
+          component: () => import('@/pages/ReportTemplatesPage.vue'),
+        },
+        {
           path: 'tenants',
           component: () => import('@/pages/TenantsPage.vue'),
         },

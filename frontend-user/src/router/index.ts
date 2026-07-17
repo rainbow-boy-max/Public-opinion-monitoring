@@ -92,6 +92,10 @@ const router = createRouter({
           path: 'knowledge-graph',
           component: () => import('@/pages/KnowledgeGraphPage.vue'),
         },
+        {
+          path: 'ecommerce',
+          component: () => import('@/pages/EcommercePage.vue'),
+        },
       ],
     },
   ],

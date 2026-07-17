@@ -66,3 +66,5 @@ export {
   WorkOrderType,
 } from './work-order.entity';
 export { WorkOrderCommentEntity } from './work-order-comment.entity';
+export { ReportTemplateEntity, type TemplateType } from './report-template.entity';
+export { EcommerceConfigEntity } from './ecommerce-config.entity';
