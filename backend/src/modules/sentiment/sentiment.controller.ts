@@ -9,9 +9,9 @@ import {
   HttpStatus,
   ParseIntPipe,
 } from '@nestjs/common';
-import { SentimentAnalysisService } from './sentiment.service';
+import { SentimentAnalysisService, type SentimentAnalysisConfig } from './sentiment.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { IsString, IsOptional, IsArray, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsNumber, Min, IsBoolean, IsEnum } from 'class-validator';
 
 class AnalyzeDto {
   @IsString()
@@ -38,6 +38,29 @@ class ReanalyzeTaskDto {
   @IsNumber()
   @Min(1)
   taskId: number;
+}
+
+class UpdateConfigDto {
+  @IsOptional()
+  @IsString()
+  method?: 'rule' | 'llm' | 'dual';
+
+  @IsOptional()
+  @IsNumber()
+  modelId?: number;
+
+  @IsOptional()
+  @IsNumber()
+  dualThreshold?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  sarcasmDetection?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  contextWindowSize?: number;
 }
 
 @Controller('sentiment')
@@ -81,5 +104,19 @@ export class SentimentController {
   async getStats() {
     const stats = await this.sentimentService.getStats();
     return { success: true, data: stats };
+  }
+
+  @Get('config')
+  @HttpCode(HttpStatus.OK)
+  async getConfig() {
+    const config = this.sentimentService.getConfig();
+    return { success: true, data: config };
+  }
+
+  @Post('config')
+  @HttpCode(HttpStatus.OK)
+  async updateConfig(@Body() dto: UpdateConfigDto) {
+    this.sentimentService.updateConfig(dto);
+    return { success: true, data: this.sentimentService.getConfig() };
   }
 }

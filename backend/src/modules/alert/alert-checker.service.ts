@@ -58,6 +58,9 @@ export class AlertCheckerService {
       case AlertConditionType.PLATFORM_SPECIFIC:
         triggered = await this.checkPlatformSpecific(rule, triggerData);
         break;
+      case AlertConditionType.ENTITY_RISK:
+        triggered = await this.checkEntityRisk(rule, triggerData);
+        break;
     }
 
     if (triggered) {
@@ -174,6 +177,44 @@ export class AlertCheckerService {
     }));
 
     return matched.length > 0;
+  }
+
+  private async checkEntityRisk(
+    rule: AlertRuleEntity,
+    triggerData: Record<string, unknown>,
+  ): Promise<boolean> {
+    const config = this.parseConfig(rule.conditionConfig);
+    const entityType = config.entityType as string;
+    const entityName = config.entityName as string;
+    const riskThreshold = (config.riskThreshold as number) || 50;
+    const since = new Date(Date.now() - 60 * 60000);
+
+    const recentEvents = await this.eventRepo.find({
+      where: { matchedAt: MoreThanOrEqual(since) },
+      take: 100,
+    });
+
+    const matchedEvents = recentEvents.filter(e =>
+      (e.title?.includes(entityName) || e.content?.includes(entityName)),
+    );
+
+    if (matchedEvents.length === 0) return false;
+
+    const negativeCount = matchedEvents.filter(e => e.sentiment === 'negative').length;
+    const negativePercent = (negativeCount / matchedEvents.length) * 100;
+
+    triggerData.entityName = entityName;
+    triggerData.entityType = entityType;
+    triggerData.matchedCount = matchedEvents.length;
+    triggerData.negativePercent = negativePercent;
+    triggerData.riskThreshold = riskThreshold;
+    triggerData.events = matchedEvents.slice(0, 20).map(e => ({
+      id: e.id,
+      title: e.title,
+      sentiment: e.sentiment,
+    }));
+
+    return negativePercent >= riskThreshold;
   }
 
   private async fireAlert(rule: AlertRuleEntity, triggerData: Record<string, unknown>): Promise<void> {

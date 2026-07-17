@@ -86,6 +86,7 @@
             <el-option value="volume_spike" label="声量突增" />
             <el-option value="keyword_match" label="关键词匹配" />
             <el-option value="platform_specific" label="指定平台" />
+            <el-option value="entity_risk" label="实体风险预警" />
           </el-select>
         </el-form-item>
 
@@ -140,6 +141,23 @@
               <el-option label="百家号" value="baijiahao" />
             </el-select>
             <div class="visual-hint">当指定平台产生相关舆情时触发预警</div>
+          </el-form-item>
+        </template>
+
+        <template v-if="form.conditionType === 'entity_risk'">
+          <el-form-item label="实体类型">
+            <el-select v-model="entityRiskForm.entityType" style="width: 100%">
+              <el-option value="person" label="人物" />
+              <el-option value="org" label="组织/公司" />
+              <el-option value="product" label="产品" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="实体名称">
+            <el-input v-model="entityRiskForm.entityName" placeholder="例如：华为" />
+          </el-form-item>
+          <el-form-item label="风险阈值">
+            <el-slider v-model="entityRiskForm.riskThreshold" :min="0" :max="100" />
+            <div class="visual-hint">当实体相关负面舆情占比超过 <strong>{{ entityRiskForm.riskThreshold }}%</strong> 时触发预警</div>
           </el-form-item>
         </template>
 
@@ -221,6 +239,7 @@ const sentimentForm = reactive({ threshold: 50, timeWindow: 15 });
 const volumeForm = reactive({ threshold: 100, timeWindow: 15 });
 const keywordForm = reactive({ keywords: [] as string[] });
 const platformForm = reactive({ platforms: [] as string[] });
+const entityRiskForm = reactive({ entityType: 'org' as string, entityName: '', riskThreshold: 50 });
 const webhookForm = reactive({ webhookId: null as number | null });
 
 const cooldownMarks = {
@@ -244,6 +263,7 @@ function conditionLabel(t: string): string {
     volume_spike: '声量突增',
     keyword_match: '关键词匹配',
     platform_specific: '指定平台',
+    entity_risk: '实体风险预警',
   } as Record<string, string>)[t] || t;
 }
 
@@ -284,6 +304,9 @@ function onTypeChange(): void {
   volumeForm.timeWindow = 15;
   keywordForm.keywords = [];
   platformForm.platforms = [];
+  entityRiskForm.entityType = 'org';
+  entityRiskForm.entityName = '';
+  entityRiskForm.riskThreshold = 50;
 }
 
 function onChannelChange(): void {
@@ -300,6 +323,8 @@ function buildConditionConfig(): Record<string, unknown> {
       return { keywords: keywordForm.keywords };
     case 'platform_specific':
       return { platforms: platformForm.platforms };
+    case 'entity_risk':
+      return { entityType: entityRiskForm.entityType, entityName: entityRiskForm.entityName, riskThreshold: entityRiskForm.riskThreshold };
     default:
       return {};
   }
@@ -319,6 +344,9 @@ function setConditionConfig(config: Record<string, unknown>): void {
   volumeForm.timeWindow = (config.timeWindow as number) ?? 15;
   keywordForm.keywords = (config.keywords as string[]) || [];
   platformForm.platforms = (config.platforms as string[]) || [];
+  entityRiskForm.entityType = (config.entityType as string) || 'org';
+  entityRiskForm.entityName = (config.entityName as string) || '';
+  entityRiskForm.riskThreshold = (config.riskThreshold as number) ?? 50;
 }
 
 function resetForm(): void {

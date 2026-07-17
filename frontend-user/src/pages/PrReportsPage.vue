@@ -38,6 +38,17 @@
 
     <GlassCard title="AI 公关方案" subtitle="舆情报告与周期性分析">
       <template #extra>
+        <el-dropdown v-if="reports.length > 0" @command="onExportReport">
+          <el-button type="primary" :icon="Plus">导出报告</el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="md">导出 Markdown</el-dropdown-item>
+              <el-dropdown-item command="pdf">导出 PDF</el-dropdown-item>
+              <el-dropdown-item command="docx">导出 Word</el-dropdown-item>
+              <el-dropdown-item command="xlsx">导出 Excel</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-button type="primary" :icon="Plus" @click="openCustomDialog">自定义舆情分析</el-button>
       </template>
 
@@ -225,6 +236,35 @@ function loadMockReport() {
     { id: 1, status: 'completed', createdAt: new Date().toISOString(), modelUsed: 'DeepSeek-V3', tokensUsed: 2856, analysis: '## 舆情深度分析\n\n事件性质：产品质量负面舆情。\n当前传播态势：已在微博、微信、抖音等多平台传播。', strategy: '## 应对方案\n\n1. 立即发布官方声明\n2. 成立专项调查组' },
     { id: 2, status: 'completed', createdAt: new Date(Date.now() - 86400000).toISOString(), modelUsed: 'GPT-4o', tokensUsed: 4120, analysis: '## 本周舆情综述\n\nAI 相关讨论占比 38%，环比上升 12%' },
   ];
+}
+
+async function onExportReport(format: string): Promise<void> {
+  if (currentReport.value) {
+    const text = currentReport.value.analysis || '';
+    const mdContent = text;
+    const title = `报告 #${currentReport.value.id}`;
+    const sections = [{ heading: '分析内容', content: mdContent, type: 'text' as const }];
+    if (currentReport.value.strategy) {
+      sections.push({ heading: '应对方案', content: currentReport.value.strategy, type: 'text' as const });
+    }
+
+    try {
+      const blob = await http.post('/export/data', { title, sections, format }, { responseType: 'blob' }) as Blob;
+      const extMap: Record<string, string> = { md: 'md', pdf: 'pdf', docx: 'doc', xlsx: 'xlsx' };
+      const ext = extMap[format] || format;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report_${currentReport.value.id}_${new Date().toISOString().slice(0, 10)}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      ElMessage.success('导出成功');
+    } catch {
+      ElMessage.error('导出失败');
+    }
+  } else {
+    ElMessage.warning('请先选择一个报告');
+  }
 }
 
 async function startOneClickAnalysis() {

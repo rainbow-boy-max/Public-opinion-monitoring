@@ -31,6 +31,38 @@
       </template>
     </PageHeader>
 
+    <GlassCard title="风险预警" style="margin-bottom: 20px">
+      <template #extra>
+        <div class="risk-summary">
+          <span v-for="l in levelSummary" :key="l.level" class="risk-summary__item" :class="`risk-summary__item--${l.level}`">
+            <span class="risk-summary__dot" />{{ l.label }}: {{ l.count }}
+          </span>
+          <el-button size="small" text type="primary" :loading="loadingWarnings" @click="fetchWarnings">刷新</el-button>
+        </div>
+      </template>
+      <div v-loading="loadingWarnings" class="risk-cards">
+        <div v-for="signal in warnings" :key="signal.id" class="risk-card" :class="`risk-card--${signal.level}`" @click="navigateToEvents(signal)">
+          <div class="risk-card__header">
+            <el-tag :type="levelTagType(signal.level)" size="small" effect="dark">{{ levelLabel(signal.level) }}</el-tag>
+            <el-tag :type="typeTagType(signal.type)" size="small">{{ typeLabel(signal.type) }}</el-tag>
+            <span class="risk-card__entity">{{ signal.entityName }}</span>
+            <span class="risk-card__type-badge">{{ entityTypeLabel(signal.entityType) }}</span>
+          </div>
+          <div class="risk-card__body">
+            <div class="risk-card__desc">{{ signal.description }}</div>
+            <div class="risk-card__change" :class="signal.changePercent > 0 ? 'risk-card__change--up' : 'risk-card__change--down'">
+              {{ signal.changePercent > 0 ? '+' : '' }}{{ signal.changePercent.toFixed(1) }}%
+            </div>
+          </div>
+          <div class="risk-card__footer">
+            <span class="risk-card__action">{{ signal.suggestedAction }}</span>
+            <span class="risk-card__events">{{ signal.relatedEvents }} 条相关</span>
+          </div>
+        </div>
+        <el-empty v-if="!loadingWarnings && warnings.length === 0" description="暂无风险信号" />
+      </div>
+    </GlassCard>
+
     <div class="kg-layout">
       <div class="kg-main">
         <GlassCard title="知识图谱" bare>
@@ -101,6 +133,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, computed, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
 import { ElMessage } from 'element-plus';
@@ -137,8 +170,24 @@ interface GraphStats {
   relationTypeBreakdown: Record<string, number>;
 }
 
+interface RiskSignal {
+  id: string;
+  level: 'critical' | 'high' | 'medium' | 'low';
+  type: 'sentiment_drop' | 'new_threat' | 'spread_risk' | 'volume_spike';
+  entityName: string;
+  entityType: string;
+  description: string;
+  currentScore: number;
+  previousScore: number;
+  changePercent: number;
+  relatedEvents: number;
+  suggestedAction: string;
+  detectedAt: string;
+}
+
 const CATEGORY_COLORS = ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
 const CATEGORY_NAMES = ['人物', '组织', '地点', '产品', '事件'];
+const router = useRouter();
 
 const chartEl = ref<HTMLElement>();
 const pieChartEl = ref<HTMLElement>();
@@ -153,6 +202,105 @@ let chartInstance: echarts.ECharts | null = null;
 let pieInstance: echarts.ECharts | null = null;
 
 const selectedNode = ref<GraphNode | null>(null);
+const warnings = ref<RiskSignal[]>([]);
+const loadingWarnings = ref(false);
+let warningTimer: ReturnType<typeof setInterval> | null = null;
+
+const levelSummary = computed(() => {
+  const counts: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
+  for (const w of warnings.value) {
+    counts[w.level] = (counts[w.level] || 0) + 1;
+  }
+  return [
+    { level: 'critical', label: '严重', count: counts.critical },
+    { level: 'high', label: '高危', count: counts.high },
+    { level: 'medium', label: '中等', count: counts.medium },
+    { level: 'low', label: '低危', count: counts.low },
+  ];
+});
+
+function levelLabel(level: string): string {
+  return ({ critical: '严重', high: '高危', medium: '中等', low: '低危' } as Record<string, string>)[level] || level;
+}
+
+function levelTagType(level: string): 'danger' | 'warning' | 'info' | 'success' {
+  return ({ critical: 'danger', high: 'warning', medium: 'info', low: 'success' } as any)[level] || 'info';
+}
+
+function typeLabel(type: string): string {
+  return ({
+    sentiment_drop: '情感骤降',
+    new_threat: '新威胁',
+    spread_risk: '扩散风险',
+    volume_spike: '声量激增',
+  } as Record<string, string>)[type] || type;
+}
+
+function typeTagType(type: string): 'danger' | 'warning' | 'info' | 'success' {
+  return ({ sentiment_drop: 'danger', new_threat: 'danger', spread_risk: 'warning', volume_spike: 'warning' } as any)[type] || 'info';
+}
+
+function entityTypeLabel(type: string): string {
+  return ({ person: '人物', org: '组织', product: '产品', place: '地点', event: '事件' } as Record<string, string>)[type] || type;
+}
+
+async function fetchWarnings(): Promise<void> {
+  loadingWarnings.value = true;
+  try {
+    const resp = await http.get('/knowledge-graph/warnings');
+    warnings.value = resp.data;
+  } catch {
+    warnings.value = getMockRiskSignals();
+  } finally {
+    loadingWarnings.value = false;
+  }
+}
+
+function getMockRiskSignals(): RiskSignal[] {
+  return [
+    {
+      id: 'sd-huawei-1', level: 'critical', type: 'sentiment_drop',
+      entityName: '华为', entityType: 'org',
+      description: '实体 "华为" 情感分数从 0.65 骤降至 -0.42',
+      currentScore: -0.42, previousScore: 0.65, changePercent: -164.6,
+      relatedEvents: 23,
+      suggestedAction: '立即关注 "华为" 相关舆情，排查负面原因并启动应对预案',
+      detectedAt: new Date().toISOString(),
+    },
+    {
+      id: 'vs-xiaomi-2', level: 'high', type: 'volume_spike',
+      entityName: '小米SU7', entityType: 'product',
+      description: '实体 "小米SU7" 提及量从 12 增至 45',
+      currentScore: 45, previousScore: 12, changePercent: 275,
+      relatedEvents: 45,
+      suggestedAction: '监控 "小米SU7" 声量增长趋势，分析增长原因',
+      detectedAt: new Date().toISOString(),
+    },
+    {
+      id: 'sr-apple-3', level: 'medium', type: 'spread_risk',
+      entityName: '苹果', entityType: 'org',
+      description: '实体 "苹果" 关联 8 个节点，存在舆情扩散风险',
+      currentScore: 8, previousScore: 0, changePercent: 100,
+      relatedEvents: 15,
+      suggestedAction: '切断 "苹果" 的关联传播路径，控制舆情扩散范围',
+      detectedAt: new Date().toISOString(),
+    },
+    {
+      id: 'nt-chip-4', level: 'high', type: 'new_threat',
+      entityName: '芯片制裁', entityType: 'event',
+      description: '检测到高风险实体 "芯片制裁" 出现',
+      currentScore: 0.8, previousScore: 0, changePercent: 100,
+      relatedEvents: 1,
+      suggestedAction: '立即分析 "芯片制裁" 对品牌的影响程度并制定应对策略',
+      detectedAt: new Date().toISOString(),
+    },
+  ];
+}
+
+function navigateToEvents(signal: RiskSignal): void {
+  router.push({ path: '/events', query: { entity: signal.entityName } });
+}
+
 const connectedNodes = computed(() => {
   if (!selectedNode.value || !graphData.value) return [];
   const nodeId = selectedNode.value.id;
@@ -523,9 +671,15 @@ function renderPieChart(): void {
 onMounted(() => {
   extractGraph();
   fetchActiveModel();
+  fetchWarnings();
+  warningTimer = setInterval(fetchWarnings, 60000);
 });
 
 onUnmounted(() => {
+  if (warningTimer) {
+    clearInterval(warningTimer);
+    warningTimer = null;
+  }
   if (chartInstance) {
     chartInstance.dispose();
     chartInstance = null;
@@ -746,6 +900,120 @@ onUnmounted(() => {
 .kg-stats__hub-count {
   color: var(--text-tertiary);
   font-size: 11px;
+}
+
+.risk-summary {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.risk-summary__item {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.risk-summary__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.risk-summary__item--critical .risk-summary__dot { background: var(--color-danger); }
+.risk-summary__item--high .risk-summary__dot { background: var(--color-warning); }
+.risk-summary__item--medium .risk-summary__dot { background: var(--color-info); }
+.risk-summary__item--low .risk-summary__dot { background: var(--color-success); }
+
+.risk-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.risk-card {
+  background: var(--glass-bg);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  cursor: pointer;
+  border-left: 4px solid var(--border-subtle);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.risk-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.risk-card--critical { border-left-color: var(--color-danger); }
+.risk-card--high { border-left-color: var(--color-warning); }
+.risk-card--medium { border-left-color: var(--color-info); }
+.risk-card--low { border-left-color: var(--color-success); }
+
+.risk-card__header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.risk-card__entity {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.risk-card__type-badge {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--bg-subtle);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.risk-card__body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.risk-card__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.risk-card__change {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.risk-card__change--up { color: var(--color-danger); }
+.risk-card__change--down { color: var(--color-success); }
+
+.risk-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.risk-card__action {
+  font-size: 12px;
+  color: var(--color-primary);
+}
+
+.risk-card__events {
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 1024px) {

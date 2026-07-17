@@ -1,10 +1,14 @@
 <template>
-  <el-dialog v-model="visible" title="导出数据" width="520" :close-on-click-modal="false">
+  <el-dialog v-model="visible" title="导出数据" width="560" :close-on-click-modal="false">
     <el-form label-width="100px">
       <el-form-item label="导出格式">
         <el-radio-group v-model="form.format">
           <el-radio-button value="csv">CSV</el-radio-button>
           <el-radio-button value="json">JSON</el-radio-button>
+          <el-radio-button value="md">Markdown</el-radio-button>
+          <el-radio-button value="pdf">PDF</el-radio-button>
+          <el-radio-button value="docx">Word</el-radio-button>
+          <el-radio-button value="xlsx">Excel</el-radio-button>
         </el-radio-group>
       </el-form-item>
 
@@ -50,6 +54,18 @@
       </el-form-item>
     </el-form>
 
+    <div v-if="form.format === 'md' && previewContent" class="export-preview">
+      <div class="export-preview__header">
+        <span>Markdown 预览</span>
+        <el-button text size="small" @click="previewVisible = !previewVisible">
+          {{ previewVisible ? '收起' : '展开' }}
+        </el-button>
+      </div>
+      <div v-show="previewVisible" class="export-preview__body">
+        <pre class="export-preview__code">{{ previewContent }}</pre>
+      </div>
+    </div>
+
     <div v-if="progressVisible" class="export-progress">
       <el-progress :percentage="progressPercent" :stroke-width="8" />
       <span class="export-progress__text">{{ progressText }}</span>
@@ -80,7 +96,7 @@ interface TaskOption {
 }
 
 interface ExportForm {
-  format: 'csv' | 'json';
+  format: 'csv' | 'json' | 'md' | 'pdf' | 'docx' | 'xlsx';
   taskIds: number[];
   dateRange: [string, string] | null;
   sentiment: string;
@@ -95,6 +111,8 @@ interface Props {
   taskOptions?: TaskOption[];
   platformOptions?: { value: string; label: string }[];
   defaultTaskId?: number;
+  sections?: Array<{ heading: string; content: string; type?: 'text' | 'table' | 'chart' }>;
+  exportTitle?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -111,6 +129,8 @@ const props = withDefaults(defineProps<Props>(), {
     { value: 'baijiahao', label: '百家号' },
   ],
   defaultTaskId: 0,
+  sections: () => [],
+  exportTitle: '',
 });
 
 const emit = defineEmits<{
@@ -124,6 +144,8 @@ const progressPercent = ref(0);
 const progressText = ref('');
 const downloadUrl = ref('');
 const downloadBlob = ref<Blob | null>(null);
+const previewVisible = ref(false);
+const previewContent = ref('');
 
 const form = reactive<ExportForm>({
   format: 'csv',
@@ -134,11 +156,25 @@ const form = reactive<ExportForm>({
   customFilename: '',
 });
 
+const formatExtensions: Record<string, string> = {
+  csv: 'csv',
+  json: 'json',
+  md: 'md',
+  pdf: 'pdf',
+  docx: 'doc',
+  xlsx: 'xlsx',
+};
+
 const canExport = computed(() => {
   if (props.exportType === 'stats' || props.showTaskSelect) {
     return form.taskIds.length > 0;
   }
   return true;
+});
+
+watch(() => form.format, () => {
+  previewContent.value = '';
+  previewVisible.value = false;
 });
 
 function open(): void {
@@ -148,6 +184,8 @@ function open(): void {
   progressText.value = '';
   downloadUrl.value = '';
   downloadBlob.value = null;
+  previewContent.value = '';
+  previewVisible.value = false;
   if (props.defaultTaskId && form.taskIds.length === 0) {
     form.taskIds = [props.defaultTaskId];
   }
@@ -182,11 +220,63 @@ function simulateProgress(): void {
   return interval;
 }
 
+function buildMarkdownPreview(): string {
+  if (props.sections.length === 0) return '';
+  const title = props.exportTitle || '数据导出';
+  let md = `# ${title}\n\n`;
+  md += `_生成时间: ${new Date().toLocaleString('zh-CN')}_\n\n---\n\n`;
+  for (const sec of props.sections) {
+    md += `## ${sec.heading}\n\n`;
+    md += sec.content + '\n\n';
+  }
+  return md;
+}
+
 async function onExport(): Promise<void> {
   loading.value = true;
   const progressInterval = simulateProgress();
 
   try {
+    if (['md', 'pdf', 'docx', 'xlsx'].includes(form.format)) {
+      if (props.sections.length === 0) {
+        ElMessage.warning('该格式需要提供导出内容');
+        loading.value = false;
+        clearInterval(progressInterval);
+        progressVisible.value = false;
+        return;
+      }
+      if (form.format === 'md') {
+        previewContent.value = buildMarkdownPreview();
+      }
+
+      const body = {
+        title: props.exportTitle || '数据导出',
+        sections: props.sections,
+        format: form.format,
+      };
+
+      const blob = await http.post('/export/data', body, { responseType: 'blob' }) as Blob;
+
+      clearInterval(progressInterval);
+      progressPercent.value = 100;
+      progressText.value = '完成';
+
+      const ext = formatExtensions[form.format] || form.format;
+      const filename = form.customFilename
+        ? `${form.customFilename}.${ext}`
+        : `export_${new Date().toISOString().slice(0, 10)}.${ext}`;
+
+      downloadBlob.value = blob;
+      downloadUrl.value = URL.createObjectURL(blob);
+
+      ElMessage.success('导出完成');
+      loading.value = false;
+
+      triggerDownload(filename, blob);
+      close();
+      return;
+    }
+
     const body: any = { format: form.format };
 
     if (props.exportType === 'events') {
@@ -210,7 +300,7 @@ async function onExport(): Promise<void> {
     progressPercent.value = 100;
     progressText.value = '完成';
 
-    const ext = form.format === 'csv' ? 'csv' : 'json';
+    const ext = formatExtensions[form.format] || form.format;
     const filename = form.customFilename
       ? `${form.customFilename}.${ext}`
       : `${props.exportType}_${new Date().toISOString().slice(0, 10)}.${ext}`;
@@ -242,7 +332,7 @@ function triggerDownload(filename: string, blob: Blob): void {
 
 function onDownload(): void {
   if (!downloadBlob.value) return;
-  const ext = form.format === 'csv' ? 'csv' : 'json';
+  const ext = formatExtensions[form.format] || form.format;
   const filename = form.customFilename
     ? `${form.customFilename}.${ext}`
     : `${props.exportType}_${new Date().toISOString().slice(0, 10)}.${ext}`;
@@ -253,6 +343,42 @@ defineExpose({ open, close });
 </script>
 
 <style scoped>
+.export-preview {
+  margin: 12px 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.export-preview__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--glass-bg);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.export-preview__body {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.export-preview__code {
+  margin: 0;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  background: #1a1a2e;
+  color: #e8ebff;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 .export-progress {
   padding: 16px 0;
   display: flex;

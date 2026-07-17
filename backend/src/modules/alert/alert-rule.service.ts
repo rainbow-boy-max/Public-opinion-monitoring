@@ -145,6 +145,17 @@ export class AlertRuleService {
           throw new BadRequestException('platform_specific requires platforms (string[])');
         }
         break;
+      case AlertConditionType.ENTITY_RISK:
+        if (typeof config.entityType !== 'string' || !['person', 'org', 'product'].includes(config.entityType)) {
+          throw new BadRequestException('entity_risk requires entityType (person|org|product)');
+        }
+        if (typeof config.riskThreshold !== 'number' || config.riskThreshold < 0 || config.riskThreshold > 100) {
+          throw new BadRequestException('entity_risk requires riskThreshold (0-100)');
+        }
+        if (typeof config.entityName !== 'string' || config.entityName.length === 0) {
+          throw new BadRequestException('entity_risk requires entityName (string)');
+        }
+        break;
     }
   }
 }

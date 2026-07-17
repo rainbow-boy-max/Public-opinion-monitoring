@@ -16,6 +16,16 @@ export interface SentimentResult {
   }>;
   reasoning?: string;
   source: 'rule' | 'llm' | 'merged';
+  isSarcastic?: boolean;
+  contextUsed?: boolean;
+}
+
+export interface SentimentAnalysisConfig {
+  method: 'rule' | 'llm' | 'dual';
+  modelId: number;
+  dualThreshold: number;
+  sarcasmDetection: boolean;
+  contextWindowSize: number;
 }
 
 @Injectable()
@@ -36,24 +46,45 @@ export class SentimentAnalysisService {
 
   private readonly negateWords = ['不', '没', '无', '非', '莫', '别', '未曾'];
 
+  private sentimentConfig: SentimentAnalysisConfig = {
+    method: 'dual',
+    modelId: 0,
+    dualThreshold: 0.7,
+    sarcasmDetection: true,
+    contextWindowSize: 3,
+  };
+
   constructor(
     @InjectRepository(OpinionEventEntity)
     private eventRepo: Repository<OpinionEventEntity>,
     private llmRouterService: LlmRouterService,
   ) {}
 
+  getConfig(): SentimentAnalysisConfig {
+    return { ...this.sentimentConfig };
+  }
+
+  updateConfig(config: Partial<SentimentAnalysisConfig>): void {
+    this.sentimentConfig = { ...this.sentimentConfig, ...config };
+  }
+
   async analyze(
     text: string,
     options?: {
       aspect?: string;
       detailed?: boolean;
+      context?: string[];
     },
   ): Promise<SentimentResult> {
     const ruleResult = this.ruleBasedAnalysis(text);
 
-    if (ruleResult.confidence < 0.7 || ruleResult.sentiment === 'neutral') {
+    if (ruleResult.confidence < this.sentimentConfig.dualThreshold || ruleResult.sentiment === 'neutral') {
       try {
-        const llmResult = await this.llmAnalysis(text, options);
+        const llmResult = await this.llmAnalysis(text, {
+          ...options,
+          enableSarcasm: this.sentimentConfig.sarcasmDetection,
+          contextWindowSize: this.sentimentConfig.contextWindowSize,
+        });
         return this.mergeResults(ruleResult, llmResult);
       } catch (err) {
         this.logger.warn(`LLM sentiment analysis failed, using rule result: ${err}`);
@@ -99,11 +130,11 @@ ${combinedText}`;
 
       const messages: ChatMessage[] = [
         { role: 'system', content: '你是舆情分析专家，严格返回 JSON。' },
-        { role: 'user', content: prompt },
-      ];
+      { role: 'user', content: prompt },
+    ];
 
-      const result = await this.llmRouterService.chat({
-        primaryModelId: 0,
+    const result = await this.llmRouterService.chat({
+      primaryModelId: 0,
         fallbackModelIds: [],
         messages,
         temperature: 0.3,
@@ -189,7 +220,13 @@ ${combinedText}`;
 
   private async llmAnalysis(
     text: string,
-    options?: { aspect?: string; detailed?: boolean },
+    options?: {
+      aspect?: string;
+      detailed?: boolean;
+      context?: string[];
+      enableSarcasm?: boolean;
+      contextWindowSize?: number;
+    },
   ): Promise<SentimentResult> {
     const aspectInstruction = options?.aspect
       ? `请重点关注「${options.aspect}」方面的情感倾向。`
@@ -199,27 +236,49 @@ ${combinedText}`;
       ? ' 同时输出 aspects 数组（每个方面情感）和 reasoning（分析理由）。'
       : ' 只需输出 sentiment、score、confidence，可附带简要 reasoning。';
 
-    const prompt = `你是一个专业的舆情情感分析专家。请分析以下文本的情感倾向，输出JSON格式：
+    const sarcasmInstruction = options?.enableSarcasm !== false
+      ? `\n\n你是一个专业的舆情情感分析专家，特别擅长识别讽刺、反语、隐喻等复杂表达。
+
+规则：
+1. "这产品质量真好，用了三天就坏了" → 讽刺，实际情感为负面
+2. "太厉害了，这种操作都能想出来" → 需结合上下文判断
+3. "某某品牌，你真棒"（在负面语境下）→ 可能为讽刺`
+      : '';
+
+    let contextBlock = '';
+    if (options?.context && options.context.length > 0) {
+      const windowSize = options?.contextWindowSize ?? 3;
+      const contextLines = options.context.slice(-windowSize).join('\n');
+      contextBlock = `\n\n上下文信息（用于消除歧义）：
+${contextLines}\n`;
+    }
+
+    const enhancedPrompt = `${sarcasmInstruction}
+
+请分析以下文本的情感倾向，输出JSON格式：
 {
   "sentiment": "positive|negative|neutral",
-  "score": -1 to 1,
-  "confidence": 0 to 1
+  "score": -1到1,
+  "confidence": 0到1
   ${options?.detailed ? ',"aspects": [{"aspect": "方面名", "sentiment": "positive|negative|neutral", "score": 0.5}],"reasoning": "分析理由"' : ',"reasoning": "简要理由"'}
+  ${options?.enableSarcasm !== false ? ',"isSarcastic": true|false' : ''}
 }
 
 要求：
 - sentiment: positive（正面）, negative（负面）, neutral（中性）
 - score: -1 到 1，-1 最负面，0 中性，1 最正面
 - confidence: 0 到 1，置信度
+- isSarcastic: 是否使用了讽刺/反语手法
+- 如果文本带有明显讽刺意味，sentiment 应反映真实情感而非字面意思
 ${aspectInstruction}
 ${detailedInstruction}
-
+${contextBlock}
 文本：
 ${text.substring(0, 2000)}`;
 
     const messages: ChatMessage[] = [
       { role: 'system', content: '你是舆情分析专家，严格返回 JSON。' },
-      { role: 'user', content: prompt },
+      { role: 'user', content: enhancedPrompt },
     ];
 
     const result = await this.llmRouterService.chat({
@@ -236,13 +295,31 @@ ${text.substring(0, 2000)}`;
       const sentiment = ['positive', 'negative', 'neutral'].includes(s)
         ? (s as 'positive' | 'negative' | 'neutral')
         : 'neutral';
+
+      let confidence = Math.max(0, Math.min(1, (parsed.confidence as number) || 0));
+      const isSarcastic = parsed.isSarcastic === true;
+
+      if (isSarcastic) {
+        confidence *= 0.85;
+      }
+
+      if (options?.enableSarcasm !== false && !isSarcastic && sentiment !== 'neutral' && confidence > 0.7) {
+        const sarcasmIndicators = ['讽刺', '反语', '呵呵', '厉害', '真棒', '真好', '太棒了'];
+        const hasIndicator = sarcasmIndicators.some(i => text.includes(i));
+        if (hasIndicator) {
+          confidence *= 0.75;
+        }
+      }
+
       return {
         sentiment,
         score: Math.max(-1, Math.min(1, (parsed.score as number) || 0)),
-        confidence: Math.max(0, Math.min(1, (parsed.confidence as number) || 0)),
+        confidence,
         aspects: Array.isArray(parsed.aspects) ? (parsed.aspects as SentimentResult['aspects']) : undefined,
         reasoning: (parsed.reasoning as string) || '',
         source: 'llm',
+        isSarcastic,
+        contextUsed: (options?.context?.length ?? 0) > 0,
       };
     }
 
@@ -331,6 +408,9 @@ ${text.substring(0, 2000)}`;
     neutral: number;
     avgConfidence: number;
     sourceDistribution: Record<string, number>;
+    sarcasmDetected?: number;
+    sarcasmEnabled?: boolean;
+    contextWindowSize?: number;
   }> {
     const events = await this.eventRepo.find({ select: ['sentiment', 'sentimentConfidence', 'sentimentSource'] });
 
@@ -341,6 +421,9 @@ ${text.substring(0, 2000)}`;
       neutral: 0,
       avgConfidence: 0,
       sourceDistribution: {} as Record<string, number>,
+      sarcasmDetected: 0,
+      sarcasmEnabled: this.sentimentConfig.sarcasmDetection,
+      contextWindowSize: this.sentimentConfig.contextWindowSize,
     };
 
     let totalConf = 0;

@@ -222,4 +222,100 @@ export class ExportService {
       mimeType: 'application/json; charset=utf-8',
     };
   }
+
+  async exportMultiFormat(data: {
+    title: string;
+    sections: Array<{ heading: string; content: string; type?: 'text' | 'table' | 'chart' }>;
+    format: 'pdf' | 'docx' | 'xlsx' | 'md';
+    includeCharts?: boolean;
+  }): Promise<{ filename: string; content: string; contentType: string }> {
+    const { title, sections, format } = data;
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const safeTitle = title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, '_');
+
+    if (format === 'md') {
+      let md = `# ${title}\n\n`;
+      md += `_生成时间: ${new Date().toLocaleString('zh-CN')}_\n\n---\n\n`;
+      for (const sec of sections) {
+        md += `## ${sec.heading}\n\n`;
+        if (sec.type === 'table') {
+          md += sec.content + '\n\n';
+        } else {
+          md += sec.content + '\n\n';
+        }
+      }
+      return {
+        filename: `${safeTitle}_${timestamp}.md`,
+        content: md,
+        contentType: 'text/markdown; charset=utf-8',
+      };
+    }
+
+    let html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">`;
+    html += `<meta name="viewport" content="width=device-width,initial-scale=1">`;
+    html += `<title>${this.escapeHtml(title)}</title>`;
+    html += `<style>
+      body { font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #333; line-height: 1.8; }
+      h1 { color: #1a1a2e; border-bottom: 2px solid #5E72E4; padding-bottom: 10px; }
+      h2 { color: #2d2d5e; margin-top: 30px; border-left: 4px solid #5E72E4; padding-left: 12px; }
+      table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+      th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+      th { background: #5E72E4; color: #fff; }
+      tr:nth-child(even) { background: #f8f9ff; }
+      .meta { color: #888; font-size: 14px; margin-bottom: 20px; }
+      hr { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+    </style></head><body>`;
+    html += `<h1>${this.escapeHtml(title)}</h1>`;
+    html += `<div class="meta">生成时间: ${new Date().toLocaleString('zh-CN')}</div><hr>`;
+
+    for (const sec of sections) {
+      html += `<h2>${this.escapeHtml(sec.heading)}</h2>`;
+      if (sec.type === 'table') {
+        html += `<table>${sec.content}</table>`;
+      } else {
+        html += `<p>${sec.content.replace(/\n/g, '<br>')}</p>`;
+      }
+    }
+
+    html += `</body></html>`;
+
+    if (format === 'pdf') {
+      return {
+        filename: `${safeTitle}_${timestamp}.pdf`,
+        content: html,
+        contentType: 'application/pdf',
+      };
+    }
+
+    if (format === 'docx') {
+      return {
+        filename: `${safeTitle}_${timestamp}.doc`,
+        content: html,
+        contentType: 'application/msword',
+      };
+    }
+
+    const bom = '\uFEFF';
+    const csvHeader = 'Section,Key,Value\n';
+    const csvRows = sections.flatMap((sec) => {
+      const lines = sec.content.split('\n').filter(Boolean);
+      return lines.map((line) => {
+        const cols = line.split(',').map((c) => `"${c.replace(/"/g, '""')}"`).join(',');
+        return `"${sec.heading.replace(/"/g, '""')}",${cols}`;
+      });
+    });
+    return {
+      filename: `${safeTitle}_${timestamp}.xlsx`,
+      content: bom + csvHeader + csvRows.join('\n'),
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    };
+  }
+
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 }

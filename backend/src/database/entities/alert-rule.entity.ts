@@ -5,6 +5,7 @@ export enum AlertConditionType {
   VOLUME_SPIKE = 'volume_spike',
   KEYWORD_MATCH = 'keyword_match',
   PLATFORM_SPECIFIC = 'platform_specific',
+  ENTITY_RISK = 'entity_risk',
 }
 
 export enum AlertChannel {

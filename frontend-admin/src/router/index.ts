@@ -163,6 +163,10 @@ const router = createRouter({
           path: 'tenants',
           component: () => import('@/pages/TenantsPage.vue'),
         },
+        {
+          path: 'export-config',
+          component: () => import('@/pages/ExportConfigPage.vue'),
+        },
       ],
     },
   ],

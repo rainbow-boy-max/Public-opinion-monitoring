@@ -24,6 +24,20 @@
           <el-slider v-model="config.dualThreshold" :min="0" :max="1" :step="0.05" style="width: 280px" />
           <span style="margin-left: 12px; color: var(--text-tertiary)">规则置信度低于此值时触发LLM分析</span>
         </el-form-item>
+        <el-divider />
+        <div class="config-section-title">负面识别增强</div>
+        <el-form-item label="讽刺检测">
+          <el-switch v-model="config.sarcasmDetection" active-text="开启" inactive-text="关闭" />
+          <span style="margin-left: 12px; color: var(--text-tertiary)">识别讽刺、反语、隐喻等复杂表达</span>
+        </el-form-item>
+        <el-form-item label="上下文窗口">
+          <el-radio-group v-model="config.contextWindowSize">
+            <el-radio-button :value="1">1 句</el-radio-button>
+            <el-radio-button :value="3">3 句（推荐）</el-radio-button>
+            <el-radio-button :value="5">5 句</el-radio-button>
+          </el-radio-group>
+          <span style="margin-left: 12px; color: var(--text-tertiary)">分析单条文本时参考的上下文句数</span>
+        </el-form-item>
       </el-form>
     </GlassCard>
 
@@ -60,6 +74,10 @@
             <span class="label">来源</span>
             <el-tag>{{ sourceLabel(testResult.source) }}</el-tag>
           </div>
+          <div v-if="testResult.isSarcastic !== undefined" class="result-item">
+            <span class="label">讽刺检测</span>
+            <el-tag :type="testResult.isSarcastic ? 'danger' : 'info'">{{ testResult.isSarcastic ? '检测到讽刺' : '未检测到讽刺' }}</el-tag>
+          </div>
         </div>
         <div v-if="testResult.reasoning" class="reasoning">
           <span class="label">分析理由：</span>{{ testResult.reasoning }}
@@ -71,6 +89,49 @@
             <el-tag :type="sentimentType(a.sentiment)" size="small">{{ sentimentLabel(a.sentiment) }}</el-tag>
             <span style="margin-left: 8px">分数：{{ a.score.toFixed(2) }}</span>
           </div>
+        </div>
+      </div>
+    </GlassCard>
+
+    <GlassCard title="讽刺文本测试" style="margin-top: 16px">
+      <el-input
+        v-model="sarcasmTestText"
+        type="textarea"
+        :rows="4"
+        placeholder="输入可能的讽刺/反语文本..."
+        style="margin-bottom: 12px"
+      />
+      <div class="sarcasm-hints">
+        <el-tag v-for="(hint, i) in sarcasmHints" :key="i" size="small" style="cursor: pointer; margin: 0 4px 4px 0" @click="sarcasmTestText = hint">{{ hint }}</el-tag>
+      </div>
+      <el-button type="warning" :loading="sarcasmTesting" @click="onSarcasmTest">检测讽刺</el-button>
+
+      <div v-if="sarcasmResult" class="test-result">
+        <el-divider />
+        <div class="result-grid">
+          <div class="result-item">
+            <span class="label">情感</span>
+            <el-tag :type="sentimentType(sarcasmResult.sentiment)" size="large">{{ sentimentLabel(sarcasmResult.sentiment) }}</el-tag>
+          </div>
+          <div class="result-item">
+            <span class="label">分数</span>
+            <span :style="{ color: sarcasmResult.score > 0 ? 'var(--color-success)' : sarcasmResult.score < 0 ? 'var(--color-danger)' : 'var(--text-secondary)' }">
+              {{ sarcasmResult.score.toFixed(3) }}
+            </span>
+          </div>
+          <div class="result-item">
+            <span class="label">讽刺检测</span>
+            <el-tag :type="sarcasmResult.isSarcastic ? 'danger' : 'info'">
+              {{ sarcasmResult.isSarcastic ? '是' : '否' }}
+            </el-tag>
+          </div>
+          <div class="result-item">
+            <span class="label">置信度</span>
+            <span>{{ (sarcasmResult.confidence * 100).toFixed(1) }}%</span>
+          </div>
+        </div>
+        <div v-if="sarcasmResult.reasoning" class="reasoning">
+          <span class="label">分析理由：</span>{{ sarcasmResult.reasoning }}
         </div>
       </div>
     </GlassCard>
@@ -117,6 +178,18 @@
           <div class="stat-value">{{ (stats.avgConfidence * 100).toFixed(1) }}%</div>
           <div class="stat-label">平均置信度</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ stats.sarcasmDetected ?? '-' }}</div>
+          <div class="stat-label">检测到讽刺</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ stats.sarcasmEnabled ? '开启' : '关闭' }}</div>
+          <div class="stat-label">讽刺检测</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ stats.contextWindowSize ?? '-' }}</div>
+          <div class="stat-label">上下文窗口</div>
+        </div>
       </div>
       <div v-if="stats && Object.keys(stats.sourceDistribution).length > 0" class="source-dist">
         <el-divider />
@@ -158,8 +231,11 @@ const models = ref<LlmModel[]>([]);
 const saving = ref(false);
 const testing = ref(false);
 const reanalyzing = ref(false);
+const sarcasmTesting = ref(false);
 const testText = ref('');
+const sarcasmTestText = ref('');
 const testResult = ref<SentimentResult | null>(null);
+const sarcasmResult = ref<SentimentResult | null>(null);
 const batchResult = ref<{ total: number; updated: number } | null>(null);
 const stats = ref<{
   totalAnalyzed: number;
@@ -168,13 +244,26 @@ const stats = ref<{
   neutral: number;
   avgConfidence: number;
   sourceDistribution: Record<string, number>;
+  sarcasmDetected?: number;
+  sarcasmEnabled?: boolean;
+  contextWindowSize?: number;
 } | null>(null);
 
 const config = reactive({
   method: 'dual',
   modelId: 0,
   dualThreshold: 0.7,
+  sarcasmDetection: true,
+  contextWindowSize: 3,
 });
+
+const sarcasmHints = [
+  '这产品质量真好，用了三天就坏了',
+  '太厉害了，这种操作都能想出来',
+  '某某品牌，你真棒，售后服务太到位了',
+  '太棒了，又涨价了，真是良心企业',
+  '这个方案真"完美"，每个环节都有惊喜',
+];
 
 const batchForm = reactive({
   taskId: 1,
@@ -223,6 +312,17 @@ async function loadStats(): Promise<void> {
   } catch { /* ignore */ }
 }
 
+async function loadConfig(): Promise<void> {
+  try {
+    const r: any = await http.get('/sentiment/config');
+    config.method = r.data.method;
+    config.modelId = r.data.modelId;
+    config.dualThreshold = r.data.dualThreshold;
+    config.sarcasmDetection = r.data.sarcasmDetection;
+    config.contextWindowSize = r.data.contextWindowSize;
+  } catch { /* ignore */ }
+}
+
 async function onSave(): Promise<void> {
   saving.value = true;
   try {
@@ -254,6 +354,25 @@ async function onTest(): Promise<void> {
   }
 }
 
+async function onSarcasmTest(): Promise<void> {
+  if (!sarcasmTestText.value.trim()) {
+    ElMessage.warning('请输入要检测的文本');
+    return;
+  }
+  sarcasmTesting.value = true;
+  try {
+    const r: any = await http.post('/sentiment/analyze', {
+      text: sarcasmTestText.value,
+      detailed: true,
+    });
+    sarcasmResult.value = r.data;
+  } catch (err: any) {
+    ElMessage.error(err?.message || '分析失败');
+  } finally {
+    sarcasmTesting.value = false;
+  }
+}
+
 async function onReanalyzeTask(): Promise<void> {
   reanalyzing.value = true;
   batchResult.value = null;
@@ -272,6 +391,7 @@ async function onReanalyzeTask(): Promise<void> {
 onMounted(() => {
   loadModels();
   loadStats();
+  loadConfig();
 });
 </script>
 
@@ -325,8 +445,23 @@ onMounted(() => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+}
+
+.sarcasm-hints {
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.config-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  padding: 0 0 8px;
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .stat-card {

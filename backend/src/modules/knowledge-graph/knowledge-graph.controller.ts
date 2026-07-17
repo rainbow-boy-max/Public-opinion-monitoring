@@ -11,6 +11,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { KnowledgeGraphService } from './knowledge-graph.service';
+import { KgWarningService } from './kg-warning.service';
 import { LlmModelEntity } from '../../database/entities';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -61,9 +62,17 @@ class FromTextDto {
 export class KnowledgeGraphController {
   constructor(
     private readonly kgService: KnowledgeGraphService,
+    private readonly kgWarningService: KgWarningService,
     @InjectRepository(LlmModelEntity)
     private llmModelRepo: Repository<LlmModelEntity>,
   ) {}
+
+  @Get('warnings')
+  @HttpCode(HttpStatus.OK)
+  async warnings(@CurrentUser() user: CurrentUserPayload) {
+    const signals = await this.kgWarningService.checkRiskSignals(user.id);
+    return { success: true, data: signals };
+  }
 
   @Get('active-model')
   async activeModel() {

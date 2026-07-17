@@ -3,7 +3,17 @@
     <GlassCard title="品牌声誉管理" subtitle="品牌声量 / NPS 趋势 / 竞品排名">
       <template #extra>
         <el-button :loading="loading" type="primary" icon="TrendCharts" @click="analyze">分析</el-button>
-        <el-button v-if="hasData" icon="Download" @click="exportJson">导出 JSON</el-button>
+        <el-dropdown v-if="hasData" @command="onExport">
+          <el-button icon="Download">导出</el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="md">导出 Markdown</el-dropdown-item>
+              <el-dropdown-item command="pdf">导出 PDF</el-dropdown-item>
+              <el-dropdown-item command="docx">导出 Word</el-dropdown-item>
+              <el-dropdown-item command="xlsx">导出 Excel</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </template>
       <div class="config-bar">
         <div class="config-bar__item">
@@ -139,6 +149,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { ElMessage } from 'element-plus';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
@@ -294,6 +305,39 @@ function exportJson(): void {
   a.download = 'brand-reputation.json';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+async function onExport(format: string): Promise<void> {
+  if (!data.value) return;
+  const d = data.value;
+  const sections = [
+    { heading: '品牌声誉概览', content:
+      `品牌声量: ${d.overview.brandVoice}\n声量占比: ${d.overview.shareOfVoice}%\nNPS 得分: ${d.overview.npsScore}\n情感得分: ${d.overview.sentimentScore}\n趋势: ${d.overview.trend === 'rising' ? '上升' : d.overview.trend === 'declining' ? '下降' : '稳定'}`,
+      type: 'text' as const },
+    { heading: '平台分布', content: '|平台|声量|情感得分|\n' +
+      d.platformBreakdown.map(p => `|${p.platform}|${p.mentions}|${p.sentiment}|`).join('\n'),
+      type: 'table' as const },
+    { heading: '热门关键词 Top 10', content: d.topKeywords.slice(0, 10).map(k =>
+      `${k.keyword}: ${k.count}次提及, 情感得分 ${k.sentiment}`
+    ).join('\n'), type: 'text' as const },
+    { heading: '竞品对比', content: '|竞品|声量|情感得分|声量占比(%)|\n' +
+      d.competitorComparison.map(c => `|${c.name}|${c.mentions}|${c.sentimentScore}|${c.shareOfVoice}|`).join('\n'),
+      type: 'table' as const },
+  ];
+  try {
+    const blob = await http.post('/export/data', { title: '品牌声誉报告', sections, format }, { responseType: 'blob' }) as Blob;
+    const extMap: Record<string, string> = { md: 'md', pdf: 'pdf', docx: 'doc', xlsx: 'xlsx' };
+    const ext = extMap[format] || format;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `brand-reputation_${new Date().toISOString().slice(0, 10)}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ElMessage.success('导出成功');
+  } catch {
+    ElMessage.error('导出失败');
+  }
 }
 
 function initCharts(): void {

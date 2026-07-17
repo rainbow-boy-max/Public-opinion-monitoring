@@ -3,7 +3,17 @@
     <PageHeader title="多维对比分析" subtitle="多关键词组、多平台、多时段舆情对比">
       <template #actions>
         <el-button type="primary" :loading="loading" @click="runComparison" icon="DataAnalysis">开始对比</el-button>
-        <el-button v-if="hasResult" @click="exportJson">导出 JSON</el-button>
+        <el-dropdown v-if="hasResult" @command="onExport">
+          <el-button>导出</el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="md">导出 Markdown</el-dropdown-item>
+              <el-dropdown-item command="pdf">导出 PDF</el-dropdown-item>
+              <el-dropdown-item command="docx">导出 Word</el-dropdown-item>
+              <el-dropdown-item command="xlsx">导出 Excel</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </template>
     </PageHeader>
 
@@ -108,6 +118,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
+import { ElMessage } from 'element-plus';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
 import PageHeader from '@shared/components/PageHeader.vue';
@@ -261,6 +272,35 @@ async function exportJson(): Promise<void> {
   a.download = `comparison-result.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+async function onExport(format: string): Promise<void> {
+  if (!result.value) return;
+  const groups = result.value.groups;
+  const sections = [
+    { heading: '对比概览', content: groups.map(g =>
+      `${g.label}: 总量=${g.stats.total}, 正面=${g.stats.bySentiment.positive}, 负面=${g.stats.bySentiment.negative}, 中性=${g.stats.bySentiment.neutral}`
+    ).join('\n'), type: 'text' as const },
+    { heading: '平台分布', content: '|对比组|' + Object.keys(groups[0]?.stats.byPlatform || {}).join('|') + '|\n' +
+      '|' + groups.map(g => g.label + '|' + Object.values(g.stats.byPlatform).join('|')).join('|\n') + '|', type: 'table' as const },
+    { heading: '热门文章 Top 10', content: groups.flatMap(g =>
+      g.stats.topArticles.slice(0, 5).map(a => `${g.label}: ${a.title} (${a.platform}, ${a.engagement}互动)`)
+    ).join('\n'), type: 'text' as const },
+  ];
+  try {
+    const blob = await http.post('/export/data', { title: '多维对比分析报告', sections, format }, { responseType: 'blob' }) as Blob;
+    const extMap: Record<string, string> = { md: 'md', pdf: 'pdf', docx: 'doc', xlsx: 'xlsx' };
+    const ext = extMap[format] || format;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `comparison_${new Date().toISOString().slice(0, 10)}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ElMessage.success('导出成功');
+  } catch {
+    ElMessage.error('导出失败');
+  }
 }
 
 function initCharts(): void {
