@@ -307,7 +307,11 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ## 更新日志
 
-### 2026-07-16 — 自定义舆情分析 + 多方式登录
+### 2026-07-17 — Phase 1: 多模态识别 + 电商监测 + 报告模板
+- **多模态OCR识别**：利用 LLM vision 能力识别图片文字，管理端 `OcrConfigPage` 配置页 + OCR 测试
+- **电商平台监测**：京东/淘宝/拼多多评论口碑监测，管理端 `EcommerceConfigPage` + 用户端 `EcommercePage`
+- **报告模板市场**：5 种预设模板（日报/周报/事件专报/竞品对标/自定义），管理端 `ReportTemplatesPage`
+- 新增后端模块：`ocr`, `ecommerce`, `report-templates`
 - 自定义分析对话框：三种输入（选择事件/输入链接/上传文档）+ AI 智能体生成解决方案
 - 新增 `POST /pr/fetch-url` 链接内容抓取 + `GET /pr/events/search` 事件搜索
 - 登录页三 Tab 切换：账号密码/手机密码/手机验证码
