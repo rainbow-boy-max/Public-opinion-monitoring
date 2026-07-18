@@ -6,10 +6,10 @@
       </template>
 
       <div class="stats-row">
-        <StatCard title="待处理" :value="stats.pending" color="#F59E0B" icon="clock" />
-        <StatCard title="分析中" :value="stats.inProgress" color="#3B82F6" icon="search" />
-        <StatCard title="已解决" :value="stats.resolved" color="#10B981" icon="check" />
-        <StatCard title="已关闭" :value="stats.closed" color="#6B7280" icon="circle" />
+        <StatCard label="待处理" :value="stats.pending" icon="🕐" icon-bg="linear-gradient(135deg, #F59E0B, #D97706)" :glow="'rgba(245, 158, 11, 0.4)'" />
+        <StatCard label="分析中" :value="stats.inProgress" icon="🔍" icon-bg="linear-gradient(135deg, #3B82F6, #2563EB)" :glow="'rgba(59, 130, 246, 0.4)'" />
+        <StatCard label="已解决" :value="stats.resolved" icon="✅" icon-bg="linear-gradient(135deg, #10B981, #059669)" :glow="'rgba(16, 185, 129, 0.4)'" />
+        <StatCard label="已关闭" :value="stats.closed" icon="⭕" icon-bg="linear-gradient(135deg, #6B7280, #4B5563)" :glow="'rgba(107, 114, 128, 0.4)'" />
       </div>
 
       <div class="filters-row">

@@ -44,10 +44,10 @@
     <GlassCard title="监控统计概览" icon="📊" subtitle="聚合数据">
       <div v-if="statsLoading" v-loading="true" style="min-height: 100px" />
       <div v-else class="stats-grid">
-        <StatCard title="总评论数" :value="stats.totalReviews" color="#5E72E4" />
-        <StatCard title="正面评价" :value="stats.positiveCount" color="#22C55E" />
-        <StatCard title="负面评价" :value="stats.negativeCount" color="#EF4444" />
-        <StatCard title="负面率" :value="stats.negativeRatio + '%'" color="#F59E0B" />
+        <StatCard label="总评论数" :value="stats.totalReviews" icon="💬" icon-bg="linear-gradient(135deg, #5E72E4, #4C63D2)" :glow="'rgba(94, 114, 228, 0.4)'" />
+        <StatCard label="正面评价" :value="stats.positiveCount" icon="👍" icon-bg="linear-gradient(135deg, #22C55E, #16A34A)" :glow="'rgba(34, 197, 94, 0.4)'" />
+        <StatCard label="负面评价" :value="stats.negativeCount" icon="👎" icon-bg="linear-gradient(135deg, #EF4444, #DC2626)" :glow="'rgba(239, 68, 68, 0.4)'" />
+        <StatCard label="负面率" :value="stats.negativeRatio + '%'" icon="📉" icon-bg="linear-gradient(135deg, #F59E0B, #D97706)" :glow="'rgba(245, 158, 11, 0.4)'" />
       </div>
     </GlassCard>
 

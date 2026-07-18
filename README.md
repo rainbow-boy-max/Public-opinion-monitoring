@@ -307,6 +307,11 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ## 更新日志
 
+### 2026-07-18 — 管理端 StatCard 统计卡显示修复
+- **工单管理页**：统计卡 props 与 `StatCard` 组件对齐，`title`/`color`/`icon="clock"` 改为 `label`/`icon-bg` + emoji 图标，修复红框内显示为 `clock 0` / `search1` 等文字的问题
+- **电商监测配置页**：同样修正 `StatCard` 的 `title`/`color` 误用，统一为 `label` + emoji + 渐变 `icon-bg`
+- 四个工单统计卡现为：待处理 / 分析中 / 已解决 / 已关闭，图标与数值正常渲染
+
 ### 2026-07-17 — Phase 1: 多模态识别 + 电商监测 + 报告模板
 - **多模态OCR识别**：利用 LLM vision 能力识别图片文字，管理端 `OcrConfigPage` 配置页 + OCR 测试
 - **电商平台监测**：京东/淘宝/拼多多评论口碑监测，管理端 `EcommerceConfigPage` + 用户端 `EcommercePage`
@@ -362,4 +367,4 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ---
 
-*README 最后更新: 2026-07-16*
+*README 最后更新: 2026-07-18*
