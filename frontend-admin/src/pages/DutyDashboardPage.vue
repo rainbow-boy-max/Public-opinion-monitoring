@@ -19,7 +19,6 @@
         </el-button>
       </div>
     </div>
-    </div>
 
     <div class="duty-alert-banner" v-if="overview.criticalAlerts > 0">
       <div class="duty-alert-banner__pulse"></div>
@@ -112,10 +111,20 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'DutyDashboardPage' });
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { FullScreen, Refresh } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import { io as socketIO } from 'socket.io-client';
+
+interface DutyOverview {
+  totalEvents: number;
+  alertCount: number;
+  criticalAlerts: number;
+  latestEvents: Array<{ id: number; title: string; platform: string; sentiment: string; matchedAt: string }>;
+  platformBreakdown: Record<string, number>;
+  sentimentTrend: { positive: number; negative: number; neutral: number };
+  topKeywords: string[];
+}
 
 const overview = ref<DutyOverview>({
   totalEvents: 0, alertCount: 0, criticalAlerts: 0,
@@ -126,6 +135,13 @@ const currentTime = ref('');
 const isFullscreen = ref(false);
 const wsConnected = ref(false);
 const reconnecting = ref(false);
+const latestEventTime = computed(() => {
+  if (overview.value.latestEvents.length > 0) {
+    const evt = overview.value.latestEvents[0];
+    return formatShort(evt.matchedAt);
+  }
+  return '—';
+});
 
 let socket: any = null;
 let timeTimer: ReturnType<typeof setInterval> | null = null;
