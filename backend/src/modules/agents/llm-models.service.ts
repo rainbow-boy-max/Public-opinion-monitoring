@@ -450,12 +450,15 @@ export class LlmModelsService implements OnModuleInit {
   }
 
   async setKgConfig(dto: { primaryModelId: number; fallbackModelIds: number[] }): Promise<{ ok: boolean }> {
-    await this.repo.update({}, { isKgPrimary: 0, isKgFallback: 0 });
+    // Reset all
+    await this.repo.createQueryBuilder().update().set({ isKgPrimary: 0, isKgFallback: 0 }).execute();
+    // Set primary
     const primary = await this.repo.findOne({ where: { id: dto.primaryModelId } });
     if (!primary) throw new NotFoundException('主模型不存在');
-    await this.repo.update(dto.primaryModelId, { isKgPrimary: 1 });
+    await this.repo.update({ id: dto.primaryModelId }, { isKgPrimary: 1 });
+    // Set fallbacks
     if (dto.fallbackModelIds.length > 0) {
-      await this.repo.update(dto.fallbackModelIds, { isKgFallback: 1 });
+      await this.repo.update(dto.fallbackModelIds.map(id => ({ id })), { isKgFallback: 1 });
     }
     return { ok: true };
   }
