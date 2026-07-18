@@ -130,6 +130,7 @@ const reconnecting = ref(false);
 let socket: any = null;
 let timeTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+const feedRef = ref<HTMLElement>();
 
 function connectSocket() {
   if (socket?.connected) return;
@@ -176,31 +177,6 @@ function reconnect() {
   loadData();
   // Reset reconnecting state after timeout
   setTimeout(() => { reconnecting.value = false; }, 5000);
-}
-const feedRef = ref<HTMLElement>();
-let timeTimer: number | undefined;
-let refreshTimer: number | undefined;
-
-function sentimentIcon(s: string): string {
-  if (s === 'positive') return '+';
-  if (s === 'negative') return '-';
-  return '~';
-}
-
-const latestEventTime = computed(() => {
-  if (overview.value.latestEvents.length === 0) return '--';
-  const dt = new Date(overview.value.latestEvents[0].matchedAt);
-  return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
-});
-
-function formatShort(d: Date | string): string {
-  const dt = new Date(d);
-  return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
-}
-
-function barWidth(count: number): string {
-  const max = Math.max(...Object.values(overview.value.platformBreakdown), 1);
-  return `${(count / max) * 100}%`;
 }
 
 async function loadData() {
