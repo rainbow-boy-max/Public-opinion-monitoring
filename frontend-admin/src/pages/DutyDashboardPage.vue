@@ -1,19 +1,24 @@
 <template>
-  <div class="duty-dashboard" :class="{ 'duty-dashboard--fullscreen': isFullscreen }">
+  <div class="duty-dashboard" :class="{ 'is-fullscreen': isFullscreen }">
     <div class="duty-topbar">
-      <div class="duty-topbar__title">7x24 值班监控面板</div>
-      <div class="duty-topbar__actions">
-        <span class="duty-topbar__time">{{ currentTime }}</span>
+      <div class="duty-topbar__left">
+        <div class="duty-topbar__title">舆情值班面板</div>
+        <div class="duty-topbar__time">{{ currentTime }}</div>
         <el-tag :type="wsConnected ? 'success' : 'danger'" size="small">
           {{ wsConnected ? '实时' : '离线' }}
         </el-tag>
-        <span class="duty-topbar__refresh" @click="loadData">
-          刷新
-        </span>
-        <el-button size="small" @click="toggleFullscreen" circle>
-          <template #icon><FullScreen /></template>
+        <el-tooltip v-if="!wsConnected" content="点击重新连接" placement="bottom">
+          <el-button size="small" type="warning" :icon="Refresh" @click="reconnect" :loading="reconnecting">重新连接</el-button>
+        </el-tooltip>
+      </div>
+      <div class="duty-topbar__actions">
+        <el-tag v-if="!wsConnected" type="warning" size="small">数据可能不是最新的，点击「重新连接」恢复实时更新</el-tag>
+        <span class="duty-topbar__refresh" @click="loadData">{{ overview?.totalEvents ?? '—' }} 事件</span>
+        <el-button size="small" :icon="FullScreen" text @click="toggleFullscreen">
+          {{ isFullscreen ? '退出全屏' : '全屏' }}
         </el-button>
       </div>
+    </div>
     </div>
 
     <div class="duty-alert-banner" v-if="overview.criticalAlerts > 0">
@@ -107,34 +112,71 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'DutyDashboardPage' });
-
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { FullScreen } from '@element-plus/icons-vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { FullScreen, Refresh } from '@element-plus/icons-vue';
 import http from '@/utils/http';
-
-interface DutyOverview {
-  totalEvents: number;
-  alertCount: number;
-  criticalAlerts: number;
-  latestEvents: Array<{ id: number; title: string; platform: string; sentiment: string; matchedAt: Date }>;
-  platformBreakdown: Record<string, number>;
-  sentimentTrend: { positive: number; negative: number; neutral: number };
-  topKeywords: string[];
-}
+import { io as socketIO } from 'socket.io-client';
 
 const overview = ref<DutyOverview>({
-  totalEvents: 0,
-  alertCount: 0,
-  criticalAlerts: 0,
-  latestEvents: [],
-  platformBreakdown: {},
-  sentimentTrend: { positive: 0, negative: 0, neutral: 0 },
+  totalEvents: 0, alertCount: 0, criticalAlerts: 0,
+  latestEvents: [], platformBreakdown: {}, sentimentTrend: { positive: 0, negative: 0, neutral: 0 },
   topKeywords: [],
 });
-
-const isFullscreen = ref(false);
 const currentTime = ref('');
+const isFullscreen = ref(false);
 const wsConnected = ref(false);
+const reconnecting = ref(false);
+
+let socket: any = null;
+let timeTimer: ReturnType<typeof setInterval> | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+function connectSocket() {
+  if (socket?.connected) return;
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  const token = localStorage.getItem('user_token') || '';
+
+  socket = socketIO(`${protocol}//${host}`, {
+    path: '/socket.io',
+    auth: { token },
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 3000,
+    timeout: 10000,
+  });
+
+  socket.on('connect', () => {
+    wsConnected.value = true;
+    reconnecting.value = false;
+  });
+
+  socket.on('disconnect', () => {
+    wsConnected.value = false;
+  });
+
+  socket.on('connect_error', () => {
+    wsConnected.value = false;
+  });
+}
+
+function disconnectSocket() {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+  wsConnected.value = false;
+}
+
+function reconnect() {
+  reconnecting.value = true;
+  disconnectSocket();
+  connectSocket();
+  // Also reload data immediately
+  loadData();
+  // Reset reconnecting state after timeout
+  setTimeout(() => { reconnecting.value = false; }, 5000);
+}
 const feedRef = ref<HTMLElement>();
 let timeTimer: number | undefined;
 let refreshTimer: number | undefined;
@@ -186,6 +228,7 @@ function toggleFullscreen() {
 }
 
 onMounted(() => {
+  connectSocket();
   loadData();
   updateTime();
   timeTimer = window.setInterval(updateTime, 1000);
@@ -193,6 +236,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  disconnectSocket();
   if (timeTimer) clearInterval(timeTimer);
   if (refreshTimer) clearInterval(refreshTimer);
 });
