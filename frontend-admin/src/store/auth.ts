@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import http from '@/utils/http';
 
 interface AdminUser {
@@ -15,6 +15,8 @@ export const useAdminAuthStore = defineStore('adminAuth', () => {
   const user = ref<AdminUser | null>(
     JSON.parse(localStorage.getItem('admin_user') || 'null'),
   );
+
+  const isAuthenticated = computed(() => !!token.value);
 
   async function login(username: string, password: string): Promise<{ passwordChangeRequired: boolean }> {
     const data = await http.post('/auth/login', { username, password });
@@ -46,5 +48,5 @@ export const useAdminAuthStore = defineStore('adminAuth', () => {
     localStorage.removeItem('admin_user');
   }
 
-  return { token, user, login, changePassword, logout };
+  return { token, user, isAuthenticated, login, changePassword, logout };
 });
