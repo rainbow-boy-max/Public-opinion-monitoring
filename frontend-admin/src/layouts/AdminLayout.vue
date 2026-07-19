@@ -149,6 +149,11 @@ const menuItems: MenuItem[] = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>',
   },
   {
+    path: '/monitor-tasks',
+    label: '监控任务',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>',
+  },
+  {
     path: '/work-orders',
     label: '工单管理',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 14l2 2 4-4"></path></svg>',
@@ -286,6 +291,7 @@ const isCollapsed = ref(false);
 
 const META: Record<string, { title: string; subtitle: string }> = {
   '/dashboard': { title: '概览', subtitle: '系统关键指标与状态' },
+  '/monitor-tasks': { title: '监控任务', subtitle: '查看和管理所有监控任务' },
   '/users': { title: '用户管理', subtitle: '注册用户与权限控制' },
   '/agents': { title: 'AI 智能体', subtitle: '自定义 AI 智能体与知识库' },
   '/agent-templates': { title: 'AI 智能体模板市场', subtitle: '预置模板，一键部署' },

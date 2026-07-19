@@ -23,6 +23,10 @@ const router = createRouter({
           component: () => import('@/pages/DashboardPage.vue'),
         },
         {
+          path: 'monitor-tasks',
+          component: () => import('@/pages/MonitorTasksPage.vue'),
+        },
+        {
           path: 'users',
           component: () => import('@/pages/UserManagementPage.vue'),
         },
