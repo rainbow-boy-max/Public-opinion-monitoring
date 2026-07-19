@@ -15,6 +15,7 @@ import { AgentEntity, LlmModelEntity, AgentKbFileEntity, AgentKbChunkEntity, PrR
 import { KnowledgeBaseEntity, KnowledgeBaseFileEntity, KnowledgeBaseChunkEntity, AgentKnowledgeBindingEntity } from './entities/knowledge-base.entity';
 import { WorkOrderEntity } from './entities/work-order.entity';
 import { WorkOrderCommentEntity } from './entities/work-order-comment.entity';
+import { OcrConfigEntity } from './entities/ocr-config.entity';
 
 const entities = [
   UserEntity,
@@ -40,6 +41,7 @@ const entities = [
   AgentKnowledgeBindingEntity,
   WorkOrderEntity,
   WorkOrderCommentEntity,
+  OcrConfigEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();
