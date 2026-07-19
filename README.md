@@ -307,6 +307,11 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ## 更新日志
 
+### 2026-07-19 — Phase 2：值班面板 WebSocket + 系统日志审计
+- **值班面板 WebSocket 完整实现**：后端新增 `DutyModule`，实现 Socket.IO Gateway 监听 `/duty` 命名空间，`DutyService` 聚合 24h 事件数、告警数、平台/情感分布，每 30 秒自动推送最新数据，提供 REST fallback `GET /duty/overview`
+- **系统日志审计上报**：后端新增 `POST /admin/audit-events/record` 端点支持前端操作上报，前端新增 `utils/audit.ts` 工具函数，审计失败静默处理不阻塞主流程
+- **data-source.ts 实体注册**：`OcrConfigEntity` 已添加到 TypeORM 数据源配置
+
 ### 2026-07-19 — Phase 1：核心功能整改（OCR 配置 + 强制改密）
 - **OCR 识别配置升级**：新增主备模型配置功能，支持选择主模型和最多 5 个备用模型，识别失败时自动切换，提升容错能力
   - 后端新增 `OcrConfigEntity` 实体存储配置
