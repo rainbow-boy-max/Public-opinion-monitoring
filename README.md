@@ -307,6 +307,19 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ## 更新日志
 
+### 2026-07-19 — Phase 1：核心功能整改（OCR 配置 + 强制改密）
+- **OCR 识别配置升级**：新增主备模型配置功能，支持选择主模型和最多 5 个备用模型，识别失败时自动切换，提升容错能力
+  - 后端新增 `OcrConfigEntity` 实体存储配置
+  - `OcrService.recognizeImage()` 改为主备模型重试逻辑
+  - 前端 `OcrConfigPage` 新增主模型下拉框 + 备用模型多选（最多 5 个），带表单校验
+  - 配置持久化，刷新后保持
+- **强制改密流程完善**：使用初始密码（`admin/123456`）登录后，弹出不可关闭的强制改密对话框，改密前无法访问其他页面
+  - 登录成功检查 `passwordChangeRequired` 标记
+  - 弹出不可关闭的 `ElMessageBox`，只能点击「立即修改」
+  - 路由守卫拦截未改密用户，强制跳转 `/change-password`
+  - 改密成功后清除 `localStorage` 标记，恢复正常访问
+- **整改方案文档**：新增 `.monkeycode/整改方案-260719.md`，详细记录 8 个问题的根因分析、整改方案、实施计划与验收标准
+
 ### 2026-07-18 — 管理端 StatCard 统计卡显示修复
 - **工单管理页**：统计卡 props 与 `StatCard` 组件对齐，`title`/`color`/`icon="clock"` 改为 `label`/`icon-bg` + emoji 图标，修复红框内显示为 `clock 0` / `search1` 等文字的问题
 - **电商监测配置页**：同样修正 `StatCard` 的 `title`/`color` 误用，统一为 `label` + emoji + 渐变 `icon-bg`
@@ -367,4 +380,4 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ---
 
-*README 最后更新: 2026-07-18*
+*README 最后更新: 2026-07-19*

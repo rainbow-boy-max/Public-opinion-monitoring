@@ -1,12 +1,41 @@
 <template>
   <div class="config-page">
-    <GlassCard title="视觉模型状态" icon="👁️" subtitle="已启用且支持视觉能力的 LLM 模型">
+    <GlassCard title="OCR 识别配置" icon="👁️" subtitle="配置主模型和备用模型，失败时自动切换">
       <div v-if="loading" v-loading="true" style="min-height: 100px" />
       <div v-else>
         <div v-if="visionModels.length === 0" class="empty-state">
           暂无可用视觉模型，请在 LLM 模型管理中配置并启用支持视觉的模型（如 GPT-4o、Qwen-VL 等）
         </div>
-        <el-table v-else :data="visionModels" stripe>
+        <el-form v-else :model="configForm" label-width="120px" style="max-width: 700px">
+          <el-form-item label="主模型" required>
+            <el-select v-model="configForm.primaryModelId" placeholder="选择主模型" style="width: 100%">
+              <el-option v-for="m in visionModels" :key="m.id" :label="`${m.displayName} (${m.provider})`" :value="m.id" />
+            </el-select>
+            <div class="form-tip">主模型优先使用，识别失败时自动切换到备用模型</div>
+          </el-form-item>
+          
+          <el-form-item label="备用模型">
+            <el-select v-model="configForm.backupModelIds" multiple placeholder="选择备用模型（最多 5 个）" style="width: 100%">
+              <el-option 
+                v-for="m in availableBackupModels" 
+                :key="m.id" 
+                :label="`${m.displayName} (${m.provider})`" 
+                :value="m.id" 
+              />
+            </el-select>
+            <div class="form-tip">主模型失败后按顺序尝试备用模型，最多配置 5 个</div>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" :loading="saving" @click="onSaveConfig" :disabled="!configForm.primaryModelId">保存配置</el-button>
+          </el-form-item>
+        </el-form>
+
+        <el-divider />
+
+        <div class="model-list-title">可用视觉模型列表</div>
+        <el-table :data="visionModels" stripe>
+          <el-table-column prop="id" label="ID" width="70" />
           <el-table-column prop="provider" label="供应商" width="120" />
           <el-table-column prop="model" label="模型" width="200" />
           <el-table-column prop="displayName" label="显示名称" />
@@ -44,13 +73,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { ElMessage } from 'element-plus';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 
+interface VisionModel {
+  id: number;
+  displayName: string;
+  provider: string;
+  model: string;
+}
+
 const loading = ref(false);
-const visionModels = ref<any[]>([]);
+const saving = ref(false);
+const visionModels = ref<VisionModel[]>([]);
+const configForm = ref({
+  primaryModelId: null as number | null,
+  backupModelIds: [] as number[],
+});
+
+const availableBackupModels = computed(() => {
+  return visionModels.value.filter(m => m.id !== configForm.value.primaryModelId);
+});
+
 const imageUrl = ref('');
 const imageLoading = ref(false);
 const imageResult = ref('');
@@ -60,12 +106,45 @@ const videoLoading = ref(false);
 const videoResult = ref<{ text: string; frames: any[] } | null>(null);
 
 onMounted(async () => {
+  await loadConfig();
+});
+
+async function loadConfig() {
   loading.value = true;
   try {
     const res = await http.get('/ocr/config');
     visionModels.value = res.visionModels || [];
-  } catch { /* ignore */ } finally { loading.value = false; }
-});
+    configForm.value.primaryModelId = res.primaryModelId;
+    configForm.value.backupModelIds = res.backupModelIds || [];
+  } catch (err: any) {
+    ElMessage.error(err?.message || '加载配置失败');
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function onSaveConfig() {
+  if (!configForm.value.primaryModelId) {
+    ElMessage.warning('请选择主模型');
+    return;
+  }
+  if (configForm.value.backupModelIds.length > 5) {
+    ElMessage.warning('备用模型最多 5 个');
+    return;
+  }
+  saving.value = true;
+  try {
+    await http.post('/ocr/config', {
+      primaryModelId: configForm.value.primaryModelId,
+      backupModelIds: configForm.value.backupModelIds,
+    });
+    ElMessage.success('OCR 配置保存成功');
+  } catch (err: any) {
+    ElMessage.error(err?.message || '保存失败');
+  } finally {
+    saving.value = false;
+  }
+}
 
 async function onRecognizeImage(): Promise<void> {
   if (!imageUrl.value) { ElMessage.warning('请输入图片 URL'); return; }
@@ -94,4 +173,6 @@ async function onRecognizeVideo(): Promise<void> {
 .result-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-secondary); }
 .result-text { white-space: pre-wrap; word-break: break-all; font-size: 13px; line-height: 1.6; color: var(--text-primary); margin: 0; font-family: inherit; }
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-tertiary); font-size: 14px; }
+.form-tip { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+.model-list-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-secondary); }
 </style>

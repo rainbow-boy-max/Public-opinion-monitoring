@@ -75,6 +75,7 @@ async function onSubmit(): Promise<void> {
     loading.value = true;
     try {
       await auth.changePassword(form.oldPassword, form.newPassword);
+      localStorage.removeItem('forceChangePassword');
       ElMessage.success('密码修改成功');
       router.push('/dashboard');
     } catch (err: any) {

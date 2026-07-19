@@ -120,7 +120,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage, type FormInstance } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus';
 import { useAdminAuthStore } from '@/store/auth';
 
 const router = useRouter();
@@ -151,11 +151,19 @@ async function onLogin(): Promise<void> {
     try {
       const result = await auth.login(form.username, form.password);
       if (result.passwordChangeRequired) {
-        ElMessage.warning({
-          message: '首次登录需要修改默认密码 / First login requires password change',
-          duration: 5000,
-        });
-        router.push('/change-password');
+        await ElMessageBox.alert(
+          '检测到您使用的是初始密码，为保障账号安全，请立即修改密码。',
+          '强制改密',
+          {
+            confirmButtonText: '立即修改',
+            showClose: false,
+            closeOnClickModal: false,
+            closeOnPressEscape: false,
+            type: 'warning',
+          }
+        );
+        localStorage.setItem('forceChangePassword', '1');
+        router.push('/change-password?force=1');
       } else {
         ElMessage.success('登录成功 / Login successful');
         router.push('/dashboard');

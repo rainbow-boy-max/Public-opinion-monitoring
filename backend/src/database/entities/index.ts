@@ -70,3 +70,4 @@ export { ReportTemplateEntity, type TemplateType } from './report-template.entit
 export { EcommerceConfigEntity } from './ecommerce-config.entity';
 export { ApiKeyEntity } from './api-key.entity';
 export { ApiUsageLogEntity } from './api-usage.entity';
+export { OcrConfigEntity } from './ocr-config.entity';

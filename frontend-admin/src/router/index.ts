@@ -186,18 +186,22 @@ const router = createRouter({
 
 router.beforeEach((to, _from, next) => {
   const auth = useAdminAuthStore();
-  if (to.meta.public) {
-    next();
-    return;
+
+  // 强制改密守卫：已登录且有强制改密标记，拦截所有非改密页跳转
+  if (auth.isAuthenticated && localStorage.getItem('forceChangePassword') === '1') {
+    if (to.path !== '/change-password') {
+      return next('/change-password?force=1');
+    }
   }
-  if (!auth.token) {
-    next('/login');
-    return;
+
+  if (to.meta.public || to.meta.requiresPasswordChange) {
+    return next();
   }
-  if (auth.user?.firstLogin && to.path !== '/change-password') {
-    next('/change-password');
-    return;
+  
+  if (!auth.isAuthenticated) {
+    return next('/login');
   }
+  
   next();
 });
 
