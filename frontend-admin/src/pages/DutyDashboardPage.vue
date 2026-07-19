@@ -4,15 +4,17 @@
       <div class="duty-topbar__left">
         <div class="duty-topbar__title">舆情值班面板</div>
         <div class="duty-topbar__time">{{ currentTime }}</div>
-        <el-tag :type="wsConnected ? 'success' : 'danger'" size="small">
-          {{ wsConnected ? '实时' : '离线' }}
+        <el-tag :type="wsConnected ? 'success' : reconnectAttempts >= 3 ? 'danger' : 'warning'" size="small">
+          {{ wsConnected ? '实时' : reconnectAttempts >= 3 ? '重连失败' : '离线' }}
         </el-tag>
-        <el-tooltip v-if="!wsConnected" content="点击重新连接" placement="bottom">
-          <el-button size="small" type="warning" :icon="Refresh" @click="reconnect" :loading="reconnecting">重新连接</el-button>
+        <el-tooltip v-if="!wsConnected" :content="reconnectAttempts >= 3 ? '连接失败，请检查服务或点击重试' : '5 秒后自动重连'" placement="bottom">
+          <el-button size="small" :type="reconnectAttempts >= 3 ? 'danger' : 'warning'" :icon="Refresh" @click="reconnect" :loading="reconnecting">重新连接</el-button>
         </el-tooltip>
       </div>
       <div class="duty-topbar__actions">
-        <el-tag v-if="!wsConnected" type="warning" size="small">数据可能不是最新的，点击「重新连接」恢复实时更新</el-tag>
+        <el-tag v-if="!wsConnected" :type="reconnectAttempts >= 3 ? 'danger' : 'warning'" size="small">
+          {{ reconnectAttempts >= 3 ? '值班面板服务未连接，请检查后端服务' : '离线 · 5 秒后自动重连' }}
+        </el-tag>
         <span class="duty-topbar__refresh" @click="loadData">{{ overview?.totalEvents ?? '—' }} 事件</span>
         <el-button size="small" :icon="FullScreen" text @click="toggleFullscreen">
           {{ isFullscreen ? '退出全屏' : '全屏' }}
@@ -135,6 +137,7 @@ const currentTime = ref('');
 const isFullscreen = ref(false);
 const wsConnected = ref(false);
 const reconnecting = ref(false);
+const reconnectAttempts = ref(0);
 const latestEventTime = computed(() => {
   if (overview.value.latestEvents.length > 0) {
     const evt = overview.value.latestEvents[0];
@@ -150,13 +153,14 @@ const feedRef = ref<HTMLElement>();
 
 function connectSocket() {
   if (socket?.connected) return;
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
   const host = window.location.host;
-  const token = localStorage.getItem('user_token') || '';
+  const token = localStorage.getItem('admin_token') || '';
 
-  socket = socketIO(`${protocol}//${host}`, {
+  socket = socketIO(`${protocol}//${host}/duty`, {
     path: '/socket.io',
     auth: { token },
+    withCredentials: true,
     reconnection: true,
     reconnectionAttempts: 10,
     reconnectionDelay: 3000,
@@ -166,6 +170,13 @@ function connectSocket() {
   socket.on('connect', () => {
     wsConnected.value = true;
     reconnecting.value = false;
+    reconnectAttempts.value = 0;
+    socket.emit('join');
+    loadData();
+  });
+
+  socket.on('overview', (data: DutyOverview) => {
+    overview.value = data;
   });
 
   socket.on('disconnect', () => {
@@ -174,6 +185,7 @@ function connectSocket() {
 
   socket.on('connect_error', () => {
     wsConnected.value = false;
+    reconnectAttempts.value += 1;
   });
 }
 
@@ -187,12 +199,14 @@ function disconnectSocket() {
 
 function reconnect() {
   reconnecting.value = true;
+  reconnectAttempts.value = 0;
   disconnectSocket();
   connectSocket();
-  // Also reload data immediately
   loadData();
-  // Reset reconnecting state after timeout
-  setTimeout(() => { reconnecting.value = false; }, 5000);
+  window.setTimeout(() => {
+    reconnecting.value = false;
+    if (!wsConnected.value) reconnectAttempts.value = Math.max(reconnectAttempts.value, 3);
+  }, 5000);
 }
 
 async function loadData() {

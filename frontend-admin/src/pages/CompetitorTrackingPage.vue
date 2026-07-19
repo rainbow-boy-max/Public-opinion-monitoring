@@ -16,6 +16,8 @@
           <el-radio-button value="7d">7天</el-radio-button>
           <el-radio-button value="30d">30天</el-radio-button>
         </el-radio-group>
+        <el-button size="small" :loading="loadingComparison" @click="loadComparison">刷新数据</el-button>
+        <span v-if="lastUpdated" class="last-updated">最近更新于 {{ lastUpdated }}</span>
         <el-button size="small" @click="exportJson">导出JSON</el-button>
       </div>
     </div>
@@ -24,7 +26,7 @@
       <GlassCard>
         <el-empty description="请选择一个竞品组查看对比数据">
           <el-button v-if="!loadingGroups && groups.length === 0" type="primary" @click="openCreateGroup">创建竞品组</el-button>
-          <el-button v-else-if="demoAvailable" type="primary" @click="loadDemo">加载示例数据</el-button>
+           <el-button v-else-if="selectedGroupId" type="primary" @click="loadComparison">刷新数据</el-button>
         </el-empty>
       </GlassCard>
     </div>
@@ -176,6 +178,8 @@ interface ComparisonResponse {
 const selectedGroupId = ref<number | null>(null);
 const timeRange = ref<'24h' | '7d' | '30d'>('7d');
 const loadingGroups = ref(false);
+const loadingComparison = ref(false);
+const lastUpdated = ref('');
 const groups = ref<CompetitorGroup[]>([]);
 const comparisonData = ref<ComparisonResponse>({ competitors: [], keywords: [], hourlyTrend: [] });
 const groupDialogVisible = ref(false);
@@ -197,8 +201,6 @@ let radarChart: echarts.ECharts | null = null;
 let hourlyTrendChart: echarts.ECharts | null = null;
 
 const hasData = computed(() => comparisonData.value.competitors.length > 0);
-const demoAvailable = ref(true);
-
 const selectedGroup = computed(() => groups.value.find(g => g.id === selectedGroupId.value) || null);
 
 const maxShareOfVoice = computed(() => {
@@ -300,9 +302,11 @@ async function loadGroups() {
 
 async function loadComparison() {
   if (!selectedGroupId.value) return;
+  loadingComparison.value = true;
   try {
+    const hours = timeRange.value === '30d' ? 720 : timeRange.value === '7d' ? 168 : 24;
     const data = await http.get(`/competitor/groups/${selectedGroupId.value}/comparison`, {
-      params: { timeRange: timeRange.value },
+      params: { hours },
     });
     const raw = data as any;
     comparisonData.value = {
@@ -322,18 +326,15 @@ async function loadComparison() {
       keywords: raw.keywords || [],
       hourlyTrend: raw.hourlyTrend || [],
     };
+    lastUpdated.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
     await nextTick();
     initCharts();
-  } catch {
+  } catch (err: any) {
     comparisonData.value = { competitors: [], keywords: [], hourlyTrend: [] };
+    ElMessage.error(err?.message || '真实数据加载失败，请重试');
+  } finally {
+    loadingComparison.value = false;
   }
-}
-
-async function loadDemo() {
-  comparisonData.value = getMockData();
-  demoAvailable.value = true;
-  await nextTick();
-  initCharts();
 }
 
 async function saveGroup() {
@@ -478,95 +479,6 @@ function drawHourlyTrend() {
   });
 }
 
-function getMockData(): ComparisonResponse {
-  return {
-    competitors: [
-      {
-        id: 1, name: '竞品A', totalMentions: 15230, sentimentScore: 6.8, shareOfVoice: 0.35,
-        totalEngagement: 45600, avgEngagement: 125.4,
-        topKeywords: [{ keyword: '新品发布', count: 342 }, { keyword: '用户体验', count: 189 }],
-        hourlyTrend: [120, 95, 78, 45, 32, 28, 56, 89, 145, 230, 320, 410, 380, 350, 420, 510, 580, 620, 550, 480, 390, 310, 240, 180],
-        bySentiment: { positive: 8230, negative: 2800, neutral: 4200 },
-        byPlatform: { weibo: 5200, weixin: 3800, douyin: 3100, xiaohongshu: 1800, kuaishou: 830, baijiahao: 500 },
-      },
-      {
-        id: 2, name: '竞品B', totalMentions: 9840, sentimentScore: 7.2, shareOfVoice: 0.28,
-        totalEngagement: 29500, avgEngagement: 98.7,
-        topKeywords: [{ keyword: '技术创新', count: 256 }, { keyword: '品牌升级', count: 156 }],
-        hourlyTrend: [80, 62, 45, 28, 20, 18, 35, 58, 95, 150, 210, 280, 260, 230, 280, 340, 380, 410, 360, 320, 260, 200, 160, 120],
-        bySentiment: { positive: 6200, negative: 1240, neutral: 2400 },
-        byPlatform: { weibo: 3200, weixin: 2600, douyin: 2100, xiaohongshu: 1200, kuaishou: 540, baijiahao: 200 },
-      },
-      {
-        id: 3, name: '竞品C', totalMentions: 7210, sentimentScore: 5.4, shareOfVoice: 0.20,
-        totalEngagement: 21600, avgEngagement: 72.5,
-        topKeywords: [{ keyword: '价格战', count: 198 }, { keyword: '营销活动', count: 142 }],
-        hourlyTrend: [55, 42, 30, 18, 12, 10, 22, 38, 62, 98, 140, 180, 170, 150, 180, 220, 250, 270, 240, 210, 170, 130, 100, 75],
-        bySentiment: { positive: 3100, negative: 2100, neutral: 2010 },
-        byPlatform: { weibo: 2400, weixin: 1800, douyin: 1500, xiaohongshu: 800, kuaishou: 410, baijiahao: 300 },
-      },
-      {
-        id: 4, name: '竞品D', totalMentions: 4350, sentimentScore: 8.1, shareOfVoice: 0.17,
-        totalEngagement: 13000, avgEngagement: 45.2,
-        topKeywords: [{ keyword: '用户口碑', count: 168 }, { keyword: '创新设计', count: 112 }],
-        hourlyTrend: [32, 25, 18, 10, 8, 6, 14, 24, 40, 62, 88, 115, 108, 92, 110, 135, 155, 168, 145, 128, 105, 82, 62, 45],
-        bySentiment: { positive: 3100, negative: 400, neutral: 850 },
-        byPlatform: { weibo: 1400, weixin: 1200, douyin: 900, xiaohongshu: 500, kuaishou: 250, baijiahao: 100 },
-      },
-    ],
-    keywords: [
-      {
-        competitor: '竞品A',
-        keywords: [
-          { keyword: '新品发布', count: 342, sentiment: 'positive' },
-          { keyword: '质量问题', count: 215, sentiment: 'negative' },
-          { keyword: '用户体验', count: 189, sentiment: 'positive' },
-          { keyword: '价格调整', count: 156, sentiment: 'neutral' },
-          { keyword: '市场份额', count: 134, sentiment: 'positive' },
-        ],
-      },
-      {
-        competitor: '竞品B',
-        keywords: [
-          { keyword: '融资消息', count: 278, sentiment: 'positive' },
-          { keyword: '战略合作', count: 234, sentiment: 'positive' },
-          { keyword: '产品迭代', count: 198, sentiment: 'neutral' },
-          { keyword: '用户增长', count: 167, sentiment: 'positive' },
-          { keyword: '裁员', count: 89, sentiment: 'negative' },
-        ],
-      },
-      {
-        competitor: '竞品C',
-        keywords: [
-          { keyword: '投诉', count: 312, sentiment: 'negative' },
-          { keyword: '退款', count: 245, sentiment: 'negative' },
-          { keyword: '客服响应', count: 178, sentiment: 'neutral' },
-          { keyword: '物流延迟', count: 156, sentiment: 'negative' },
-          { keyword: '改进方案', count: 98, sentiment: 'positive' },
-        ],
-      },
-      {
-        competitor: '竞品D',
-        keywords: [
-          { keyword: '创新技术', count: 198, sentiment: 'positive' },
-          { keyword: '行业奖项', count: 167, sentiment: 'positive' },
-          { keyword: '用户好评', count: 145, sentiment: 'positive' },
-          { keyword: '增长策略', count: 112, sentiment: 'neutral' },
-          { keyword: '合作伙伴', count: 89, sentiment: 'positive' },
-        ],
-      },
-    ],
-    hourlyTrend: Array.from({ length: 24 }, (_, i) => {
-      const hour = `${String(i).padStart(2, '0')}:00`;
-      const base = { hour };
-      ['竞品A', '竞品B', '竞品C', '竞品D'].forEach((name, j) => {
-        (base as any)[name] = Math.round(Math.random() * 150 + (j + 1) * 50 + Math.sin(i / 6 * Math.PI) * 30);
-      });
-      return base;
-    }) as any,
-  };
-}
-
 const onResize = () => {
   groupedBarChart?.resize();
   sentimentStackedChart?.resize();
@@ -576,7 +488,9 @@ const onResize = () => {
 
 onMounted(async () => {
   await loadGroups();
-  if (!hasData.value) loadDemo();
+  if (!hasData.value && groups.value.length === 0) {
+    lastUpdated.value = '';
+  }
   window.addEventListener('resize', onResize);
 });
 </script>

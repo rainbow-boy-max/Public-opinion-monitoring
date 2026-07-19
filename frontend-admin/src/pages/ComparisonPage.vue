@@ -84,9 +84,7 @@
     </template>
 
     <div v-if="!hasResult && !loading" class="empty-hint">
-      <el-empty description="配置对比条件后点击「开始对比」">
-        <el-button type="primary" @click="loadMock">加载示例数据</el-button>
-      </el-empty>
+      <el-empty description="配置对比条件后点击「开始对比」" />
     </div>
   </div>
 </template>
@@ -216,22 +214,6 @@ async function runComparison(): Promise<void> {
   }
 }
 
-async function loadMock(): Promise<void> {
-  loading.value = true;
-  try {
-    const data = await http.post('/comparison/analyze?mock=true', buildPayload()) as ComparisonResult;
-    result.value = data;
-    await nextTick();
-    initCharts();
-  } catch {
-    result.value = getMockResult();
-    await nextTick();
-    initCharts();
-  } finally {
-    loading.value = false;
-  }
-}
-
 function exportJson(): void {
   const data = JSON.stringify(result.value, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
@@ -347,60 +329,6 @@ function drawRadar(): void {
       })),
     }],
   });
-}
-
-function getMockResult(): ComparisonResult {
-  const now = Date.now();
-  const day = 86400000;
-  const trend = (base: number, peak: number) =>
-    Array.from({ length: 7 }, (_, i) => ({
-      time: new Date(now - (6 - i) * day).toISOString().slice(0, 10),
-      count: Math.round(base + Math.random() * peak + i * 15),
-    }));
-  return {
-    groups: [
-      {
-        label: '品牌A', keywords: ['品牌A'],
-        stats: {
-          total: 2847, bySentiment: { positive: 1203, negative: 856, neutral: 788 },
-          byPlatform: { weibo: 980, weixin: 654, douyin: 523, xiaohongshu: 412, baijiahao: 278 },
-          trend: trend(100, 200), avgEngagement: 102,
-          topArticles: [
-            { title: '品牌A新品发布引发行业热议', platform: 'weibo', url: '#', engagement: 45200 },
-            { title: '品牌A用户体验深度评测报告', platform: 'weixin', url: '#', engagement: 32100 },
-            { title: '品牌A价格策略调整引争议', platform: 'douyin', url: '#', engagement: 28700 },
-          ],
-        },
-      },
-      {
-        label: '品牌B', keywords: ['品牌B'],
-        stats: {
-          total: 2135, bySentiment: { positive: 356, negative: 1120, neutral: 659 },
-          byPlatform: { weibo: 756, weixin: 432, douyin: 389, xiaohongshu: 298, baijiahao: 260 },
-          trend: trend(50, 150), avgEngagement: 214,
-          topArticles: [
-            { title: '品牌B产品质量问题引广泛关注', platform: 'weibo', url: '#', engagement: 67800 },
-            { title: '品牌B售后体验遭大量投诉', platform: 'xiaohongshu', url: '#', engagement: 42300 },
-            { title: '品牌B接受市场监管调查', platform: 'baijiahao', url: '#', engagement: 21500 },
-          ],
-        },
-      },
-      {
-        label: '品牌C', keywords: ['品牌C'],
-        stats: {
-          total: 1689, bySentiment: { positive: 987, negative: 234, neutral: 468 },
-          byPlatform: { weibo: 456, weixin: 523, douyin: 298, xiaohongshu: 234, baijiahao: 178 },
-          trend: trend(80, 180), avgEngagement: 73,
-          topArticles: [
-            { title: '品牌C创新设计荣获国际大奖', platform: 'weixin', url: '#', engagement: 18900 },
-            { title: '品牌C环保理念赢得用户好评', platform: 'weibo', url: '#', engagement: 15600 },
-            { title: '品牌C发布全新品牌升级战略', platform: 'baijiahao', url: '#', engagement: 12300 },
-          ],
-        },
-      },
-    ],
-    period: { start: new Date(now - 6 * day).toISOString().slice(0, 10), end: new Date(now).toISOString().slice(0, 10) },
-  };
 }
 
 const onResize = () => {

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import { OpinionEventEntity, CompetitorGroupEntity } from '../../database/entities';
 
 export interface BrandReputationData {
@@ -41,85 +41,13 @@ export class BrandReputationService {
   async getReputation(
     userId: number,
     brandKeywords: string[],
-    options?: { days?: number },
-  ): Promise<BrandReputationData> {
-    const days = options?.days || 30;
-    const end = new Date();
-    const start = new Date(end.getTime() - days * 86400000);
-
-    const allEvents = await this.eventRepo.find({
-      where: { matchedAt: Between(start, end) },
-      order: { matchedAt: 'ASC' },
-    });
-
-    const brandEvents = allEvents.filter((e) => {
-      if (!e.matchedKeywords) return false;
-      return brandKeywords.some((kw) =>
-        e.matchedKeywords.some((mk: string) =>
-          mk.toLowerCase().includes(kw.toLowerCase()),
-        ),
-      );
-    });
-
-    const totalBrand = brandEvents.length;
-    const totalAll = allEvents.length;
-    const shareOfVoice = totalAll > 0 ? Math.round((totalBrand / totalAll) * 100) : 0;
-
-    const bySentiment = { positive: 0, negative: 0, neutral: 0 };
-    let totalSentimentScore = 0;
-    brandEvents.forEach((e) => {
-      if (e.sentiment === 'positive') bySentiment.positive++;
-      else if (e.sentiment === 'negative') bySentiment.negative++;
-      else bySentiment.neutral++;
-      totalSentimentScore += e.sentimentScore ?? 0;
-    });
-
-    const npsScore = totalBrand > 0
-      ? Math.round(((bySentiment.positive - bySentiment.negative) / totalBrand) * 100)
-      : 0;
-
-    const avgSentimentScore = totalBrand > 0
-      ? Math.round((totalSentimentScore / totalBrand) * 100) / 100
-      : 0;
-
-    const trend = this.calcTrend(npsScore);
-
-    const sentimentTrend = this.buildSentimentTrend(brandEvents, start, end);
-
-    const platformBreakdown = this.buildPlatformBreakdown(brandEvents);
-
-    const topKeywords = this.buildTopKeywords(brandEvents, totalBrand);
-
-    const competitorComparison = await this.buildCompetitorComparison(
-      userId, brandKeywords, brandEvents, allEvents, start, end,
-    );
-
-    const recentMentions = brandEvents
-      .sort((a, b) => b.matchedAt.getTime() - a.matchedAt.getTime())
-      .slice(0, 20)
-      .map((e) => ({
-        id: e.id,
-        title: e.title,
-        platform: e.platform,
-        sentiment: e.sentiment,
-        engagement: (e.readCount || 0) + (e.likeCount || 0) + (e.commentCount || 0) + (e.shareCount || 0),
-        publishedAt: e.publishTime,
-        url: e.url,
-      }));
-
+    options: { days?: number } = {},
+  ): Promise<BrandReputationData & { dataSource: string; lastUpdated: string }> {
+    const data = await this.aggregateLiveReputation(userId, brandKeywords, options.days || 30);
     return {
-      overview: {
-        brandVoice: totalBrand,
-        shareOfVoice,
-        npsScore,
-        sentimentScore: avgSentimentScore,
-        trend,
-      },
-      sentimentTrend,
-      platformBreakdown,
-      topKeywords,
-      competitorComparison,
-      recentMentions,
+      dataSource: 'live',
+      lastUpdated: new Date().toISOString(),
+      ...data,
     };
   }
 
@@ -129,13 +57,124 @@ export class BrandReputationService {
     brandB: string[],
   ): Promise<{ brandA: BrandReputationData; brandB: BrandReputationData }> {
     const [a, b] = await Promise.all([
-      this.getReputation(userId, brandA),
-      this.getReputation(userId, brandB),
+      this.aggregateLiveReputation(userId, brandA),
+      this.aggregateLiveReputation(userId, brandB),
     ]);
     return { brandA: a, brandB: b };
   }
 
-  async getMockReputation(options?: { days?: number }): Promise<BrandReputationData> {
+  private async aggregateLiveReputation(
+    userId: number,
+    brandKeywords: string[],
+    days: number = 30,
+  ): Promise<BrandReputationData> {
+    if (!brandKeywords?.length) {
+      return this.emptyReputation();
+    }
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const events = await this.eventRepo.find({
+      where: { matchedAt: MoreThanOrEqual(since) },
+      order: { matchedAt: 'DESC' },
+      take: 10000,
+    });
+    const normalized = brandKeywords.map((k) => k.toLowerCase());
+    const matched = events.filter((e) => {
+      const title = (e.title || '').toLowerCase();
+      const content = (e.content || '').toLowerCase();
+      return normalized.some((k) => title.includes(k) || content.includes(k));
+    });
+    const total = matched.length;
+    if (total === 0) {
+      return this.emptyReputation();
+    }
+    let positive = 0, negative = 0;
+    const platformMap: Record<string, { mentions: number; sentiment: number }> = {};
+    const keywordMap: Record<string, { count: number; sentiment: number }> = {};
+    const dayMap: Record<string, { pos: number; neg: number; neu: number }> = {};
+    for (const e of matched) {
+      if (e.sentiment === 'positive') positive++;
+      else if (e.sentiment === 'negative') negative++;
+      else if (e.sentiment !== 'neutral') continue;
+      const platform = e.platform || 'unknown';
+      const item = platformMap[platform] || { mentions: 0, sentiment: 0 };
+      item.mentions++;
+      item.sentiment += e.sentiment === 'positive' ? 1 : e.sentiment === 'negative' ? -1 : 0;
+      platformMap[platform] = item;
+      const keywords = (e.matchedKeywords as string[]) || [];
+      for (const kw of keywords) {
+        const k = keywordMap[kw] || { count: 0, sentiment: 0 };
+        k.count++;
+        k.sentiment += e.sentiment === 'positive' ? 1 : e.sentiment === 'negative' ? -1 : 0;
+        keywordMap[kw] = k;
+      }
+      const day = new Date(e.matchedAt).toISOString().slice(0, 10);
+      const bucket = dayMap[day] || { pos: 0, neg: 0, neu: 0 };
+      if (e.sentiment === 'positive') bucket.pos++;
+      else if (e.sentiment === 'negative') bucket.neg++;
+      else bucket.neu++;
+      dayMap[day] = bucket;
+    }
+    const sentimentTrend = Object.entries(dayMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, b]) => ({
+        date,
+        positive: b.pos,
+        negative: b.neg,
+        neutral: b.neu,
+        nps: Math.round(((b.pos - b.neg) / Math.max(1, b.pos + b.neg + b.neu)) * 100),
+      }));
+    const platformBreakdown = Object.entries(platformMap)
+      .map(([platform, v]) => ({
+        platform,
+        mentions: v.mentions,
+        sentiment: v.mentions > 0 ? Math.round((v.sentiment / v.mentions) * 100) / 100 : 0,
+      }))
+      .sort((a, b) => b.mentions - a.mentions);
+    const topKeywords = Object.entries(keywordMap)
+      .map(([keyword, v]) => ({ keyword, count: v.count, sentiment: v.count > 0 ? Math.round((v.sentiment / v.count) * 100) / 100 : 0 }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+    const totalEvents = await this.eventRepo.count({ where: { matchedAt: MoreThanOrEqual(since) } });
+    const shareOfVoice = totalEvents > 0 ? Math.round((total / totalEvents) * 10000) / 100 : 0;
+    const npsScore = total > 0 ? Math.round(((positive - negative) / total) * 100) : 0;
+    const sentimentScore = total > 0 ? Math.round(((positive - negative) / total) * 100) / 100 : 0;
+    const trend: 'rising' | 'stable' | 'declining' = npsScore > 5 ? 'rising' : npsScore < -5 ? 'declining' : 'stable';
+    return {
+      overview: {
+        brandVoice: total,
+        shareOfVoice,
+        npsScore,
+        sentimentScore,
+        trend,
+      },
+      sentimentTrend,
+      platformBreakdown,
+      topKeywords,
+      competitorComparison: [],
+      recentMentions: matched.slice(0, 10).map((e) => ({
+        id: e.id,
+        title: e.title,
+        platform: e.platform,
+        sentiment: e.sentiment,
+        engagement: (e.likeCount || 0) + (e.commentCount || 0) + (e.shareCount || 0),
+        publishedAt: e.matchedAt,
+        url: '',
+      })),
+    };
+  }
+
+  private emptyReputation(): BrandReputationData {
+    return {
+      overview: { brandVoice: 0, shareOfVoice: 0, npsScore: 0, sentimentScore: 0, trend: 'stable' },
+      sentimentTrend: [],
+      platformBreakdown: [],
+      topKeywords: [],
+      competitorComparison: [],
+      recentMentions: [],
+    };
+  }
+
+  async getLegacyReputation(options?: { days?: number }): Promise<BrandReputationData> {
     const days = options?.days || 30;
     const now = Date.now();
     const day = 86400000;

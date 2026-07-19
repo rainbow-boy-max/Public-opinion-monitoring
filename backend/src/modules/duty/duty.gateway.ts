@@ -40,7 +40,10 @@ export class DutyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @Cron(CronExpression.EVERY_30_SECONDS)
   async broadcastOverview() {
     try {
-      const overview = await this.dutyService.getOverview();
+      const overview = {
+        ...(await this.dutyService.getOverview()),
+        timestamp: new Date().toISOString(),
+      };
       this.server.to('duty-room').emit('overview', overview);
     } catch (err) {
       this.logger.error(`Failed to broadcast overview: ${err}`);
@@ -49,7 +52,10 @@ export class DutyGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private async emitOverviewToClient(client: Socket) {
     try {
-      const overview = await this.dutyService.getOverview();
+      const overview = {
+        ...(await this.dutyService.getOverview()),
+        timestamp: new Date().toISOString(),
+      };
       client.emit('overview', overview);
     } catch (err) {
       this.logger.error(`Failed to emit overview to ${client.id}: ${err}`);

@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import {
   CompetitorGroupEntity,
   OpinionEventEntity,
@@ -32,6 +32,8 @@ export interface UpdateGroupDto {
 }
 
 export interface CompetitorComparison {
+  dataSource?: 'live';
+  lastUpdated?: string;
   period: string;
   competitors: Array<{
     name: string;
@@ -203,104 +205,15 @@ export class CompetitorService {
     const grandTotal = results.reduce((sum, r) => sum + r.stats.total, 0);
     results.forEach((r) => {
       r.stats.shareOfVoice = grandTotal > 0
-        ? Math.round((r.stats.total / grandTotal) * 100)
+        ? Math.round((r.stats.total / grandTotal) * 10000) / 100
         : 0;
     });
 
     return {
+      dataSource: 'live',
+      lastUpdated: new Date().toISOString(),
       period: `${hours}h`,
       competitors: results,
-    };
-  }
-
-  async getMockComparison(options?: { hours?: number }): Promise<CompetitorComparison> {
-    const hours = options?.hours || 24;
-    const mockCompetitors = [
-      {
-        name: '竞品A',
-        stats: {
-          total: 2847,
-          bySentiment: { positive: 1203, negative: 856, neutral: 788 },
-          byPlatform: { weibo: 980, weixin: 654, douyin: 523, xiaohongshu: 412, baijiahao: 278 },
-          totalEngagement: 289450,
-          avgEngagement: 102,
-          topKeywords: [
-            { keyword: '新品发布', count: 423 },
-            { keyword: '用户体验', count: 312 },
-            { keyword: '价格争议', count: 267 },
-            { keyword: '技术突破', count: 198 },
-            { keyword: '市场份额', count: 156 },
-          ],
-          hourlyTrend: [85, 72, 45, 32, 28, 35, 68, 120, 178, 195, 186, 165, 148, 152, 168, 185, 210, 225, 198, 165, 132, 110, 95, 80],
-          sentimentScore: 12,
-          shareOfVoice: 35,
-        },
-      },
-      {
-        name: '竞品B',
-        stats: {
-          total: 2135,
-          bySentiment: { positive: 356, negative: 1120, neutral: 659 },
-          byPlatform: { weibo: 756, weixin: 432, douyin: 389, xiaohongshu: 298, baijiahao: 260 },
-          totalEngagement: 456780,
-          avgEngagement: 214,
-          topKeywords: [
-            { keyword: '产品质量', count: 534 },
-            { keyword: '售后服务', count: 423 },
-            { keyword: '用户投诉', count: 389 },
-            { keyword: '监管调查', count: 245 },
-            { keyword: '股价下跌', count: 187 },
-          ],
-          hourlyTrend: [65, 55, 38, 25, 22, 30, 58, 98, 145, 168, 158, 140, 125, 130, 142, 160, 185, 195, 172, 148, 120, 98, 82, 70],
-          sentimentScore: -36,
-          shareOfVoice: 26,
-        },
-      },
-      {
-        name: '竞品C',
-        stats: {
-          total: 1689,
-          bySentiment: { positive: 987, negative: 234, neutral: 468 },
-          byPlatform: { weibo: 456, weixin: 523, douyin: 298, xiaohongshu: 234, baijiahao: 178 },
-          totalEngagement: 123400,
-          avgEngagement: 73,
-          topKeywords: [
-            { keyword: '创新设计', count: 378 },
-            { keyword: '行业奖项', count: 289 },
-            { keyword: '用户好评', count: 256 },
-            { keyword: '环保理念', count: 198 },
-            { keyword: '品牌升级', count: 145 },
-          ],
-          hourlyTrend: [45, 38, 25, 18, 15, 22, 42, 78, 112, 125, 118, 105, 95, 98, 108, 122, 138, 142, 128, 108, 88, 72, 58, 48],
-          sentimentScore: 45,
-          shareOfVoice: 21,
-        },
-      },
-      {
-        name: '竞品D',
-        stats: {
-          total: 1456,
-          bySentiment: { positive: 634, negative: 445, neutral: 377 },
-          byPlatform: { weibo: 534, weixin: 298, douyin: 234, xiaohongshu: 198, baijiahao: 192 },
-          totalEngagement: 198700,
-          avgEngagement: 137,
-          topKeywords: [
-            { keyword: '融资消息', count: 312 },
-            { keyword: '业务扩张', count: 256 },
-            { keyword: '人才招聘', count: 198 },
-            { keyword: '战略合作', count: 167 },
-            { keyword: '用户增长', count: 134 },
-          ],
-          hourlyTrend: [55, 42, 28, 20, 16, 25, 48, 85, 120, 138, 130, 115, 102, 108, 118, 135, 152, 158, 140, 118, 95, 78, 62, 52],
-          sentimentScore: 13,
-          shareOfVoice: 18,
-        },
-      },
-    ];
-
-    return {
-      period: `${hours}h`,
-      competitors: mockCompetitors,
     };
   }
 }

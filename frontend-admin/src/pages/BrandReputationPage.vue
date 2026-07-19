@@ -2,7 +2,8 @@
   <div class="brand-reputation-page">
     <GlassCard title="品牌声誉管理" subtitle="品牌声量 / NPS 趋势 / 竞品排名">
       <template #extra>
-        <el-button :loading="loading" type="primary" icon="TrendCharts" @click="analyze">分析</el-button>
+        <el-button :loading="loading" type="primary" @click="analyze">分析</el-button>
+        <span v-if="lastUpdated" class="last-updated">实时数据 · {{ lastUpdated }}</span>
         <el-dropdown v-if="hasData" @command="onExport">
           <el-button icon="Download">导出</el-button>
           <template #dropdown>
@@ -140,9 +141,7 @@
     </template>
 
     <div v-if="!hasData && !loading" class="empty-hint">
-      <el-empty description="输入品牌关键词后点击「分析」">
-        <el-button type="primary" @click="loadDemo">加载示例数据</el-button>
-      </el-empty>
+        <el-empty description="输入品牌关键词后点击「分析」获取真实舆情数据" />
     </div>
   </div>
 </template>
@@ -179,6 +178,7 @@ interface ReputationData {
 }
 
 const loading = ref(false);
+const lastUpdated = ref('');
 const data = ref<ReputationData | null>(null);
 const brandKeywords = ref<string[]>(['品牌A']);
 const timeRange = ref<string>('30');
@@ -267,30 +267,12 @@ async function analyze(): Promise<void> {
       days: Number(timeRange.value),
     }) as ReputationData;
     data.value = res;
+    lastUpdated.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
     await nextTick();
     initCharts();
-  } catch {
+  } catch (err: any) {
     data.value = null;
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function loadDemo(): Promise<void> {
-  loading.value = true;
-  try {
-    const res = await http.post('/brand-reputation?mock=true', {
-      brandKeywords: brandKeywords.value,
-      days: Number(timeRange.value),
-    }) as ReputationData;
-    data.value = res;
-    await nextTick();
-    initCharts();
-  } catch {
-    const mock = getMockData();
-    data.value = mock;
-    await nextTick();
-    initCharts();
+    ElMessage.error(err?.message || '真实数据加载失败，请重试');
   } finally {
     loading.value = false;
   }
@@ -459,70 +441,6 @@ onUnmounted(() => {
   window.removeEventListener('resize', onResize);
 });
 
-function getMockData(): ReputationData {
-  const now = Date.now();
-  const day = 86400000;
-  const days = Number(timeRange.value) || 30;
-  const sentimentTrend: ReputationData['sentimentTrend'] = [];
-  let cumPos = 0, cumNeg = 0, cumNeu = 0;
-  for (let i = 0; i < days; i++) {
-    const d = new Date(now - (days - 1 - i) * day);
-    const date = d.toISOString().slice(0, 10);
-    const pos = Math.round(80 + Math.random() * 120 + i * 2);
-    const neg = Math.round(30 + Math.random() * 60 - i * 0.5);
-    const neu = Math.round(40 + Math.random() * 80);
-    cumPos += pos; cumNeg += neg; cumNeu += neu;
-    const nps = Math.round(((pos - neg) / (pos + neg + neu)) * 100);
-    sentimentTrend.push({ date, positive: pos, negative: neg, neutral: neu, nps });
-  }
-  const totalBrand = cumPos + cumNeg + cumNeu;
-  return {
-    overview: {
-      brandVoice: totalBrand,
-      shareOfVoice: 42,
-      npsScore: Math.round(((cumPos - cumNeg) / totalBrand) * 100),
-      sentimentScore: Math.round(((cumPos * 0.6 + cumNeg * (-0.4)) / totalBrand) * 100) / 100,
-      trend: 'rising',
-    },
-    sentimentTrend,
-    platformBreakdown: [
-      { platform: 'weibo', mentions: 980, sentiment: 0.32 },
-      { platform: 'weixin', mentions: 654, sentiment: 0.45 },
-      { platform: 'douyin', mentions: 523, sentiment: -0.12 },
-      { platform: 'xiaohongshu', mentions: 412, sentiment: 0.28 },
-      { platform: 'kuaishou', mentions: 298, sentiment: 0.15 },
-      { platform: 'baijiahao', mentions: 278, sentiment: 0.52 },
-    ],
-    topKeywords: [
-      { keyword: '新品发布', count: 423, sentiment: 0.65 },
-      { keyword: '用户体验', count: 312, sentiment: 0.42 },
-      { keyword: '价格争议', count: 267, sentiment: -0.38 },
-      { keyword: '技术突破', count: 198, sentiment: 0.72 },
-      { keyword: '市场份额', count: 156, sentiment: 0.18 },
-      { keyword: '售后服务', count: 134, sentiment: -0.22 },
-      { keyword: '品牌升级', count: 112, sentiment: 0.55 },
-      { keyword: '用户好评', count: 98, sentiment: 0.81 },
-    ],
-    competitorComparison: [
-      { name: '竞品A', mentions: 2847, sentimentScore: 12, shareOfVoice: 35, trend: 'stable' },
-      { name: '竞品B', mentions: 2135, sentimentScore: -36, shareOfVoice: 26, trend: 'declining' },
-      { name: '竞品C', mentions: 1689, sentimentScore: 45, shareOfVoice: 21, trend: 'rising' },
-      { name: '竞品D', mentions: 1456, sentimentScore: 13, shareOfVoice: 18, trend: 'stable' },
-    ],
-    recentMentions: Array.from({ length: 10 }, (_, i) => ({
-      id: 10000 + i,
-      title: ['品牌A新品发布会引发行业热议', '品牌A用户体验深度评测报告', '品牌A价格策略调整引争议',
-        '品牌A荣获年度创新大奖', '品牌A公益项目获社会各界好评', '品牌A技术突破引领行业发展',
-        '品牌A用户满意度调查结果出炉', '品牌A与知名IP联名合作官宣', '品牌A海外市场拓展新进展',
-        '品牌A回应产品质量质疑'][i],
-      platform: ['weibo', 'weixin', 'douyin', 'xiaohongshu', 'baijiahao', 'weibo', 'kuaishou', 'weixin', 'douyin', 'xiaohongshu'][i],
-      sentiment: ['positive', 'neutral', 'negative', 'positive', 'positive', 'positive', 'neutral', 'positive', 'neutral', 'negative'][i],
-      engagement: [45200, 32100, 28700, 18900, 15600, 14200, 12800, 11500, 9800, 8700][i],
-      publishedAt: new Date(now - i * day * 0.5),
-      url: '#',
-    })),
-  };
-}
 </script>
 
 <style scoped>
@@ -617,6 +535,8 @@ function getMockData(): ReputationData {
 .mention-link:hover {
   text-decoration: underline;
 }
+
+.last-updated { color: var(--text-tertiary); font-size: 12px; margin-left: 12px; }
 
 .empty-hint {
   display: flex;

@@ -307,6 +307,13 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ## 更新日志
 
+### 2026-07-19 — 管理端实时数据整改第二轮
+- **竞品追踪**：统一前后端时间范围参数（24h/7d/30d → hours），移除示例数据入口，增加真实数据刷新、更新时间和错误提示
+- **品牌声誉**：分析结果接入 `opinion_events` 实时聚合，移除示例数据入口，增加实时更新时间和空态提示
+- **值班面板**：修复 Socket.IO namespace 与管理端 token 错配，连接 `/duty` namespace、加入 `duty-room`，增加 overview 实时订阅和重连状态提示
+- **对比分析**：移除前端示例数据回退，分析失败显示真实错误状态
+- 后端完成 TypeScript 类型检查与构建验证
+
 ### 2026-07-19 — Phase 2：值班面板 WebSocket + 系统日志审计
 - **值班面板 WebSocket 完整实现**：后端新增 `DutyModule`，实现 Socket.IO Gateway 监听 `/duty` 命名空间，`DutyService` 聚合 24h 事件数、告警数、平台/情感分布，每 30 秒自动推送最新数据，提供 REST fallback `GET /duty/overview`
 - **系统日志审计上报**：后端新增 `POST /admin/audit-events/record` 端点支持前端操作上报，前端新增 `utils/audit.ts` 工具函数，审计失败静默处理不阻塞主流程

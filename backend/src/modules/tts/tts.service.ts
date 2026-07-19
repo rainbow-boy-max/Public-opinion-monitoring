@@ -43,18 +43,9 @@ export class TtsService {
 
   updateProviderConfig(name: string, config: Record<string, string>): void {
     const provider = this.providers.get(name);
-    if (provider) {
-      provider.updateConfig(config);
-      this.saveConfigToDatabase();
-    }
-  }
-    this.activeProvider = name;
-  }
-
-  updateProviderConfig(name: string, config: Record<string, string>): void {
-    const provider = this.providers.get(name);
     if (!provider) throw new ServiceUnavailableException(`不支持的 TTS 供应商: ${name}`);
     provider.updateConfig(config);
+    void this.saveConfigToDatabase();
   }
 
   getProvider(name?: string): TtsProvider {

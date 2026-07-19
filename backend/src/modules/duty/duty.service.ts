@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
-import { OpinionEventEntity, AlertRuleEntity, MonitorTaskEntity } from '../../database/entities';
+import { OpinionEventEntity, AlertRuleEntity } from '../../database/entities';
 
 export interface DutyOverview {
   totalEvents: number;
@@ -45,10 +45,17 @@ export class DutyService {
 
     // 活跃告警数
     const activeAlerts = await this.alertRepo.find({
-      where: { isEnabled: 1 },
+      where: { status: 'active' as any },
     });
     const alertCount = activeAlerts.length;
-    const criticalAlerts = activeAlerts.filter(a => a.severity === 'critical').length;
+    const criticalAlerts = activeAlerts.filter(a => {
+      try {
+        const config = JSON.parse(a.conditionConfig || '{}');
+        return config.severity === 'critical';
+      } catch {
+        return false;
+      }
+    }).length;
 
     // 最新事件
     const latestEvents = await this.eventRepo.find({
