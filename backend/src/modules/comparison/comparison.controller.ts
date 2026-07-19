@@ -40,10 +40,7 @@ export class ComparisonController {
 
   @Post('analyze')
   @HttpCode(HttpStatus.OK)
-  async analyze(@Body() dto: ComparisonQueryDto, @Query('mock') mock?: string) {
-    if (mock === 'true') {
-      return this.service.getMockComparison();
-    }
+  async analyze(@Body() dto: ComparisonQueryDto) {
     return this.service.compare(dto as ComparisonQuery);
   }
 
