@@ -28,11 +28,7 @@ export class BrandReputationController {
   async getReputation(
     @CurrentUser('id') userId: number,
     @Body() body: ReputationQueryDto,
-    @Query('mock') mock?: string,
   ) {
-    if (mock === 'true') {
-      return this.service.getMockReputation({ days: body.days });
-    }
     return this.service.getReputation(userId, body.brandKeywords, { days: body.days });
   }
 
@@ -40,15 +36,7 @@ export class BrandReputationController {
   async compare(
     @CurrentUser('id') userId: number,
     @Body() body: CompareQueryDto,
-    @Query('mock') mock?: string,
   ) {
-    if (mock === 'true') {
-      const [a, b] = await Promise.all([
-        this.service.getMockReputation(),
-        this.service.getMockReputation(),
-      ]);
-      return { brandA: a, brandB: b };
-    }
     return this.service.getBrandComparison(userId, body.brandA, body.brandB);
   }
 }

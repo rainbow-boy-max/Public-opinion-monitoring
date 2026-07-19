@@ -122,11 +122,7 @@ export class CompetitorController {
     @CurrentUser('id') userId: number,
     @Param('id', ParseIntPipe) id: number,
     @Query('hours') hours?: number,
-    @Query('mock') mock?: string,
   ) {
-    if (mock === 'true') {
-      return this.service.getMockComparison({ hours });
-    }
     return this.service.getComparison(userId, id, { hours });
   }
 
