@@ -45,7 +45,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { KolModule } from './modules/kol/kol.module';
 import { OcrModule } from './modules/ocr/ocr.module';
 import { EcommerceModule } from './modules/ecommerce/ecommerce.module';
-import { DutyModule } from './modules/dashboard/duty.module';
+import { DutyModule } from './modules/duty/duty.module';
 import { ApiKeyModule } from './modules/api-key/api-key.module';
 import { ReportTemplatesModule } from './modules/report-templates/report-template.module';
 
