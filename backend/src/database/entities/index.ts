@@ -71,3 +71,4 @@ export { EcommerceConfigEntity } from './ecommerce-config.entity';
 export { ApiKeyEntity } from './api-key.entity';
 export { ApiUsageLogEntity } from './api-usage.entity';
 export { OcrConfigEntity } from './ocr-config.entity';
+export { TtsConfigEntity } from './tts-config.entity';

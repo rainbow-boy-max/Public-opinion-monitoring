@@ -16,6 +16,7 @@ import { KnowledgeBaseEntity, KnowledgeBaseFileEntity, KnowledgeBaseChunkEntity,
 import { WorkOrderEntity } from './entities/work-order.entity';
 import { WorkOrderCommentEntity } from './entities/work-order-comment.entity';
 import { OcrConfigEntity } from './entities/ocr-config.entity';
+import { TtsConfigEntity } from './entities/tts-config.entity';
 
 const entities = [
   UserEntity,
@@ -42,6 +43,7 @@ const entities = [
   WorkOrderEntity,
   WorkOrderCommentEntity,
   OcrConfigEntity,
+  TtsConfigEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();

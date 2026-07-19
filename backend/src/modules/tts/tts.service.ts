@@ -2,7 +2,8 @@ import { Injectable, Logger, NotFoundException, ServiceUnavailableException } fr
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PrReportEntity, PrReportStatus } from '../../database/entities';
+import { PrReportEntity, PrReportStatus, TtsConfigEntity } from '../../database/entities';
+import { CryptoUtil } from '../../utils/crypto.util';
 import { TtsProvider, TtsVoice, TtsSynthesizeOptions } from './tts-provider.interface';
 import { MiniMaxProvider } from './providers/minimax.provider';
 import { XiaomiProvider } from './providers/xiaomi.provider';
@@ -17,12 +18,13 @@ export class TtsService {
     private configService: ConfigService,
     @InjectRepository(PrReportEntity)
     private prRepo: Repository<PrReportEntity>,
-    minimax: MiniMaxProvider,
-    xiaomi: XiaomiProvider,
+    @InjectRepository(TtsConfigEntity)
+    private ttsConfigRepo: Repository<TtsConfigEntity>,
   ) {
-    this.providers.set('minimax', minimax);
-    this.providers.set('xiaomi', xiaomi);
-    this.activeProvider = this.configService.get<string>('TTS_PROVIDER', 'minimax');
+    this.providers.set('minimax', new MiniMaxProvider(configService));
+    this.providers.set('xiaomi', new XiaomiProvider(configService));
+    this.activeProvider = 'minimax';
+    this.loadConfigFromDatabase();
   }
 
   getProviders(): Array<{ name: string; displayName: string; active: boolean }> {
@@ -34,9 +36,18 @@ export class TtsService {
   }
 
   setActiveProvider(name: string): void {
-    if (!this.providers.has(name)) {
-      throw new ServiceUnavailableException(`不支持的 TTS 供应商: ${name}`);
+    if (!this.providers.has(name)) return;
+    this.activeProvider = name;
+    this.saveConfigToDatabase();
+  }
+
+  updateProviderConfig(name: string, config: Record<string, string>): void {
+    const provider = this.providers.get(name);
+    if (provider) {
+      provider.updateConfig(config);
+      this.saveConfigToDatabase();
     }
+  }
     this.activeProvider = name;
   }
 
@@ -89,5 +100,66 @@ export class TtsService {
       return provider ? provider.getVoices() : [];
     }
     return Array.from(this.providers.values()).flatMap(p => p.getVoices());
+  }
+
+  private async loadConfigFromDatabase(): Promise<void> {
+    try {
+      const config = await this.ttsConfigRepo.findOne({ where: { id: 1 } });
+      if (!config) return;
+
+      this.activeProvider = config.activeProvider || 'minimax';
+
+      if (config.minimaxApiKeyEnc) {
+        const minimax = this.providers.get('minimax');
+        if (minimax) {
+          minimax.updateConfig({
+            apiKey: CryptoUtil.decrypt(config.minimaxApiKeyEnc),
+            groupId: config.minimaxGroupId || '',
+          });
+        }
+      }
+
+      if (config.xiaomiApiKeyEnc) {
+        const xiaomi = this.providers.get('xiaomi');
+        if (xiaomi) {
+          xiaomi.updateConfig({
+            apiKey: CryptoUtil.decrypt(config.xiaomiApiKeyEnc),
+          });
+        }
+      }
+
+      this.logger.log('TTS config loaded from database');
+    } catch (err) {
+      this.logger.warn(`Failed to load TTS config: ${err}`);
+    }
+  }
+
+  async saveConfigToDatabase(): Promise<void> {
+    let config = await this.ttsConfigRepo.findOne({ where: { id: 1 } });
+    if (!config) {
+      config = this.ttsConfigRepo.create({ id: 1 });
+    }
+
+    config.activeProvider = this.activeProvider;
+
+    const minimax = this.providers.get('minimax');
+    if (minimax) {
+      const mmConfig = minimax['config'] || {};
+      if (mmConfig.apiKey) {
+        config.minimaxApiKeyEnc = CryptoUtil.encrypt(mmConfig.apiKey);
+      }
+      config.minimaxGroupId = mmConfig.groupId || null;
+    }
+
+    const xiaomi = this.providers.get('xiaomi');
+    if (xiaomi) {
+      const xmConfig = xiaomi['config'] || {};
+      if (xmConfig.apiKey) {
+        config.xiaomiApiKeyEnc = CryptoUtil.encrypt(xmConfig.apiKey);
+      }
+    }
+
+    await this.ttsConfigRepo.save(config);
+    this.logger.log('TTS config saved to database');
   }
 }
