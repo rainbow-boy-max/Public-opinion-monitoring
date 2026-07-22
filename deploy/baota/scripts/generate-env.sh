@@ -35,7 +35,7 @@ write_env() {
   local jwt_secret="$5"
   local aes_key="$6"
   local admin_password="$7"
-  
+
   cat > "$env_file" <<EOF
 # 全网舆情监测系统 - 运行时配置
 # 生成时间: $(date '+%Y-%m-%d %H:%M:%S')
@@ -75,7 +75,7 @@ TZ=Asia/Shanghai
 # 多租户支持（默认关闭）
 TENANT_ENABLED=false
 EOF
-  
+
   chmod 600 "$env_file"
   info ".env 已生成: $env_file (权限 600)"
 }
@@ -85,10 +85,10 @@ main() {
   local runtime_root="${1:-/www/server/opinion-monitor}"
   local compose_dir="$runtime_root/compose"
   local env_file="$compose_dir/.env"
-  
+
   # 创建目录
   mkdir -p "$compose_dir"
-  
+
   # 检查是否已存在配置
   if [[ -f "$env_file" ]]; then
     warn ".env 已存在: $env_file"
@@ -98,13 +98,13 @@ main() {
       info "跳过配置生成"
       return 0
     fi
-    
+
     # 备份旧配置
     local backup_file="${env_file}.bak.$(date +%s)"
     cp "$env_file" "$backup_file"
     info "已备份旧配置到: $backup_file"
   fi
-  
+
   # 生成密钥
   info "正在生成随机密钥..."
   local db_root_password=$(generate_password 32)
@@ -113,7 +113,7 @@ main() {
   local jwt_secret=$(generate_password 48)
   local aes_key=$(generate_aes_key)
   local admin_password=$(generate_password 16)
-  
+
   # 写入配置
   write_env "$env_file" \
     "$db_root_password" \
@@ -122,7 +122,7 @@ main() {
     "$jwt_secret" \
     "$aes_key" \
     "$admin_password"
-  
+
   # 输出初始管理员密码
   echo ""
   echo "========================================"

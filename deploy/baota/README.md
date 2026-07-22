@@ -28,6 +28,15 @@
 - 控制台新增「安装向导」：执行构建发布和首次初始化
 - `opinionctl` 新增 `release`、`bootstrap` 白名单命令
 
+## Phase 4 已交付
+
+- `scripts/backup-database.sh`：备份 MySQL、Redis、运行配置与元数据
+- `scripts/rollback-application.sh`：回滚前端软链接与后端镜像到历史版本
+- `scripts/restore-database.sh`：恢复数据库（恢复前自动创建快照）
+- `opinionctl` 新增 `backup`、`rollback`、`restore` 命令
+- 控制台新增「备份与回滚」Tab：备份列表、版本列表、一键回滚与恢复
+- 控制台 API 新增备份、回滚、恢复端点与列表查询
+
 ## 首次安装
 
 在已安装宝塔、Docker Engine、Docker Compose Plugin 的 Linux 服务器中执行：

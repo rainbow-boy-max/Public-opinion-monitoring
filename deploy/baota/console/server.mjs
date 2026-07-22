@@ -146,6 +146,45 @@ app.post('/api/bootstrap', localOnlyMiddleware, async (req, res) => {
   }
 });
 
+// 备份数据库
+app.post('/api/backup', localOnlyMiddleware, async (req, res) => {
+  try {
+    const backupId = typeof req.body?.backupId === 'string' ? req.body.backupId : '';
+    const { stdout, stderr } = await execOpinionctl(backupId ? ['backup', backupId] : ['backup']);
+    res.json({ success: true, output: `${stdout}${stderr}`, backupId: stdout.trim() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 回滚应用
+app.post('/api/rollback', localOnlyMiddleware, async (req, res) => {
+  try {
+    const version = req.body?.version;
+    if (!version) {
+      return res.status(400).json({ error: '缺少版本号' });
+    }
+    const { stdout, stderr } = await execOpinionctl(['rollback', version]);
+    res.json({ success: true, output: `${stdout}${stderr}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 恢复数据库
+app.post('/api/restore', localOnlyMiddleware, async (req, res) => {
+  try {
+    const backupId = req.body?.backupId;
+    if (!backupId) {
+      return res.status(400).json({ error: '缺少备份ID' });
+    }
+    const { stdout, stderr } = await execOpinionctl(['restore', backupId]);
+    res.json({ success: true, output: `${stdout}${stderr}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 获取系统信息
 app.get('/api/system-info', localOnlyMiddleware, async (req, res) => {
   try {
@@ -161,6 +200,61 @@ app.get('/api/system-info', localOnlyMiddleware, async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// 获取可用备份列表
+app.get('/api/backups', localOnlyMiddleware, async (req, res) => {
+  try {
+    const backupRoot = join(RUNTIME_ROOT, 'backups');
+    const { readdir, readFile } = await import('fs/promises');
+    const entries = await readdir(backupRoot, { withFileTypes: true });
+    const backups = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const metaPath = join(backupRoot, entry.name, 'metadata.json');
+        try {
+          const meta = JSON.parse(await readFile(metaPath, 'utf-8'));
+          backups.push({ id: entry.name, ...meta });
+        } catch {
+          backups.push({ id: entry.name, createdAt: 'unknown' });
+        }
+      }
+    }
+
+    backups.sort((a, b) => b.id.localeCompare(a.id));
+    res.json({ backups });
+  } catch (err) {
+    res.status(500).json({ error: err.message, backups: [] });
+  }
+});
+
+// 获取可用版本列表
+app.get('/api/versions', localOnlyMiddleware, async (req, res) => {
+  try {
+    const siteRoot = process.env.SITE_ROOT || '/www/wwwroot/opinion-monitor';
+    const releasesDir = join(siteRoot, 'releases');
+    const { readdir, readFile } = await import('fs/promises');
+    const entries = await readdir(releasesDir, { withFileTypes: true });
+    const versions = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const metaPath = join(releasesDir, entry.name, 'release.json');
+        try {
+          const meta = JSON.parse(await readFile(metaPath, 'utf-8'));
+          versions.push({ version: entry.name, ...meta });
+        } catch {
+          versions.push({ version: entry.name, createdAt: 'unknown' });
+        }
+      }
+    }
+
+    versions.sort((a, b) => b.version.localeCompare(a.version));
+    res.json({ versions });
+  } catch (err) {
+    res.status(500).json({ error: err.message, versions: [] });
   }
 });
 

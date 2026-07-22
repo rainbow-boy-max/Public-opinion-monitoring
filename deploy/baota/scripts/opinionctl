@@ -155,6 +155,39 @@ bootstrap_application() {
   "$RUNTIME_ROOT/scripts/bootstrap-app.sh"
 }
 
+# 备份数据库与配置
+backup_database() {
+  check_root
+  local backup_id="${1:-}"
+  if [[ -n "$backup_id" ]]; then
+    "$RUNTIME_ROOT/scripts/backup-database.sh" "$backup_id"
+  else
+    "$RUNTIME_ROOT/scripts/backup-database.sh"
+  fi
+}
+
+# 回滚应用（前端 + 后端）
+rollback_application() {
+  check_root
+  local version="${1:-}"
+  if [[ -z "$version" ]]; then
+    log_error "回滚需要指定版本号"
+    exit 1
+  fi
+  "$RUNTIME_ROOT/scripts/rollback-application.sh" "$version"
+}
+
+# 恢复数据库
+restore_database() {
+  check_root
+  local backup_id="${1:-}"
+  if [[ -z "$backup_id" ]]; then
+    log_error "恢复需要指定备份ID"
+    exit 1
+  fi
+  "$RUNTIME_ROOT/scripts/restore-database.sh" "$backup_id"
+}
+
 # 显示帮助
 show_help() {
   cat <<EOF
@@ -171,6 +204,9 @@ opinionctl - 全网舆情监测系统部署控制命令
   logs [服务] [行数]   查看容器日志（默认所有服务，最近 100 行）
   release [版本号]     构建并发布应用（后端镜像 + 前端静态资源）
   bootstrap           首次初始化数据库与应用
+  backup [备份ID]      备份数据库与配置（默认使用时间戳）
+  rollback <版本号>    回滚应用到指定版本（前端 + 后端）
+  restore <备份ID>     恢复数据库（恢复前自动创建快照）
   help                显示帮助信息
 
 示例:
@@ -180,6 +216,9 @@ opinionctl - 全网舆情监测系统部署控制命令
   opinionctl logs backend 50
   opinionctl release 20260722001
   opinionctl bootstrap
+  opinionctl backup
+  opinionctl rollback 20260722001
+  opinionctl restore 20260722120000
 EOF
 }
 
@@ -211,6 +250,15 @@ main() {
       ;;
     bootstrap)
       bootstrap_application
+      ;;
+    backup)
+      backup_database "${2:-}"
+      ;;
+    rollback)
+      rollback_application "${2:-}"
+      ;;
+    restore)
+      restore_database "${2:-}"
       ;;
     help|--help|-h)
       show_help

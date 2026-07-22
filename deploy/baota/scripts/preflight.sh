@@ -28,7 +28,7 @@ check_os() {
   if [[ ! -f /etc/os-release ]]; then
     error "无法识别的 Linux 发行版，仅支持 CentOS/Ubuntu/Debian/Alma/Rocky"
   fi
-  
+
   . /etc/os-release
   case "$ID" in
     centos|rhel|almalinux|rocky)
@@ -41,7 +41,7 @@ check_os() {
       error "不支持的 Linux 发行版: $ID，仅支持 RHEL/CentOS/Alma/Rocky/Ubuntu/Debian"
       ;;
   esac
-  
+
   info "✓ 发行版: $PRETTY_NAME ($OS_FAMILY)"
 }
 
@@ -50,11 +50,11 @@ check_docker() {
   if ! command -v docker &>/dev/null; then
     error "未安装 Docker Engine，请先通过宝塔面板或官方脚本安装 Docker"
   fi
-  
+
   if ! docker info &>/dev/null; then
     error "Docker 未运行或权限不足"
   fi
-  
+
   local docker_version
   docker_version=$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo "unknown")
   info "✓ Docker Engine: $docker_version"
@@ -69,7 +69,7 @@ check_docker_compose() {
     info "✓ Docker Compose Plugin: $compose_version"
     return 0
   fi
-  
+
   # 回退检查 Compose V1 (standalone)
   if command -v docker-compose &>/dev/null; then
     local compose_version
@@ -78,7 +78,7 @@ check_docker_compose() {
     info "✓ Docker Compose: $compose_version"
     return 0
   fi
-  
+
   error "未安装 Docker Compose，请先安装 Docker Compose Plugin"
 }
 
@@ -88,13 +88,13 @@ check_baota() {
     warn "未检测到宝塔面板，将跳过宝塔 Nginx 配置"
     return 0
   fi
-  
+
   if [[ -f /www/server/panel/data/panel.conf ]]; then
     info "✓ 检测到宝塔面板"
   else
     warn "宝塔面板目录存在但配置不完整"
   fi
-  
+
   # 检查宝塔 Nginx
   if [[ ! -x /www/server/nginx/sbin/nginx ]]; then
     warn "未安装宝塔 Nginx，无法自动生成站点代理配置"
@@ -109,14 +109,14 @@ check_baota() {
 check_ports() {
   local ports=(3000 3306 6379)
   local port_conflict=0
-  
+
   for port in "${ports[@]}"; do
     if ss -tunlp 2>/dev/null | grep -q ":$port " || netstat -tunlp 2>/dev/null | grep -q ":$port "; then
       warn "端口 $port 已被占用，部署时请修改端口映射"
       port_conflict=1
     fi
   done
-  
+
   if [[ $port_conflict -eq 0 ]]; then
     info "✓ 端口 3000/3306/6379 可用"
   fi
@@ -126,13 +126,13 @@ check_ports() {
 check_disk() {
   local install_dir="${1:-/www/server/opinion-monitor}"
   local parent_dir=$(dirname "$install_dir")
-  
+
   # 确保父目录存在
   mkdir -p "$parent_dir" 2>/dev/null || true
-  
+
   local avail_gb
   avail_gb=$(df -BG "$parent_dir" 2>/dev/null | awk 'NR==2 {print $4}' | sed 's/G//' || echo "0")
-  
+
   if [[ $avail_gb -lt 10 ]]; then
     error "安装目录所在磁盘可用空间不足 10GB（当前 ${avail_gb}GB），请清理磁盘后重试"
   elif [[ $avail_gb -lt 20 ]]; then
@@ -146,7 +146,7 @@ check_disk() {
 check_memory() {
   local mem_total_mb
   mem_total_mb=$(free -m | awk 'NR==2 {print $2}')
-  
+
   if [[ $mem_total_mb -lt 2048 ]]; then
     warn "系统内存小于 2GB（当前 ${mem_total_mb}MB），MySQL 与后端可能因 OOM 被 Kill"
   else
@@ -157,12 +157,12 @@ check_memory() {
 # 主函数
 main() {
   local runtime_root="${1:-/www/server/opinion-monitor}"
-  
+
   echo "========================================"
   echo "全网舆情监测系统 - 环境预检"
   echo "========================================"
   echo ""
-  
+
   check_root
   check_os
   check_docker
@@ -171,7 +171,7 @@ main() {
   check_ports
   check_disk "$runtime_root"
   check_memory
-  
+
   echo ""
   info "环境预检通过，可以继续安装"
 }
