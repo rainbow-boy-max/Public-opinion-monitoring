@@ -1,0 +1,199 @@
+#!/bin/bash
+#
+# opinionctl - 全网舆情监测系统部署控制命令
+# 受控白名单操作入口，由部署控制台 API 调用
+#
+
+set -euo pipefail
+
+RUNTIME_ROOT="${RUNTIME_ROOT:-/www/server/opinion-monitor}"
+SITE_ROOT="${SITE_ROOT:-/www/wwwroot/opinion-monitor}"
+COMPOSE_DIR="$RUNTIME_ROOT/compose"
+LOG_DIR="$RUNTIME_ROOT/logs"
+
+# 日志函数
+log_info() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $*" | tee -a "$LOG_DIR/opinionctl.log"
+}
+
+log_error() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $*" | tee -a "$LOG_DIR/opinionctl.log" >&2
+}
+
+# 检查权限
+check_root() {
+  if [[ $EUID -ne 0 ]]; then
+    log_error "需要 root 权限"
+    exit 1
+  fi
+}
+
+# 获取容器状态
+get_status() {
+  cd "$COMPOSE_DIR"
+
+  local mysql_status=$(docker compose ps mysql --format json 2>/dev/null | jq -r '.[0].State // "not_found"')
+  local redis_status=$(docker compose ps redis --format json 2>/dev/null | jq -r '.[0].State // "not_found"')
+  local backend_status=$(docker compose ps backend --format json 2>/dev/null | jq -r '.[0].State // "not_found"')
+
+  cat <<EOF
+{
+  "mysql": "$mysql_status",
+  "redis": "$redis_status",
+  "backend": "$backend_status",
+  "timestamp": "$(date -Iseconds)"
+}
+EOF
+}
+
+# 健康检查
+health_check() {
+  cd "$COMPOSE_DIR"
+
+  local mysql_health="unknown"
+  local redis_health="unknown"
+  local backend_health="unknown"
+
+  # MySQL 健康检查
+  if docker compose ps mysql --format json 2>/dev/null | jq -e '.[0].Health == "healthy"' &>/dev/null; then
+    mysql_health="healthy"
+  elif docker compose ps mysql --format json 2>/dev/null | jq -e '.[0].State == "running"' &>/dev/null; then
+    mysql_health="starting"
+  else
+    mysql_health="unhealthy"
+  fi
+
+  # Redis 健康检查
+  if docker compose ps redis --format json 2>/dev/null | jq -e '.[0].Health == "healthy"' &>/dev/null; then
+    redis_health="healthy"
+  elif docker compose ps redis --format json 2>/dev/null | jq -e '.[0].State == "running"' &>/dev/null; then
+    redis_health="starting"
+  else
+    redis_health="unhealthy"
+  fi
+
+  # 后端健康检查
+  if docker compose ps backend --format json 2>/dev/null | jq -e '.[0].Health == "healthy"' &>/dev/null; then
+    backend_health="healthy"
+  elif docker compose ps backend --format json 2>/dev/null | jq -e '.[0].State == "running"' &>/dev/null; then
+    backend_health="starting"
+  else
+    backend_health="unhealthy"
+  fi
+
+  cat <<EOF
+{
+  "mysql": "$mysql_health",
+  "redis": "$redis_health",
+  "backend": "$backend_health",
+  "timestamp": "$(date -Iseconds)"
+}
+EOF
+}
+
+# 启动服务
+start_services() {
+  check_root
+  log_info "启动服务..."
+
+  cd "$COMPOSE_DIR"
+  docker compose up -d
+
+  log_info "服务已启动"
+}
+
+# 停止服务
+stop_services() {
+  check_root
+  log_info "停止服务..."
+
+  cd "$COMPOSE_DIR"
+  docker compose stop
+
+  log_info "服务已停止"
+}
+
+# 重启服务
+restart_services() {
+  check_root
+  log_info "重启服务..."
+
+  cd "$COMPOSE_DIR"
+  docker compose restart
+
+  log_info "服务已重启"
+}
+
+# 查看日志
+view_logs() {
+  local service="${1:-}"
+  local lines="${2:-100}"
+
+  cd "$COMPOSE_DIR"
+
+  if [[ -n "$service" ]]; then
+    docker compose logs --tail="$lines" "$service"
+  else
+    docker compose logs --tail="$lines"
+  fi
+}
+
+# 显示帮助
+show_help() {
+  cat <<EOF
+opinionctl - 全网舆情监测系统部署控制命令
+
+用法: opinionctl <命令> [参数]
+
+命令:
+  status              获取容器状态（JSON）
+  health              执行健康检查（JSON）
+  start               启动所有服务
+  stop                停止所有服务
+  restart             重启所有服务
+  logs [服务] [行数]   查看容器日志（默认所有服务，最近 100 行）
+  help                显示帮助信息
+
+示例:
+  opinionctl status
+  opinionctl health
+  opinionctl start
+  opinionctl logs backend 50
+EOF
+}
+
+# 主函数
+main() {
+  local command="${1:-help}"
+
+  case "$command" in
+    status)
+      get_status
+      ;;
+    health)
+      health_check
+      ;;
+    start)
+      start_services
+      ;;
+    stop)
+      stop_services
+      ;;
+    restart)
+      restart_services
+      ;;
+    logs)
+      view_logs "${2:-}" "${3:-100}"
+      ;;
+    help|--help|-h)
+      show_help
+      ;;
+    *)
+      log_error "未知命令: $command"
+      show_help
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

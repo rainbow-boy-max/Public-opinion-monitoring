@@ -11,6 +11,15 @@
 - `nginx/opinion-monitor.conf.template`：宝塔 Nginx 站点代理模板
 - `manifest.json`：安装包元数据
 
+## Phase 2 已交付
+
+- `scripts/opinionctl`：受控服务管理命令，支持状态、健康检查、启停、重启和日志
+- `console/server.mjs`：仅回环监听的 Express 控制台 API
+- `console/public/index.html`：Vue 3 + Element Plus 可视化运维页
+- `scripts/start-console.sh`：控制台启动脚本
+- `console/nginx-console.conf.template`：宝塔 Nginx Basic Auth 代理模板
+- `console/opinion-console.service.template`：systemd 服务模板
+
 ## 首次安装
 
 在已安装宝塔、Docker Engine、Docker Compose Plugin 的 Linux 服务器中执行：

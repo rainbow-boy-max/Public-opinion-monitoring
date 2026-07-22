@@ -1,0 +1,18 @@
+[Unit]
+Description=Opinion Monitor Deployment Console
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=__RUNTIME_ROOT__/console
+Environment="RUNTIME_ROOT=__RUNTIME_ROOT__"
+Environment="CONSOLE_PORT=8888"
+ExecStart=/usr/bin/node server.mjs
+Restart=on-failure
+RestartSec=10s
+StandardOutput=append:__RUNTIME_ROOT__/logs/console.log
+StandardError=append:__RUNTIME_ROOT__/logs/console.log
+
+[Install]
+WantedBy=multi-user.target

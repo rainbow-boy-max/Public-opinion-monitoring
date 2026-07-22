@@ -122,6 +122,7 @@ docker compose exec backend pnpm seed
 ```
 
 完成后访问：
+
 - 管理端：http://localhost/admin/
 - 用户端：http://localhost/user/
 - API：http://localhost/api/
@@ -132,11 +133,11 @@ docker compose exec backend pnpm seed
 
 ### 构建前提
 
-| 项 | 要求 |
-|---|---|
-| 系统 | Linux amd64 / macOS |
-| 内存 | ≥ 4GB |
-| 磁盘 | ≥ 10GB |
+| 项   | 要求                                |
+| ---- | ----------------------------------- |
+| 系统 | Linux amd64 / macOS                 |
+| 内存 | ≥ 4GB                               |
+| 磁盘 | ≥ 10GB                              |
 | 工具 | `pnpm >= 9`, `node >= 20`, `docker` |
 
 ### 构建命令
@@ -215,29 +216,31 @@ curl -X POST \
 
 ## 管理端功能总览
 
-| 页面 | 路径 | 功能说明 |
-|---|---|---|
-| 概览 | `/dashboard` | KPI 卡片、趋势图、平台分布、实时活动 SSE |
-| 用户管理 | `/users` | 注册用户列表、封禁/解封、重置密码、角色筛选 |
-| AI 智能体 | `/agents` | 自定义智能体、能力声明、模型选择、知识库关联 |
-| LLM 大模型 | `/llm-models` | 9 家厂商预置 + 自定义；批量启用/禁用；拖拽排序；一键初始化 |
-| AI 知识库 | `/knowledge` | 文件上传、AI 解析/打分/摘要、向量检索、RAG 测试 |
-| 短信配置 | `/config/aliyun-sms` | 阿里云短信接入配置 |
-| 短信模板 | `/sms-templates` | 7 大场景短信模板管理 + 一键报备 |
-| 三要素认证 | `/config/aliyun-verify` | 阿里云手机号三要素详细版 |
-| Web 搜索 | `/config/web-search` | 9 种搜索 Provider 配置与 SSE 实时测试 |
-| AI 打分 | `/config/kb-scoring` | 知识库文档 AI 评分模型与能力配置 |
-| 系统日志 | `/system-logs` | API 请求与异常记录 |
+| 页面       | 路径                    | 功能说明                                                   |
+| ---------- | ----------------------- | ---------------------------------------------------------- |
+| 概览       | `/dashboard`            | KPI 卡片、趋势图、平台分布、实时活动 SSE                   |
+| 用户管理   | `/users`                | 注册用户列表、封禁/解封、重置密码、角色筛选                |
+| AI 智能体  | `/agents`               | 自定义智能体、能力声明、模型选择、知识库关联               |
+| LLM 大模型 | `/llm-models`           | 9 家厂商预置 + 自定义；批量启用/禁用；拖拽排序；一键初始化 |
+| AI 知识库  | `/knowledge`            | 文件上传、AI 解析/打分/摘要、向量检索、RAG 测试            |
+| 短信配置   | `/config/aliyun-sms`    | 阿里云短信接入配置                                         |
+| 短信模板   | `/sms-templates`        | 7 大场景短信模板管理 + 一键报备                            |
+| 三要素认证 | `/config/aliyun-verify` | 阿里云手机号三要素详细版                                   |
+| Web 搜索   | `/config/web-search`    | 9 种搜索 Provider 配置与 SSE 实时测试                      |
+| AI 打分    | `/config/kb-scoring`    | 知识库文档 AI 评分模型与能力配置                           |
+| 系统日志   | `/system-logs`          | API 请求与异常记录                                         |
 
 ## AI 能力详解
 
 ### LLM 模型管理
+
 - 预置 9 家厂商共 38+ 个模型（含 MiniMax-M3 / DeepSeek-R1 / Qwen-Max 等）
 - 支持 OpenAI 兼容与 Anthropic 兼容双协议
 - API Key 自动推断 isEnabled（未配置自动禁用）
 - 批量操作、拖拽排序、一键恢复预置
 
 ### AI 智能体
+
 - 自定义角色描述与系统 Prompt
 - 主用模型 + 5 个备用模型 failover 链
 - 能力声明：图片理解 / 推理思考 / 联网搜索
@@ -245,6 +248,7 @@ curl -X POST \
 - 知识库多对多关联
 
 ### AI 知识库
+
 - 多格式文件上传（PDF / Word / PPT / TXT / MD / HTML）
 - AI 自动解析 → 文本降噪 → 智能分块
 - AI 相关性评分（基于配置的 LLM 模型，0-100 分）
@@ -253,6 +257,7 @@ curl -X POST \
 - 文件内容在线预览与编辑
 
 ### Web 搜索
+
 - DuckDuckGo（免 Key，含 Instant Answer fallback）
 - Brave Search API
 - 百度千帆 BaiduSearch
@@ -307,17 +312,25 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ## 更新日志
 
+### 2026-07-22 — 宝塔部署包 Phase 2：可视化部署控制台
+
+- 新增仅回环监听的部署控制台：实时展示 MySQL、Redis、后端服务健康状态，支持启动、停止、重启及分服务日志查看
+- 新增 `opinionctl` 白名单运维命令，控制台仅可调用状态、健康检查、启停、重启与日志操作
+- 控制台通过宝塔 Nginx Basic Auth 反向代理访问，拒绝非本机 API 来源
+- 新增控制台启动脚本和 systemd 服务模板
+
 ### 2026-07-22 — 宝塔部署包 Phase 1
+
 - 新增 `deploy/baota/` 宝塔部署包：环境预检、运行目录创建、安全 `.env` 生成、Docker Compose 模板与宝塔 Nginx 反向代理模板
 - 安装器自动生成 MySQL、Redis、JWT、AES-256-CBC 与初始管理员随机凭据；敏感配置保存为权限 `600` 的运行时 `.env`
 - 预检覆盖 Docker、Docker Compose、宝塔 Nginx、端口冲突、磁盘空间与内存；Phase 1 不启动容器、不修改宝塔站点
-
 
 - **工单管理页**：统计卡 props 与 `StatCard` 组件对齐，`title`/`color`/`icon="clock"` 改为 `label`/`icon-bg` + emoji 图标，修复红框内显示为 `clock 0` / `search1` 等文字的问题
 - **电商监测配置页**：同样修正 `StatCard` 的 `title`/`color` 误用，统一为 `label` + emoji + 渐变 `icon-bg`
 - 四个工单统计卡现为：待处理 / 分析中 / 已解决 / 已关闭，图标与数值正常渲染
 
 ### 2026-07-17 — Phase 1: 多模态识别 + 电商监测 + 报告模板
+
 - **多模态OCR识别**：利用 LLM vision 能力识别图片文字，管理端 `OcrConfigPage` 配置页 + OCR 测试
 - **电商平台监测**：京东/淘宝/拼多多评论口碑监测，管理端 `EcommerceConfigPage` + 用户端 `EcommercePage`
 - **报告模板市场**：5 种预设模板（日报/周报/事件专报/竞品对标/自定义），管理端 `ReportTemplatesPage`
@@ -328,6 +341,7 @@ WEIXIN_API_KEY=sk-xxxxxx
 - 后端 `LoginDto` 扩展支持 `phone`+`code` 认证
 
 ### 2026-07-15 — Phase 4 商业增值功能
+
 - **品牌声誉管理面板**：NPS/声量/竞品对比 + 4 种 ECharts 图表
 - **人工研判工单系统**：全流程 CRUD + 文件上传 + 评分
 - **行业知识图谱**：LLM 实体抽取 + ECharts 力导向图 + 主/备模型配置
@@ -337,6 +351,7 @@ WEIXIN_API_KEY=sk-xxxxxx
 - **Webhook 出站**：Zabbix + 飞书机器人
 
 ### 2026-07-15 — Phase 3 体验增强
+
 - 暗色/亮色主题切换（useTheme composable）
 - 预警阈值可视化（el-slider + 动态表单）
 - AI 关键词扩展（LLM 智能推荐 + 监控任务嵌入）
@@ -349,6 +364,7 @@ WEIXIN_API_KEY=sk-xxxxxx
 - 微信小程序端（完整工程 + 6 页面）
 
 ### 2026-07-15 — Phase 2 竞品能力补齐
+
 - 传播路径追踪（ECharts 力导向关系图）
 - 事件脉络梳理（时间轴 + 关键节点标记）
 - 自动舆情报告（日报/周报/订阅 + Markdown 导出）
@@ -356,11 +372,13 @@ WEIXIN_API_KEY=sk-xxxxxx
 - 热点话题发现（1h 滑动窗口 + 增长率评分）
 
 ### 2026-07-15 — Phase 1 基础修复与预警
+
 - P0 缺陷修复 6 项（Webhook 校验/Adapter 降级/ENUM 迁移/登录重定向/报告导出/SSE 数据流）
 - AI 预警中心（规则引擎 + 分钟级 Cron 检查 + 管理端/用户端双界面）
 - 实时大屏增强（4 统计卡片 + 情感趋势折线图 + 平台饼图 + 热词标签）
 
 ### 2026-07-13 — Phase 0 初始版本
+
 - 管理端/用户端分离架构搭建
 - LLM 模型管理（9 厂商预置 + 支持 OpenAI/Anthropic 双协议）
 - AI 智能体 + 知识库 + Web 搜索
@@ -372,4 +390,4 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ---
 
-*README 最后更新: 2026-07-19*
+_README 最后更新: 2026-07-19_

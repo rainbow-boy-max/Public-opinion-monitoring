@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>全网舆情监测系统 - 部署控制台</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.5.0/dist/index.css" />
+    <style>
+      body {
+        margin: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      #app {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .console-header {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+      .status-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+      }
+      .status-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+      .logs-panel {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+      .log-output {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 16px;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        max-height: 500px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .status-healthy {
+        background: #67c23a;
+        color: white;
+      }
+      .status-starting {
+        background: #e6a23c;
+        color: white;
+      }
+      .status-unhealthy {
+        background: #f56c6c;
+        color: white;
+      }
+      .status-unknown {
+        background: #909399;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="console-header">
+        <h1 style="margin: 0 0 8px 0; font-size: 28px">全网舆情监测系统</h1>
+        <p style="margin: 0; color: #666">部署控制台 Phase 2 - 实时监控与服务管理</p>
+      </div>
+
+      <div class="status-cards">
+        <div class="status-card">
+          <h3>MySQL 数据库</h3>
+          <p>
+            状态:
+            <span :class="'status-badge status-' + health.mysql"
+              >{{ healthText(health.mysql) }}</span
+            >
+          </p>
+          <el-button @click="viewLogs('mysql')" size="small">查看日志</el-button>
+        </div>
+
+        <div class="status-card">
+          <h3>Redis 缓存</h3>
+          <p>
+            状态:
+            <span :class="'status-badge status-' + health.redis"
+              >{{ healthText(health.redis) }}</span
+            >
+          </p>
+          <el-button @click="viewLogs('redis')" size="small">查看日志</el-button>
+        </div>
+
+        <div class="status-card">
+          <h3>后端 API</h3>
+          <p>
+            状态:
+            <span :class="'status-badge status-' + health.backend"
+              >{{ healthText(health.backend) }}</span
+            >
+          </p>
+          <el-button @click="viewLogs('backend')" size="small">查看日志</el-button>
+        </div>
+      </div>
+
+      <div class="status-card" style="margin-bottom: 24px">
+        <h3>服务控制</h3>
+        <el-space wrap>
+          <el-button type="success" @click="startServices" :loading="loading">启动服务</el-button>
+          <el-button type="warning" @click="restartServices" :loading="loading">重启服务</el-button>
+          <el-button type="danger" @click="stopServices" :loading="loading">停止服务</el-button>
+          <el-button @click="refreshStatus" :loading="loading">刷新状态</el-button>
+        </el-space>
+        <p style="margin-top: 12px; color: #666; font-size: 14px">
+          最后更新: {{ lastUpdate || '—' }}
+        </p>
+      </div>
+
+      <div class="logs-panel">
+        <h3>服务日志</h3>
+        <el-select v-model="selectedService" placeholder="选择服务" style="margin-bottom: 12px">
+          <el-option label="全部服务" value=""></el-option>
+          <el-option label="MySQL" value="mysql"></el-option>
+          <el-option label="Redis" value="redis"></el-option>
+          <el-option label="后端" value="backend"></el-option>
+        </el-select>
+        <el-button @click="fetchLogs" :loading="loading" style="margin-left: 12px"
+          >刷新日志</el-button
+        >
+        <div class="log-output">{{ logs || '点击「刷新日志」加载服务日志...' }}</div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/element-plus@2.5.0/dist/index.full.min.js"></script>
+    <script>
+      const { createApp, ref } = Vue;
+
+      createApp({
+        setup() {
+          const health = ref({ mysql: 'unknown', redis: 'unknown', backend: 'unknown' });
+          const logs = ref('');
+          const selectedService = ref('');
+          const loading = ref(false);
+          const lastUpdate = ref('');
+
+          const healthText = (status) => {
+            const map = {
+              healthy: '健康',
+              starting: '启动中',
+              unhealthy: '异常',
+              unknown: '未知',
+            };
+            return map[status] || '未知';
+          };
+
+          const fetchHealth = async () => {
+            try {
+              const res = await fetch('/api/health');
+              if (res.ok) {
+                const data = await res.json();
+                health.value = data;
+                lastUpdate.value = new Date().toLocaleTimeString('zh-CN');
+              }
+            } catch (err) {
+              console.error('获取健康状态失败:', err);
+            }
+          };
+
+          const fetchLogs = async () => {
+            loading.value = true;
+            try {
+              const endpoint = selectedService.value
+                ? `/api/logs/${selectedService.value}`
+                : '/api/logs';
+              const res = await fetch(endpoint);
+              if (res.ok) {
+                const data = await res.json();
+                logs.value = data.logs;
+              } else {
+                logs.value = '获取日志失败';
+              }
+            } catch (err) {
+              logs.value = `获取日志失败: ${err.message}`;
+            } finally {
+              loading.value = false;
+            }
+          };
+
+          const viewLogs = (service) => {
+            selectedService.value = service;
+            fetchLogs();
+          };
+
+          const startServices = async () => {
+            loading.value = true;
+            try {
+              await fetch('/api/start', { method: 'POST' });
+              ElementPlus.ElMessage.success('启动命令已执行，请稍后刷新状态');
+              setTimeout(fetchHealth, 3000);
+            } catch (err) {
+              ElementPlus.ElMessage.error(`启动失败: ${err.message}`);
+            } finally {
+              loading.value = false;
+            }
+          };
+
+          const stopServices = async () => {
+            loading.value = true;
+            try {
+              await fetch('/api/stop', { method: 'POST' });
+              ElementPlus.ElMessage.success('停止命令已执行');
+              setTimeout(fetchHealth, 2000);
+            } catch (err) {
+              ElementPlus.ElMessage.error(`停止失败: ${err.message}`);
+            } finally {
+              loading.value = false;
+            }
+          };
+
+          const restartServices = async () => {
+            loading.value = true;
+            try {
+              await fetch('/api/restart', { method: 'POST' });
+              ElementPlus.ElMessage.success('重启命令已执行，请稍后刷新状态');
+              setTimeout(fetchHealth, 5000);
+            } catch (err) {
+              ElementPlus.ElMessage.error(`重启失败: ${err.message}`);
+            } finally {
+              loading.value = false;
+            }
+          };
+
+          const refreshStatus = () => {
+            fetchHealth();
+          };
+
+          // 初始化
+          fetchHealth();
+          setInterval(fetchHealth, 30000);
+
+          return {
+            health,
+            logs,
+            selectedService,
+            loading,
+            lastUpdate,
+            healthText,
+            fetchLogs,
+            viewLogs,
+            startServices,
+            stopServices,
+            restartServices,
+            refreshStatus,
+          };
+        },
+      })
+        .use(ElementPlus)
+        .mount('#app');
+    </script>
+  </body>
+</html>
