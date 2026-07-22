@@ -307,32 +307,12 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ## 更新日志
 
-### 2026-07-19 — 管理端实时数据整改第二轮
-- **竞品追踪**：统一前后端时间范围参数（24h/7d/30d → hours），移除示例数据入口，增加真实数据刷新、更新时间和错误提示
-- **品牌声誉**：分析结果接入 `opinion_events` 实时聚合，移除示例数据入口，增加实时更新时间和空态提示
-- **值班面板**：修复 Socket.IO namespace 与管理端 token 错配，连接 `/duty` namespace、加入 `duty-room`，增加 overview 实时订阅和重连状态提示
-- **对比分析**：移除前端示例数据回退，分析失败显示真实错误状态
-- 后端完成 TypeScript 类型检查与构建验证
+### 2026-07-22 — 宝塔部署包 Phase 1
+- 新增 `deploy/baota/` 宝塔部署包：环境预检、运行目录创建、安全 `.env` 生成、Docker Compose 模板与宝塔 Nginx 反向代理模板
+- 安装器自动生成 MySQL、Redis、JWT、AES-256-CBC 与初始管理员随机凭据；敏感配置保存为权限 `600` 的运行时 `.env`
+- 预检覆盖 Docker、Docker Compose、宝塔 Nginx、端口冲突、磁盘空间与内存；Phase 1 不启动容器、不修改宝塔站点
 
-### 2026-07-19 — Phase 2：值班面板 WebSocket + 系统日志审计
-- **值班面板 WebSocket 完整实现**：后端新增 `DutyModule`，实现 Socket.IO Gateway 监听 `/duty` 命名空间，`DutyService` 聚合 24h 事件数、告警数、平台/情感分布，每 30 秒自动推送最新数据，提供 REST fallback `GET /duty/overview`
-- **系统日志审计上报**：后端新增 `POST /admin/audit-events/record` 端点支持前端操作上报，前端新增 `utils/audit.ts` 工具函数，审计失败静默处理不阻塞主流程
-- **data-source.ts 实体注册**：`OcrConfigEntity` 已添加到 TypeORM 数据源配置
 
-### 2026-07-19 — Phase 1：核心功能整改（OCR 配置 + 强制改密）
-- **OCR 识别配置升级**：新增主备模型配置功能，支持选择主模型和最多 5 个备用模型，识别失败时自动切换，提升容错能力
-  - 后端新增 `OcrConfigEntity` 实体存储配置
-  - `OcrService.recognizeImage()` 改为主备模型重试逻辑
-  - 前端 `OcrConfigPage` 新增主模型下拉框 + 备用模型多选（最多 5 个），带表单校验
-  - 配置持久化，刷新后保持
-- **强制改密流程完善**：使用初始密码（`admin/123456`）登录后，弹出不可关闭的强制改密对话框，改密前无法访问其他页面
-  - 登录成功检查 `passwordChangeRequired` 标记
-  - 弹出不可关闭的 `ElMessageBox`，只能点击「立即修改」
-  - 路由守卫拦截未改密用户，强制跳转 `/change-password`
-  - 改密成功后清除 `localStorage` 标记，恢复正常访问
-- **整改方案文档**：新增 `.monkeycode/整改方案-260719.md`，详细记录 8 个问题的根因分析、整改方案、实施计划与验收标准
-
-### 2026-07-18 — 管理端 StatCard 统计卡显示修复
 - **工单管理页**：统计卡 props 与 `StatCard` 组件对齐，`title`/`color`/`icon="clock"` 改为 `label`/`icon-bg` + emoji 图标，修复红框内显示为 `clock 0` / `search1` 等文字的问题
 - **电商监测配置页**：同样修正 `StatCard` 的 `title`/`color` 误用，统一为 `label` + emoji + 渐变 `icon-bg`
 - 四个工单统计卡现为：待处理 / 分析中 / 已解决 / 已关闭，图标与数值正常渲染
