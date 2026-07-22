@@ -312,6 +312,14 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ## 更新日志
 
+### 2026-07-22 — 宝塔部署包 Phase 3：镜像构建、数据库初始化与前端发布
+
+- 新增后端 Docker 镜像构建脚本，自动打包 NestJS 应用为生产镜像
+- 新增管理端/用户端静态资源构建与原子发布：软链接切换 `current` 指向最新 release，保留历史版本用于回滚
+- 新增首次数据库初始化脚本：通过 TypeORM `DB_SYNCHRONIZE=true` 完成 Schema 创建，后端启动时根据 `INIT_ADMIN_PASSWORD` 安全创建一次性管理员
+- 控制台新增「安装向导」Tab：可视化执行构建发布与首次初始化
+- `opinionctl` 新增 `release`、`bootstrap` 白名单命令
+
 ### 2026-07-22 — 宝塔部署包 Phase 2：可视化部署控制台
 
 - 新增仅回环监听的部署控制台：实时展示 MySQL、Redis、后端服务健康状态，支持启动、停止、重启及分服务日志查看

@@ -136,7 +136,10 @@ copy_files() {
   # 复制部署控制台
   cp -R "$SCRIPT_DIR/console/." "$RUNTIME_ROOT/console/"
   cp "$SCRIPT_DIR/scripts/start-console.sh" "$RUNTIME_ROOT/scripts/"
-  chmod +x "$RUNTIME_ROOT/scripts/start-console.sh"
+  cp "$SCRIPT_DIR/scripts/opinionctl" "$RUNTIME_ROOT/scripts/"
+  cp "$SCRIPT_DIR/scripts/build-release.sh" "$RUNTIME_ROOT/scripts/"
+  cp "$SCRIPT_DIR/scripts/bootstrap-app.sh" "$RUNTIME_ROOT/scripts/"
+  chmod +x "$RUNTIME_ROOT/scripts/start-console.sh" "$RUNTIME_ROOT/scripts/opinionctl" "$RUNTIME_ROOT/scripts/build-release.sh" "$RUNTIME_ROOT/scripts/bootstrap-app.sh"
   info "✓ 已复制部署控制台到: $RUNTIME_ROOT/console/"
 
   # 生成 systemd 服务文件

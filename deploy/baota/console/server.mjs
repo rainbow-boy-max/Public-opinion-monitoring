@@ -125,6 +125,27 @@ app.get('/api/logs/:service?', localOnlyMiddleware, async (req, res) => {
   }
 });
 
+// 构建并发布版本
+app.post('/api/release', localOnlyMiddleware, async (req, res) => {
+  try {
+    const version = typeof req.body?.version === 'string' ? req.body.version : '';
+    const { stdout, stderr } = await execOpinionctl(version ? ['release', version] : ['release']);
+    res.json({ success: true, output: `${stdout}${stderr}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 首次初始化应用
+app.post('/api/bootstrap', localOnlyMiddleware, async (req, res) => {
+  try {
+    const { stdout, stderr } = await execOpinionctl(['bootstrap']);
+    res.json({ success: true, output: `${stdout}${stderr}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 获取系统信息
 app.get('/api/system-info', localOnlyMiddleware, async (req, res) => {
   try {

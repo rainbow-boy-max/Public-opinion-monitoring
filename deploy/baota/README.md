@@ -20,6 +20,14 @@
 - `console/nginx-console.conf.template`：宝塔 Nginx Basic Auth 代理模板
 - `console/opinion-console.service.template`：systemd 服务模板
 
+## Phase 3 已交付
+
+- `scripts/build-release.sh`：构建后端 Docker 镜像、管理端/用户端静态资源，并通过软链接原子发布
+- `scripts/bootstrap-app.sh`：首次数据库 Schema 初始化、启动服务与管理员引导
+- `InitialAdminBootstrapService`：后端根据 `INIT_ADMIN_PASSWORD` 创建一次性初始管理员
+- 控制台新增「安装向导」：执行构建发布和首次初始化
+- `opinionctl` 新增 `release`、`bootstrap` 白名单命令
+
 ## 首次安装
 
 在已安装宝塔、Docker Engine、Docker Compose Plugin 的 Linux 服务器中执行：

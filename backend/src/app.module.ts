@@ -8,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
 import { BullQueueModule } from './bull-queue/bull-queue.module';
@@ -16,6 +17,8 @@ import { UsersModule } from './modules/users/users.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { MonitorTasksModule } from './modules/monitor-tasks/monitor-tasks.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { InitialAdminBootstrapService } from './initial-admin-bootstrap.service';
+import { UserEntity } from './database/entities/user.entity';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { CollectorModule } from './modules/collector/collector.module';
 import { SmsModule } from './modules/sms/sms.module';
@@ -56,10 +59,9 @@ import { ReportTemplatesModule } from './modules/report-templates/report-templat
       envFilePath: [path.resolve(__dirname, '..', '.env')],
     }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60000, limit: 60 },
-    ]),
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 60 }]),
     DatabaseModule,
+    TypeOrmModule.forFeature([UserEntity]),
     RedisModule,
     BullQueueModule,
     AuthModule,
@@ -105,6 +107,7 @@ import { ReportTemplatesModule } from './modules/report-templates/report-templat
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    InitialAdminBootstrapService,
   ],
 })
 export class AppModule {}

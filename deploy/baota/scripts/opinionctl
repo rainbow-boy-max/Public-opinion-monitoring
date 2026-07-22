@@ -138,6 +138,23 @@ view_logs() {
   fi
 }
 
+# 构建并发布版本
+release_application() {
+  check_root
+  local version="${1:-}"
+  if [[ -n "$version" ]]; then
+    "$RUNTIME_ROOT/scripts/build-release.sh" "$version"
+  else
+    "$RUNTIME_ROOT/scripts/build-release.sh"
+  fi
+}
+
+# 首次初始化数据库与应用
+bootstrap_application() {
+  check_root
+  "$RUNTIME_ROOT/scripts/bootstrap-app.sh"
+}
+
 # 显示帮助
 show_help() {
   cat <<EOF
@@ -152,6 +169,8 @@ opinionctl - 全网舆情监测系统部署控制命令
   stop                停止所有服务
   restart             重启所有服务
   logs [服务] [行数]   查看容器日志（默认所有服务，最近 100 行）
+  release [版本号]     构建并发布应用（后端镜像 + 前端静态资源）
+  bootstrap           首次初始化数据库与应用
   help                显示帮助信息
 
 示例:
@@ -159,6 +178,8 @@ opinionctl - 全网舆情监测系统部署控制命令
   opinionctl health
   opinionctl start
   opinionctl logs backend 50
+  opinionctl release 20260722001
+  opinionctl bootstrap
 EOF
 }
 
@@ -184,6 +205,12 @@ main() {
       ;;
     logs)
       view_logs "${2:-}" "${3:-100}"
+      ;;
+    release)
+      release_application "${2:-}"
+      ;;
+    bootstrap)
+      bootstrap_application
       ;;
     help|--help|-h)
       show_help

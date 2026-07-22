@@ -84,70 +84,111 @@
     <div id="app">
       <div class="console-header">
         <h1 style="margin: 0 0 8px 0; font-size: 28px">全网舆情监测系统</h1>
-        <p style="margin: 0; color: #666">部署控制台 Phase 2 - 实时监控与服务管理</p>
+        <p style="margin: 0; color: #666">部署控制台 Phase 3 - 镜像构建、数据库初始化与服务管理</p>
       </div>
 
-      <div class="status-cards">
-        <div class="status-card">
-          <h3>MySQL 数据库</h3>
-          <p>
-            状态:
-            <span :class="'status-badge status-' + health.mysql"
-              >{{ healthText(health.mysql) }}</span
+      <el-tabs v-model="activeTab" type="border-card">
+        <el-tab-pane label="服务监控" name="monitor">
+          <div class="status-cards">
+            <div class="status-card">
+              <h3>MySQL 数据库</h3>
+              <p>
+                状态:
+                <span :class="'status-badge status-' + health.mysql"
+                  >{{ healthText(health.mysql) }}</span
+                >
+              </p>
+              <el-button @click="viewLogs('mysql')" size="small">查看日志</el-button>
+            </div>
+
+            <div class="status-card">
+              <h3>Redis 缓存</h3>
+              <p>
+                状态:
+                <span :class="'status-badge status-' + health.redis"
+                  >{{ healthText(health.redis) }}</span
+                >
+              </p>
+              <el-button @click="viewLogs('redis')" size="small">查看日志</el-button>
+            </div>
+
+            <div class="status-card">
+              <h3>后端 API</h3>
+              <p>
+                状态:
+                <span :class="'status-badge status-' + health.backend"
+                  >{{ healthText(health.backend) }}</span
+                >
+              </p>
+              <el-button @click="viewLogs('backend')" size="small">查看日志</el-button>
+            </div>
+          </div>
+
+          <div class="status-card" style="margin-bottom: 24px">
+            <h3>服务控制</h3>
+            <el-space wrap>
+              <el-button type="success" @click="startServices" :loading="loading"
+                >启动服务</el-button
+              >
+              <el-button type="warning" @click="restartServices" :loading="loading"
+                >重启服务</el-button
+              >
+              <el-button type="danger" @click="stopServices" :loading="loading">停止服务</el-button>
+              <el-button @click="refreshStatus" :loading="loading">刷新状态</el-button>
+            </el-space>
+            <p style="margin-top: 12px; color: #666; font-size: 14px">
+              最后更新: {{ lastUpdate || '—' }}
+            </p>
+          </div>
+
+          <div class="logs-panel">
+            <h3>服务日志</h3>
+            <el-select v-model="selectedService" placeholder="选择服务" style="margin-bottom: 12px">
+              <el-option label="全部服务" value=""></el-option>
+              <el-option label="MySQL" value="mysql"></el-option>
+              <el-option label="Redis" value="redis"></el-option>
+              <el-option label="后端" value="backend"></el-option>
+            </el-select>
+            <el-button @click="fetchLogs" :loading="loading" style="margin-left: 12px"
+              >刷新日志</el-button
             >
-          </p>
-          <el-button @click="viewLogs('mysql')" size="small">查看日志</el-button>
-        </div>
+            <div class="log-output">{{ logs || '点击「刷新日志」加载服务日志...' }}</div>
+          </div>
+        </el-tab-pane>
 
-        <div class="status-card">
-          <h3>Redis 缓存</h3>
-          <p>
-            状态:
-            <span :class="'status-badge status-' + health.redis"
-              >{{ healthText(health.redis) }}</span
+        <el-tab-pane label="安装向导" name="install">
+          <div class="status-card" style="margin-bottom: 24px">
+            <h3>应用构建与发布</h3>
+            <p style="color: #666; margin-bottom: 16px">
+              构建后端镜像、前端静态资源并发布到站点目录（首次安装或升级时执行）
+            </p>
+            <el-input
+              v-model="releaseVersion"
+              placeholder="版本号（留空自动生成）"
+              style="width: 300px; margin-right: 12px"
+            />
+            <el-button type="primary" @click="executeRelease" :loading="releasing"
+              >构建并发布</el-button
             >
-          </p>
-          <el-button @click="viewLogs('redis')" size="small">查看日志</el-button>
-        </div>
+            <div v-if="releaseOutput" class="log-output" style="margin-top: 16px">
+              {{ releaseOutput }}
+            </div>
+          </div>
 
-        <div class="status-card">
-          <h3>后端 API</h3>
-          <p>
-            状态:
-            <span :class="'status-badge status-' + health.backend"
-              >{{ healthText(health.backend) }}</span
+          <div class="status-card">
+            <h3>首次初始化</h3>
+            <p style="color: #666; margin-bottom: 16px">
+              初始化数据库 Schema 并创建管理员账户（仅首次安装时执行）
+            </p>
+            <el-button type="success" @click="executeBootstrap" :loading="bootstrapping"
+              >执行初始化</el-button
             >
-          </p>
-          <el-button @click="viewLogs('backend')" size="small">查看日志</el-button>
-        </div>
-      </div>
-
-      <div class="status-card" style="margin-bottom: 24px">
-        <h3>服务控制</h3>
-        <el-space wrap>
-          <el-button type="success" @click="startServices" :loading="loading">启动服务</el-button>
-          <el-button type="warning" @click="restartServices" :loading="loading">重启服务</el-button>
-          <el-button type="danger" @click="stopServices" :loading="loading">停止服务</el-button>
-          <el-button @click="refreshStatus" :loading="loading">刷新状态</el-button>
-        </el-space>
-        <p style="margin-top: 12px; color: #666; font-size: 14px">
-          最后更新: {{ lastUpdate || '—' }}
-        </p>
-      </div>
-
-      <div class="logs-panel">
-        <h3>服务日志</h3>
-        <el-select v-model="selectedService" placeholder="选择服务" style="margin-bottom: 12px">
-          <el-option label="全部服务" value=""></el-option>
-          <el-option label="MySQL" value="mysql"></el-option>
-          <el-option label="Redis" value="redis"></el-option>
-          <el-option label="后端" value="backend"></el-option>
-        </el-select>
-        <el-button @click="fetchLogs" :loading="loading" style="margin-left: 12px"
-          >刷新日志</el-button
-        >
-        <div class="log-output">{{ logs || '点击「刷新日志」加载服务日志...' }}</div>
-      </div>
+            <div v-if="bootstrapOutput" class="log-output" style="margin-top: 16px">
+              {{ bootstrapOutput }}
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
 
     <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
@@ -157,11 +198,17 @@
 
       createApp({
         setup() {
+          const activeTab = ref('monitor');
           const health = ref({ mysql: 'unknown', redis: 'unknown', backend: 'unknown' });
           const logs = ref('');
           const selectedService = ref('');
           const loading = ref(false);
           const lastUpdate = ref('');
+          const releaseVersion = ref('');
+          const releasing = ref(false);
+          const releaseOutput = ref('');
+          const bootstrapping = ref(false);
+          const bootstrapOutput = ref('');
 
           const healthText = (status) => {
             const map = {
@@ -254,16 +301,61 @@
             fetchHealth();
           };
 
+          const executeRelease = async () => {
+            releasing.value = true;
+            releaseOutput.value = '';
+            try {
+              const res = await fetch('/api/release', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ version: releaseVersion.value }),
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || '构建发布失败');
+              releaseOutput.value = data.output || '构建发布完成';
+              ElementPlus.ElMessage.success('构建发布完成');
+            } catch (err) {
+              releaseOutput.value = `构建发布失败: ${err.message}`;
+              ElementPlus.ElMessage.error(releaseOutput.value);
+            } finally {
+              releasing.value = false;
+            }
+          };
+
+          const executeBootstrap = async () => {
+            bootstrapping.value = true;
+            bootstrapOutput.value = '';
+            try {
+              const res = await fetch('/api/bootstrap', { method: 'POST' });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || '初始化失败');
+              bootstrapOutput.value = data.output || '初始化完成';
+              ElementPlus.ElMessage.success('初始化完成');
+              setTimeout(fetchHealth, 3000);
+            } catch (err) {
+              bootstrapOutput.value = `初始化失败: ${err.message}`;
+              ElementPlus.ElMessage.error(bootstrapOutput.value);
+            } finally {
+              bootstrapping.value = false;
+            }
+          };
+
           // 初始化
           fetchHealth();
           setInterval(fetchHealth, 30000);
 
           return {
+            activeTab,
             health,
             logs,
             selectedService,
             loading,
             lastUpdate,
+            releaseVersion,
+            releasing,
+            releaseOutput,
+            bootstrapping,
+            bootstrapOutput,
             healthText,
             fetchLogs,
             viewLogs,
@@ -271,6 +363,8 @@
             stopServices,
             restartServices,
             refreshStatus,
+            executeRelease,
+            executeBootstrap,
           };
         },
       })
