@@ -1,34 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
-import { ShortVideoEntity } from '../../database/entities';
-
-export interface VideoFilter {
-  platform?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  sentiment?: string;
-  page?: number;
-  pageSize?: number;
-}
-
-export interface VideoStats {
-  totalVideos: number;
-  totalPlays: number;
-  totalLikes: number;
-  totalComments: number;
-  totalShares: number;
-  avgEngagementRate: number;
-  byPlatform: Array<{ platform: string; count: number; avgEngagement: number }>;
-  bySentiment: Array<{ sentiment: string; count: number }>;
-}
-
-export interface TrendingHashtag {
-  tag: string;
-  count: number;
-  totalPlays: number;
-  totalLikes: number;
-}
+import { Repository } from 'typeorm';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { ShortVideoEntity, VideoProcessStatus } from '../../database/entities/short-video.entity';
+import { VideoFrameEntity } from '../../database/entities/video-frame.entity';
+import { VideoTranscriptEntity } from '../../database/entities/video-transcript.entity';
 
 @Injectable()
 export class ShortVideoService {
@@ -36,116 +13,115 @@ export class ShortVideoService {
 
   constructor(
     @InjectRepository(ShortVideoEntity)
-    private videoRepo: Repository<ShortVideoEntity>,
+    private readonly videoRepo: Repository<ShortVideoEntity>,
+    @InjectRepository(VideoFrameEntity)
+    private readonly frameRepo: Repository<VideoFrameEntity>,
+    @InjectRepository(VideoTranscriptEntity)
+    private readonly transcriptRepo: Repository<VideoTranscriptEntity>,
+    @InjectQueue('video-ocr') private readonly ocrQueue: Queue,
+    @InjectQueue('video-asr') private readonly asrQueue: Queue,
+    @InjectQueue('video-analysis') private readonly analysisQueue: Queue,
   ) {}
 
-  async listVideos(taskId: number, filters: VideoFilter): Promise<{ items: ShortVideoEntity[]; total: number }> {
-    const where: Record<string, unknown> = { taskId };
-    if (filters.platform && filters.platform !== 'all') {
-      where.platform = filters.platform;
-    }
-    if (filters.sentiment && filters.sentiment !== 'all') {
-      where.sentiment = filters.sentiment;
-    }
-    if (filters.dateFrom && filters.dateTo) {
-      where.publishedAt = Between(new Date(filters.dateFrom), new Date(filters.dateTo));
-    }
-    const page = filters.page || 1;
-    const pageSize = filters.pageSize || 20;
-    const [items, total] = await this.videoRepo.findAndCount({
-      where,
-      order: { publishedAt: 'DESC' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
-    return { items, total };
-  }
+  async createVideo(data: Partial<ShortVideoEntity>): Promise<ShortVideoEntity> {
+    const video = this.videoRepo.create(data);
+    await this.videoRepo.save(video);
+    this.logger.log(`Created video: ${video.id} from ${video.platform}`);
 
-  async getVideoStats(taskId: number): Promise<VideoStats> {
-    const videos = await this.videoRepo.find({ where: { taskId } });
-    const totalVideos = videos.length;
-    const totalPlays = videos.reduce((s, v) => s + v.playCount, 0);
-    const totalLikes = videos.reduce((s, v) => s + v.likeCount, 0);
-    const totalComments = videos.reduce((s, v) => s + v.commentCount, 0);
-    const totalShares = videos.reduce((s, v) => s + v.shareCount, 0);
-    const totalEngagement = totalLikes + totalComments + totalShares;
-    const avgEngagementRate = totalVideos > 0 && totalPlays > 0
-      ? parseFloat(((totalEngagement / totalPlays) * 100).toFixed(2))
-      : 0;
+    // 触发 OCR 和 ASR 队列任务
+    await this.ocrQueue.add('extract-frames', { videoId: video.id });
+    await this.asrQueue.add('transcribe-audio', { videoId: video.id });
 
-    const platformMap = new Map<string, { count: number; totalPlays: number; totalLikes: number; totalComments: number; totalShares: number }>();
-    const sentimentMap = new Map<string, number>();
-    for (const v of videos) {
-      const p = platformMap.get(v.platform) || { count: 0, totalPlays: 0, totalLikes: 0, totalComments: 0, totalShares: 0 };
-      p.count++;
-      p.totalPlays += v.playCount;
-      p.totalLikes += v.likeCount;
-      p.totalComments += v.commentCount;
-      p.totalShares += v.shareCount;
-      platformMap.set(v.platform, p);
-      sentimentMap.set(v.sentiment, (sentimentMap.get(v.sentiment) || 0) + 1);
-    }
-
-    const byPlatform = Array.from(platformMap.entries()).map(([platform, data]) => ({
-      platform,
-      count: data.count,
-      avgEngagement: data.totalPlays > 0
-        ? parseFloat((((data.totalLikes + data.totalComments + data.totalShares) / data.totalPlays) * 100).toFixed(2))
-        : 0,
-    }));
-
-    const bySentiment = Array.from(sentimentMap.entries()).map(([sentiment, count]) => ({
-      sentiment,
-      count,
-    }));
-
-    return {
-      totalVideos,
-      totalPlays,
-      totalLikes,
-      totalComments,
-      totalShares,
-      avgEngagementRate,
-      byPlatform,
-      bySentiment,
-    };
-  }
-
-  async getVideoDetail(id: number): Promise<ShortVideoEntity> {
-    const video = await this.videoRepo.findOne({ where: { id } });
-    if (!video) throw new NotFoundException('Video not found');
     return video;
   }
 
-  async getTopVideos(taskId: number, limit = 10): Promise<ShortVideoEntity[]> {
-    return this.videoRepo.find({
-      where: { taskId },
-      order: { playCount: 'DESC' },
-      take: limit,
+  async findAll(params: {
+    platform?: string;
+    keyword?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ data: ShortVideoEntity[]; total: number }> {
+    const { platform, keyword, page = 1, pageSize = 20 } = params;
+    const query = this.videoRepo.createQueryBuilder('video');
+
+    if (platform) {
+      query.andWhere('video.platform = :platform', { platform });
+    }
+
+    if (keyword) {
+      query.andWhere(
+        '(video.title LIKE :keyword OR video.description LIKE :keyword OR video.ocrText LIKE :keyword OR video.asrText LIKE :keyword)',
+        { keyword: `%${keyword}%` },
+      );
+    }
+
+    query.orderBy('video.publishTime', 'DESC');
+    query.skip((page - 1) * pageSize).take(pageSize);
+
+    const [data, total] = await query.getManyAndCount();
+    return { data, total };
+  }
+
+  async findOne(id: number): Promise<ShortVideoEntity | null> {
+    return this.videoRepo.findOne({
+      where: { id },
+      relations: ['relatedEvent'],
     });
   }
 
-  async getTrendingHashtags(taskId: number): Promise<TrendingHashtag[]> {
-    const videos = await this.videoRepo.find({ where: { taskId } });
-    const tagMap = new Map<string, { count: number; totalPlays: number; totalLikes: number }>();
-    for (const v of videos) {
-      if (!v.hashtags) continue;
-      let tags: string[];
-      try {
-        tags = JSON.parse(v.hashtags) as string[];
-      } catch {
-        tags = [];
-      }
-      for (const tag of tags) {
-        const entry = tagMap.get(tag) || { count: 0, totalPlays: 0, totalLikes: 0 };
-        entry.count++;
-        entry.totalPlays += v.playCount;
-        entry.totalLikes += v.likeCount;
-        tagMap.set(tag, entry);
-      }
-    }
-    return Array.from(tagMap.entries())
-      .map(([tag, data]) => ({ tag, ...data }))
-      .sort((a, b) => b.count - a.count);
+  async updateProcessStatus(
+    id: number,
+    status: VideoProcessStatus,
+    errorMessage?: string,
+  ): Promise<void> {
+    await this.videoRepo.update(id, {
+      processStatus: status,
+      errorMessage: errorMessage || null,
+    });
+  }
+
+  async updateOcrText(id: number, ocrText: string): Promise<void> {
+    await this.videoRepo.update(id, { ocrText });
+    this.logger.log(`Updated OCR text for video ${id}`);
+  }
+
+  async updateAsrText(id: number, asrText: string): Promise<void> {
+    await this.videoRepo.update(id, { asrText });
+    this.logger.log(`Updated ASR text for video ${id}`);
+  }
+
+  async updateSemanticAnalysis(
+    id: number,
+    data: {
+      semanticSummary?: string;
+      sentiment?: string;
+      tags?: string[];
+      relatedEventId?: number;
+    },
+  ): Promise<void> {
+    await this.videoRepo.update(id, data);
+    this.logger.log(`Updated semantic analysis for video ${id}`);
+  }
+
+  async saveFrame(frame: Partial<VideoFrameEntity>): Promise<VideoFrameEntity> {
+    return this.frameRepo.save(frame);
+  }
+
+  async saveTranscript(transcript: Partial<VideoTranscriptEntity>): Promise<VideoTranscriptEntity> {
+    return this.transcriptRepo.save(transcript);
+  }
+
+  async getFrames(videoId: number): Promise<VideoFrameEntity[]> {
+    return this.frameRepo.find({
+      where: { videoId },
+      order: { frameIndex: 'ASC' },
+    });
+  }
+
+  async getTranscripts(videoId: number): Promise<VideoTranscriptEntity[]> {
+    return this.transcriptRepo.find({
+      where: { videoId },
+      order: { startTime: 'ASC' },
+    });
   }
 }

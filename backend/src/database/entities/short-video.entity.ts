@@ -3,42 +3,65 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { OpinionEventEntity } from './opinion-event.entity';
+
+export enum VideoPlatform {
+  DOUYIN = 'douyin',
+  KUAISHOU = 'kuaishou',
+  WEIXIN_CHANNELS = 'weixin_channels',
+  BILIBILI = 'bilibili',
+}
+
+export enum VideoProcessStatus {
+  PENDING = 'pending',
+  OCR_PROCESSING = 'ocr_processing',
+  ASR_PROCESSING = 'asr_processing',
+  ANALYZING = 'analyzing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
 
 @Entity('short_videos')
-@Index('idx_sv_task_platform', ['taskId', 'platform'])
-@Index('idx_sv_matched_at', ['matchedAt'])
 export class ShortVideoEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: number;
 
-  @Column({ name: 'task_id', type: 'bigint' })
-  taskId: number;
+  @Index()
+  @Column({ name: 'platform', type: 'varchar', length: 32 })
+  platform: VideoPlatform;
 
-  @Column({ length: 32 })
-  platform: string;
+  @Index()
+  @Column({ name: 'platform_video_id', type: 'varchar', length: 128 })
+  platformVideoId: string;
 
-  @Column({ length: 512 })
-  title: string;
-
-  @Column({ length: 128 })
-  author: string;
-
-  @Column({ name: 'author_avatar', length: 512, nullable: true })
-  authorAvatar: string | null;
-
-  @Column({ name: 'video_url', length: 512 })
+  @Column({ name: 'video_url', type: 'text' })
   videoUrl: string;
 
-  @Column({ name: 'cover_url', length: 512, nullable: true })
+  @Column({ name: 'cover_url', type: 'text', nullable: true })
   coverUrl: string | null;
 
-  @Column({ name: 'duration_seconds', type: 'int', default: 0 })
-  durationSeconds: number;
+  @Column({ type: 'text' })
+  title: string;
 
-  @Column({ name: 'play_count', type: 'int', default: 0 })
-  playCount: number;
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
+
+  @Column({ name: 'author_id', type: 'varchar', length: 128 })
+  authorId: string;
+
+  @Column({ name: 'author_name', type: 'varchar', length: 255 })
+  authorName: string;
+
+  @Column({ name: 'author_avatar', type: 'text', nullable: true })
+  authorAvatar: string | null;
+
+  @Column({ name: 'publish_time', type: 'datetime', nullable: true })
+  publishTime: Date | null;
 
   @Column({ name: 'like_count', type: 'int', default: 0 })
   likeCount: number;
@@ -49,27 +72,43 @@ export class ShortVideoEntity {
   @Column({ name: 'share_count', type: 'int', default: 0 })
   shareCount: number;
 
-  @Column({ name: 'collect_count', type: 'int', default: 0 })
-  collectCount: number;
+  @Column({ name: 'play_count', type: 'int', default: 0 })
+  playCount: number;
 
-  @Column({ type: 'text', nullable: true })
-  description: string;
+  @Column({ name: 'duration', type: 'int', nullable: true, comment: '视频时长（秒）' })
+  duration: number | null;
 
-  @Column({ type: 'json', nullable: true })
-  comments: string;
+  @Column({ name: 'process_status', type: 'varchar', length: 32, default: VideoProcessStatus.PENDING })
+  processStatus: VideoProcessStatus;
 
-  @Column({ type: 'varchar', length: 16, default: 'neutral' })
-  sentiment: string;
+  @Column({ name: 'ocr_text', type: 'text', nullable: true, comment: '视频画面 OCR 提取文本' })
+  ocrText: string | null;
 
-  @Column({ type: 'text', nullable: true })
-  hashtags: string;
+  @Column({ name: 'asr_text', type: 'text', nullable: true, comment: '视频语音识别文本' })
+  asrText: string | null;
 
-  @Column({ name: 'published_at', type: 'datetime' })
-  publishedAt: Date;
+  @Column({ name: 'semantic_summary', type: 'text', nullable: true, comment: 'LLM 生成的语义摘要' })
+  semanticSummary: string | null;
 
-  @Column({ name: 'matched_at', type: 'datetime' })
-  matchedAt: Date;
+  @Column({ name: 'sentiment', type: 'varchar', length: 32, nullable: true })
+  sentiment: string | null;
+
+  @Column({ name: 'tags', type: 'json', nullable: true, comment: '视频标签数组' })
+  tags: string[] | null;
+
+  @Column({ name: 'related_event_id', type: 'bigint', nullable: true })
+  relatedEventId: number | null;
+
+  @ManyToOne(() => OpinionEventEntity, { nullable: true })
+  @JoinColumn({ name: 'related_event_id' })
+  relatedEvent: OpinionEventEntity | null;
+
+  @Column({ name: 'error_message', type: 'text', nullable: true })
+  errorMessage: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

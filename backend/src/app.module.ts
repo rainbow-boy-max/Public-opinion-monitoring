@@ -37,7 +37,6 @@ import { KeywordSuggestModule } from './modules/keywords/keyword-suggest.module'
 import { AuditModule } from './modules/audit/audit.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ExportModule } from './modules/export/export.module';
-import { ShortVideoModule } from './modules/short-video/short-video.module';
 import { SentimentModule } from './modules/sentiment/sentiment.module';
 import { TtsModule } from './modules/tts/tts.module';
 import { WorkOrdersModule } from './modules/work-orders/work-order.module';
@@ -50,6 +49,7 @@ import { OcrModule } from './modules/ocr/ocr.module';
 import { EcommerceModule } from './modules/ecommerce/ecommerce.module';
 import { DutyModule } from './modules/duty/duty.module';
 import { ApiKeyModule } from './modules/api-key/api-key.module';
+import { ShortVideoModule } from './modules/short-video/short-video.module';
 import { ReportTemplatesModule } from './modules/report-templates/report-template.module';
 
 @Module({

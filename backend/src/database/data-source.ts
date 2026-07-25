@@ -17,6 +17,9 @@ import { WorkOrderEntity } from './entities/work-order.entity';
 import { WorkOrderCommentEntity } from './entities/work-order-comment.entity';
 import { OcrConfigEntity } from './entities/ocr-config.entity';
 import { TtsConfigEntity } from './entities/tts-config.entity';
+import { ShortVideoEntity } from './entities/short-video.entity';
+import { VideoFrameEntity } from './entities/video-frame.entity';
+import { VideoTranscriptEntity } from './entities/video-transcript.entity';
 
 const entities = [
   UserEntity,
@@ -44,6 +47,9 @@ const entities = [
   WorkOrderCommentEntity,
   OcrConfigEntity,
   TtsConfigEntity,
+  ShortVideoEntity,
+  VideoFrameEntity,
+  VideoTranscriptEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();
