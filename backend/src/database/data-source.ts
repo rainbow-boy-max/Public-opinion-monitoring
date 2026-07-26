@@ -20,6 +20,8 @@ import { TtsConfigEntity } from './entities/tts-config.entity';
 import { ShortVideoEntity } from './entities/short-video.entity';
 import { VideoFrameEntity } from './entities/video-frame.entity';
 import { VideoTranscriptEntity } from './entities/video-transcript.entity';
+import { ShortVideoConfigEntity } from './entities/short-video-config.entity';
+import { AliyunVideoConfigEntity } from './entities/aliyun-video-config.entity';
 
 const entities = [
   UserEntity,
@@ -50,6 +52,8 @@ const entities = [
   ShortVideoEntity,
   VideoFrameEntity,
   VideoTranscriptEntity,
+  ShortVideoConfigEntity,
+  AliyunVideoConfigEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();

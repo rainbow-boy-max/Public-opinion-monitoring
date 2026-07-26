@@ -50,6 +50,7 @@ import { EcommerceModule } from './modules/ecommerce/ecommerce.module';
 import { DutyModule } from './modules/duty/duty.module';
 import { ApiKeyModule } from './modules/api-key/api-key.module';
 import { ShortVideoModule } from './modules/short-video/short-video.module';
+import { ShortVideoConfigModule } from './modules/short-video-config/short-video-config.module';
 import { ReportTemplatesModule } from './modules/report-templates/report-template.module';
 
 @Module({
@@ -101,6 +102,8 @@ import { ReportTemplatesModule } from './modules/report-templates/report-templat
     EcommerceModule,
     DutyModule,
     ApiKeyModule,
+    ShortVideoModule,
+    ShortVideoConfigModule,
   ],
   providers: [
     {
