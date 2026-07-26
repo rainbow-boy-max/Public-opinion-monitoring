@@ -22,6 +22,7 @@ import { VideoFrameEntity } from './entities/video-frame.entity';
 import { VideoTranscriptEntity } from './entities/video-transcript.entity';
 import { ShortVideoConfigEntity } from './entities/short-video-config.entity';
 import { AliyunVideoConfigEntity } from './entities/aliyun-video-config.entity';
+import { ReportGenerationEntity } from './entities/report-generation.entity';
 
 const entities = [
   UserEntity,
@@ -54,6 +55,7 @@ const entities = [
   VideoTranscriptEntity,
   ShortVideoConfigEntity,
   AliyunVideoConfigEntity,
+  ReportGenerationEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();

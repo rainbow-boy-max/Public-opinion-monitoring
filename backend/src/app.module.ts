@@ -51,6 +51,7 @@ import { DutyModule } from './modules/duty/duty.module';
 import { ApiKeyModule } from './modules/api-key/api-key.module';
 import { ShortVideoModule } from './modules/short-video/short-video.module';
 import { ShortVideoConfigModule } from './modules/short-video-config/short-video-config.module';
+import { ReportGenerationModule } from './modules/report-generation/report-generation.module';
 import { ReportTemplatesModule } from './modules/report-templates/report-template.module';
 
 @Module({
@@ -104,6 +105,7 @@ import { ReportTemplatesModule } from './modules/report-templates/report-templat
     ApiKeyModule,
     ShortVideoModule,
     ShortVideoConfigModule,
+    ReportGenerationModule,
   ],
   providers: [
     {
