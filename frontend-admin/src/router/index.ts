@@ -203,6 +203,14 @@ const router = createRouter({
           path: 'attribution/detail/:eventId?',
           component: () => import('@/views/attribution/detail.vue'),
         },
+        {
+          path: 'alert-config',
+          component: () => import('@/views/alert-config/index.vue'),
+        },
+        {
+          path: 'alert-history',
+          component: () => import('@/views/alert-history/index.vue'),
+        },
       ],
     },
   ],
