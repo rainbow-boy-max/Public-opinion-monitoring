@@ -183,6 +183,26 @@ const router = createRouter({
           path: 'api-docs',
           component: () => import('@/pages/ApiDocsPage.vue'),
         },
+        {
+          path: 'reports',
+          component: () => import('@/views/reports/index.vue'),
+        },
+        {
+          path: 'reports/create',
+          component: () => import('@/views/reports/create.vue'),
+        },
+        {
+          path: 'reports/:id',
+          component: () => import('@/views/reports/detail.vue'),
+        },
+        {
+          path: 'prediction',
+          component: () => import('@/views/prediction/index.vue'),
+        },
+        {
+          path: 'attribution/detail/:eventId?',
+          component: () => import('@/views/attribution/detail.vue'),
+        },
       ],
     },
   ],
