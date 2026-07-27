@@ -25,6 +25,8 @@ import { AliyunVideoConfigEntity } from './entities/aliyun-video-config.entity';
 import { ReportGenerationEntity } from './entities/report-generation.entity';
 import { TrendPredictionEntity } from './entities/trend-prediction.entity';
 import { AttributionAnalysisEntity } from './entities/attribution-analysis.entity';
+import { AlertConfigEntity } from './entities/alert-config.entity';
+import { AlertRecordEntity } from './entities/alert-record.entity';
 
 const entities = [
   UserEntity,
@@ -60,6 +62,8 @@ const entities = [
   ReportGenerationEntity,
   TrendPredictionEntity,
   AttributionAnalysisEntity,
+  AlertConfigEntity,
+  AlertRecordEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();
