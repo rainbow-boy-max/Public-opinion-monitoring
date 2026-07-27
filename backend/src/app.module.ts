@@ -52,6 +52,8 @@ import { ApiKeyModule } from './modules/api-key/api-key.module';
 import { ShortVideoModule } from './modules/short-video/short-video.module';
 import { ShortVideoConfigModule } from './modules/short-video-config/short-video-config.module';
 import { ReportGenerationModule } from './modules/report-generation/report-generation.module';
+import { PredictionModule } from './modules/prediction/prediction.module';
+import { AttributionModule } from './modules/attribution/attribution.module';
 import { ReportTemplatesModule } from './modules/report-templates/report-template.module';
 
 @Module({
@@ -106,6 +108,8 @@ import { ReportTemplatesModule } from './modules/report-templates/report-templat
     ShortVideoModule,
     ShortVideoConfigModule,
     ReportGenerationModule,
+    PredictionModule,
+    AttributionModule,
   ],
   providers: [
     {
