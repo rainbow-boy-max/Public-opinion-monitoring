@@ -23,6 +23,8 @@ import { VideoTranscriptEntity } from './entities/video-transcript.entity';
 import { ShortVideoConfigEntity } from './entities/short-video-config.entity';
 import { AliyunVideoConfigEntity } from './entities/aliyun-video-config.entity';
 import { ReportGenerationEntity } from './entities/report-generation.entity';
+import { TrendPredictionEntity } from './entities/trend-prediction.entity';
+import { AttributionAnalysisEntity } from './entities/attribution-analysis.entity';
 
 const entities = [
   UserEntity,
@@ -56,6 +58,8 @@ const entities = [
   ShortVideoConfigEntity,
   AliyunVideoConfigEntity,
   ReportGenerationEntity,
+  TrendPredictionEntity,
+  AttributionAnalysisEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();
