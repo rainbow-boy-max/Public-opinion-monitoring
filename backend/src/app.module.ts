@@ -54,6 +54,7 @@ import { ShortVideoConfigModule } from './modules/short-video-config/short-video
 import { ReportGenerationModule } from './modules/report-generation/report-generation.module';
 import { PredictionModule } from './modules/prediction/prediction.module';
 import { AttributionModule } from './modules/attribution/attribution.module';
+import { AlertAdvancedModule } from './modules/alert-advanced/alert-advanced.module';
 import { ReportTemplatesModule } from './modules/report-templates/report-template.module';
 
 @Module({
@@ -110,6 +111,7 @@ import { ReportTemplatesModule } from './modules/report-templates/report-templat
     ReportGenerationModule,
     PredictionModule,
     AttributionModule,
+    AlertAdvancedModule,
   ],
   providers: [
     {
