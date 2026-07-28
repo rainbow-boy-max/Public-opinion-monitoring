@@ -27,6 +27,8 @@ import { TrendPredictionEntity } from './entities/trend-prediction.entity';
 import { AttributionAnalysisEntity } from './entities/attribution-analysis.entity';
 import { AlertConfigEntity } from './entities/alert-config.entity';
 import { AlertRecordEntity } from './entities/alert-record.entity';
+import { GovBriefingEntity } from './entities/gov-briefing.entity';
+import { LeaderInstructionEntity } from './entities/leader-instruction.entity';
 
 const entities = [
   UserEntity,
@@ -64,6 +66,8 @@ const entities = [
   AttributionAnalysisEntity,
   AlertConfigEntity,
   AlertRecordEntity,
+  GovBriefingEntity,
+  LeaderInstructionEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();
