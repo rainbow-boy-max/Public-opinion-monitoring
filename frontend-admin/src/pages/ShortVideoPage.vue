@@ -94,7 +94,7 @@
 
       <div v-if="expandedVideo" class="sv-expanded">
         <GlassCard :title="'评论列表 - ' + expandedVideo.title" icon="💬" subtitle="模拟评论数据">
-          <div v-for="(c, idx) in parseComments(expandedVideo.comments)" :key="idx" class="sv-comment-row">
+              <div class="sv-comment-row" v-for="(c, idx) in parseComments(expandedVideo.comments)" :key="idx">
             <el-avatar :size="24">{{ c.user.charAt(0) }}</el-avatar>
             <div class="sv-comment-row__body">
               <div class="sv-comment-row__user">{{ c.user }}</div>

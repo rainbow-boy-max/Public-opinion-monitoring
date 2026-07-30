@@ -156,7 +156,7 @@ export class PredictionService {
 
   private calculateConfidence(historicalData: HistoricalDataPoint[]): number {
     const dataPoints = historicalData.length;
-    let baseConfidence = Math.min(dataPoints / 14, 1) * 50;
+    const baseConfidence = Math.min(dataPoints / 14, 1) * 50;
     
     const values = historicalData.map(d => d.heat);
     const mean = values.reduce((a, b) => a + b, 0) / values.length;

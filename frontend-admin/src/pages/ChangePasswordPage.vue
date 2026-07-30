@@ -59,7 +59,7 @@ const rules = {
   confirmPassword: [
     { required: true, message: '请确认新密码', trigger: 'blur' },
     {
-      validator: (_rule, value, cb) => {
+      validator: (_rule: any, value: any, cb: (e?: Error) => void) => {
         if (value !== form.newPassword) cb(new Error('两次输入的密码不一致'));
         else cb();
       },

@@ -195,11 +195,11 @@ PUT /api/gov/instruction/:id
 
 ### Phase 11.1：数据模型与基础服务（1 周）
 
-- [ ] 创建 GovBriefingEntity
-- [ ] 创建 LeaderInstructionEntity
-- [ ] 创建 GovReportModule
-- [ ] 创建 BriefingService
-- [ ] 创建 InstructionService
+- [x] 创建 GovBriefingEntity
+- [x] 创建 LeaderInstructionEntity
+- [x] 创建 GovReportModule
+- [x] 创建 BriefingService
+- [x] 创建 InstructionService
 
 ### Phase 11.2：简报生成服务（1 周）
 

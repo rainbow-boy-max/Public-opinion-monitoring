@@ -161,7 +161,7 @@ interface KolProfile {
 }
 
 interface KolDetail extends KolProfile {
-  recentArticles: Array<{ title: string; url: string; publishedAt: Date; engagement: number; sentiment: string }>;
+  recentArticles: Array<{ title: string; url: string; publishedAt: Date; engagement: number; sentiment: 'positive' | 'negative' | 'neutral' }>;
   sentimentTrend: Array<{ date: string; score: number }>;
   platformBreakdown: Record<string, number>;
 }

@@ -47,40 +47,40 @@
         <GlassCard class="overview-card">
           <div class="overview-card__inner">
             <div class="overview-card__label">品牌声量</div>
-            <div class="overview-card__value">{{ data.overview.brandVoice.toLocaleString() }}</div>
-            <div class="overview-card__trend" :class="trendClass(data.overview.trend)">
-              <span v-if="data.overview.trend === 'rising'">&#8593;</span>
-              <span v-else-if="data.overview.trend === 'declining'">&#8595;</span>
+            <div class="overview-card__value">{{ view.overview.brandVoice.toLocaleString() }}</div>
+            <div class="overview-card__trend" :class="trendClass(view.overview.trend)">
+              <span v-if="view.overview.trend === 'rising'">&#8593;</span>
+              <span v-else-if="view.overview.trend === 'declining'">&#8595;</span>
               <span v-else>&#8594;</span>
-              {{ trendLabel(data.overview.trend) }}
+              {{ trendLabel(view.overview.trend) }}
             </div>
           </div>
         </GlassCard>
         <GlassCard class="overview-card">
           <div class="overview-card__inner">
             <div class="overview-card__label">声量占比</div>
-            <div class="overview-card__value">{{ data.overview.shareOfVoice }}<span class="overview-card__unit">%</span></div>
+            <div class="overview-card__value">{{ view.overview.shareOfVoice }}<span class="overview-card__unit">%</span></div>
             <div class="overview-card__gauge">
-              <el-progress :percentage="data.overview.shareOfVoice" :stroke-width="8" color="var(--color-primary)" />
+              <el-progress :percentage="view.overview.shareOfVoice" :stroke-width="8" color="var(--color-primary)" />
             </div>
           </div>
         </GlassCard>
         <GlassCard class="overview-card">
           <div class="overview-card__inner">
             <div class="overview-card__label">NPS 得分</div>
-            <div class="overview-card__value" :style="{ color: npsColor(data.overview.npsScore) }">{{ data.overview.npsScore }}</div>
+            <div class="overview-card__value" :style="{ color: npsColor(view.overview.npsScore) }">{{ view.overview.npsScore }}</div>
             <div class="overview-card__sub">-100 ~ 100</div>
           </div>
         </GlassCard>
         <GlassCard class="overview-card">
           <div class="overview-card__inner">
             <div class="overview-card__label">情感得分</div>
-            <div class="overview-card__value" :style="{ color: sentimentColor(data.overview.sentimentScore) }">{{ data.overview.sentimentScore.toFixed(2) }}</div>
+            <div class="overview-card__value" :style="{ color: sentimentColor(view.overview.sentimentScore) }">{{ view.overview.sentimentScore.toFixed(2) }}</div>
             <div class="overview-card__bar">
               <el-progress
-                :percentage="((data.overview.sentimentScore + 1) / 2) * 100"
+                :percentage="((view.overview.sentimentScore + 1) / 2) * 100"
                 :stroke-width="8"
-                :color="sentimentBarColor(data.overview.sentimentScore)"
+                :color="sentimentBarColor(view.overview.sentimentScore)"
               />
             </div>
           </div>
@@ -103,7 +103,7 @@
       </div>
 
       <GlassCard title="最新提及" subtitle="最近 20 条品牌相关提及">
-        <el-table :data="data.recentMentions" stripe size="small" style="width: 100%" max-height="400">
+        <el-table :data="view.recentMentions" stripe size="small" style="width: 100%" max-height="400">
           <el-table-column label="标题" min-width="240" show-overflow-tooltip>
             <template #default="{ row }">
               <a v-if="row.url && row.url !== '#'" :href="row.url" target="_blank" class="mention-link">{{ row.title }}</a>
@@ -184,6 +184,7 @@ const brandKeywords = ref<string[]>(['品牌A']);
 const timeRange = ref<string>('30');
 
 const hasData = computed(() => data.value !== null);
+const view = computed(() => data.value as ReputationData);
 
 const trendChartEl = ref<HTMLElement>();
 const pieChartEl = ref<HTMLElement>();

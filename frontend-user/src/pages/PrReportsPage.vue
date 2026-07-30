@@ -90,7 +90,7 @@
             <div v-for="e in searchResults" :key="e.id" class="event-item" :class="{ selected: selectedEventId === e.id }" @click="selectedEventId = e.id">
               <div class="event-item__title">{{ e.title }}</div>
               <div class="event-item__meta">
-                <PlatformTag :platform="e.platform" size="small" />
+                <PlatformTag :platform="e.platform" size="small" :label="platformLabel(e.platform)" />
                 <span>{{ e.sentiment === 'positive' ? '😊' : e.sentiment === 'negative' ? '😡' : '😐' }}</span>
                 <span class="event-item__time">{{ formatDate(e.matchedAt) }}</span>
               </div>
@@ -157,6 +157,14 @@ import { Plus } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import PlatformTag from '@shared/components/PlatformTag.vue';
+
+const PLATFORM_LABELS: Record<string, string> = {
+  weixin: '微信', weibo: '微博', douyin: '抖音', xiaohongshu: '小红书',
+  kuaishou: '快手', baijiahao: '百家号', webhook_ingest: 'Webhook', test: '测试',
+};
+function platformLabel(p: string): string {
+  return PLATFORM_LABELS[p] || p;
+}
 
 const oneClickQuery = ref('');
 const oneClickRunning = ref(false);

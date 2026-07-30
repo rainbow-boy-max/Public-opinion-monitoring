@@ -281,21 +281,21 @@
             <el-form-item label="图片理解">
               <el-switch
                 :model-value="form.capabilities.vision"
-                @update:model-value="(v) => (form.capabilities.vision = v)"
+                @update:model-value="(v: boolean) => (form.capabilities.vision = v)"
               />
               <span style="margin-left: 8px; color: var(--text-tertiary)">vision: {{ form.capabilities.vision }}</span>
             </el-form-item>
             <el-form-item label="推理/思考">
               <el-switch
                 :model-value="form.capabilities.reasoning"
-                @update:model-value="(v) => (form.capabilities.reasoning = v)"
+                @update:model-value="(v: boolean) => (form.capabilities.reasoning = v)"
               />
               <span style="margin-left: 8px; color: var(--text-tertiary)">reasoning: {{ form.capabilities.reasoning }}</span>
             </el-form-item>
             <el-form-item label="联网搜索">
               <el-switch
                 :model-value="form.capabilities.webSearch"
-                @update:model-value="(v) => (form.capabilities.webSearch = v)"
+                @update:model-value="(v: boolean) => (form.capabilities.webSearch = v)"
               />
               <span style="margin-left: 8px; color: var(--text-tertiary)">webSearch: {{ form.capabilities.webSearch }}</span>
               <div v-if="form.capabilities.webSearch" style="font-size: 12px; color: var(--color-warning); margin-top: 4px">
@@ -802,6 +802,14 @@ function beforeUpload(file: any): boolean {
     return false;
   }
   return true;
+}
+
+async function loadKbFiles(): Promise<void> {
+  try {
+    kbFiles.value = await http.get(`/admin/agents/${agentId.value}/knowledge/files`);
+  } catch {
+    kbFiles.value = [];
+  }
 }
 
 async function onUpload(options: any): Promise<void> {

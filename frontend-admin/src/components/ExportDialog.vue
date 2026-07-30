@@ -200,7 +200,7 @@ function onCancel(): void {
   close();
 }
 
-function simulateProgress(): void {
+function simulateProgress(): ReturnType<typeof setInterval> {
   progressVisible.value = true;
   progressPercent.value = 0;
   progressText.value = '正在准备数据...';

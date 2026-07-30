@@ -117,6 +117,7 @@ interface Template {
   submittedAt: string | null;
   approvedAt: string | null;
   createdAt: string;
+  remark?: string;
 }
 
 const SCENES = [

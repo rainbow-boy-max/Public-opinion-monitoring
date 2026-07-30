@@ -216,11 +216,11 @@ const activeCategory = ref('');
 const allModels = ref<any[]>([]);
 
 const modelGroups = computed(() => {
-  const grouped: Record<string, { label: string; models: any[] }> = {};
+  const grouped: Record<string, { label: string; provider: string; models: any[] }> = {};
   for (const m of allModels.value) {
     if (!m.apiKeyConfigured) continue;
     const key = m.provider;
-    if (!grouped[key]) grouped[key] = { label: m.provider, models: [] };
+    if (!grouped[key]) grouped[key] = { label: m.provider, provider: m.provider, models: [] };
     grouped[key].models.push(m);
   }
   return Object.values(grouped);

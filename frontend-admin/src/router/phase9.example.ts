@@ -5,12 +5,12 @@
  * 将此文件中的路由配置添加到 src/router/index.ts 中
  */
 
-import Layout from '@/layout/index.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
 export const phase9Routes = [
   {
     path: '/prediction',
-    component: Layout,
+    component: AdminLayout,
     redirect: '/prediction/dashboard',
     meta: {
       title: '趋势预测',
@@ -31,7 +31,7 @@ export const phase9Routes = [
   },
   {
     path: '/attribution',
-    component: Layout,
+    component: AdminLayout,
     redirect: '/attribution/detail',
     meta: {
       title: '归因分析',

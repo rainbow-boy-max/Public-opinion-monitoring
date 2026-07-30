@@ -225,6 +225,7 @@ interface SentimentResult {
   aspects?: Array<{ aspect: string; sentiment: string; score: number }>;
   reasoning?: string;
   source: 'rule' | 'llm' | 'merged';
+  isSarcastic?: boolean;
 }
 
 const models = ref<LlmModel[]>([]);

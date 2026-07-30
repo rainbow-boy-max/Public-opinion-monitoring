@@ -43,7 +43,7 @@ export class AlertCheckerService {
     if (this.isInCooldown(rule)) return;
 
     let triggered = false;
-    let triggerData: Record<string, unknown> = {};
+    const triggerData: Record<string, unknown> = {};
 
     switch (rule.conditionType) {
       case AlertConditionType.SENTIMENT_NEGATIVE:

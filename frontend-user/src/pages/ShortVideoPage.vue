@@ -24,10 +24,10 @@
     <p class="page-guide">专项监控抖音、快手、小红书平台的短视频舆情</p>
 
     <div class="sv-stats">
-        <StatCard label="短视频总数" :value="stats.totalVideos" icon="🎬" icon-bg="var(--gradient-primary)" :glow="'rgba(94, 114, 228, 0.4)'" />
-        <StatCard label="总播放量" :value="formatNum(stats.totalPlays)" icon="▶️" icon-bg="var(--gradient-cool)" :glow="'rgba(6, 182, 212, 0.4)'" />
-        <StatCard label="总点赞数" :value="formatNum(stats.totalLikes)" icon="❤️" icon-bg="var(--gradient-warm)" :glow="'rgba(245, 158, 11, 0.4)'" />
-        <StatCard label="平均互动率" :value="stats.avgEngagementRate + '%'" icon="📈" icon-bg="linear-gradient(135deg, #10B981, #059669)" :glow="'rgba(16, 185, 129, 0.4)'" />
+        <StatCard label="短视频总数" :value="statsView.totalVideos" icon="🎬" icon-bg="var(--gradient-primary)" :glow="'rgba(94, 114, 228, 0.4)'" />
+        <StatCard label="总播放量" :value="formatNum(statsView.totalPlays)" icon="▶️" icon-bg="var(--gradient-cool)" :glow="'rgba(6, 182, 212, 0.4)'" />
+        <StatCard label="总点赞数" :value="formatNum(statsView.totalLikes)" icon="❤️" icon-bg="var(--gradient-warm)" :glow="'rgba(245, 158, 11, 0.4)'" />
+        <StatCard label="平均互动率" :value="statsView.avgEngagementRate + '%'" icon="📈" icon-bg="linear-gradient(135deg, #10B981, #059669)" :glow="'rgba(16, 185, 129, 0.4)'" />
       </div>
 
       <div class="sv-platform-tabs">
@@ -126,22 +126,22 @@
             :style="{ fontSize: calcTagSize(h.count) + 'px', opacity: calcTagOpacity(h.count) }"
           >#{{ h.tag }}</span>
         </div>
-      </GlassCard>
-    </template>
+     </GlassCard>
 
-    <EmptyStateGuide
-      v-else-if="!loading"
-      icon="🎬"
-      title="暂无短视频数据"
-      description="请先创建监控任务并包含短视频平台（抖音/快手/小红书），即可在此查看短视频舆情"
-      primary-action="前往创建监控任务"
-      @primary="router.push('/tasks')"
-    />
+     <div class="sv-empty-state" v-if="!loading && !taskId">
+       <EmptyStateGuide
+          icon="🎬"
+          title="暂无短视频数据"
+          description="请先创建监控任务并包含短视频平台（抖音/快手/小红书），即可在此查看短视频舆情"
+          primary-action="前往创建监控任务"
+          @primary="router.push('/tasks')"
+        />
+      </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import * as echarts from 'echarts';
 import http from '@/utils/http';
@@ -168,6 +168,7 @@ const loading = ref(false);
 const router = useRouter();
 const videos = ref<Video[]>([]);
 const stats = ref<VideoStats | null>(null);
+const statsView = computed(() => stats.value as VideoStats);
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(20);

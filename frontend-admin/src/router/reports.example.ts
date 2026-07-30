@@ -8,11 +8,11 @@
  * 4. 根据项目实际情况调整路径和权限
  */
 
-import Layout from '@/layout/index.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
 export const reportRoutes = {
   path: '/reports',
-  component: Layout,
+  component: AdminLayout,
   redirect: '/reports/list',
   meta: {
     title: '报告管理',

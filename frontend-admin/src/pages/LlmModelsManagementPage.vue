@@ -310,6 +310,7 @@ const editForm = reactive<any>({
 
 const fetching = ref(false);
 const availableModels = ref<string[]>([]);
+const testingEditKey = ref(false);
 
 const testVisible = ref(false);
 const testing = ref(false);

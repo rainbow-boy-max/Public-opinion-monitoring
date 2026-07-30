@@ -8,7 +8,7 @@
     style="width: 100%"
     @selection-change="onSelectionChange"
   >
-    <el-table-column type="selection" width="48" :selectable="row => row.provider !== 'custom' || row.apiKeyConfigured" />
+    <el-table-column type="selection" width="48" :selectable="(row: any) => row.provider !== 'custom' || row.apiKeyConfigured" />
 
     <el-table-column prop="provider" label="提供商" width="150">
       <template #default="{ row }">

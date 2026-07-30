@@ -321,7 +321,7 @@ function renderChart() {
       width: Math.max(1, l.similarity * 4),
       curveness: 0.2,
       color: {
-        type: 'linear',
+        type: 'linear' as const,
         x: 0, y: 0, x2: 0, y2: 1,
         colorStops: [
           { offset: 0, color: PLATFORM_COLORS[nodeMap.value[l.source]?.platform] || '#6B7280' },

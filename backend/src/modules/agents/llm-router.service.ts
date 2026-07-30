@@ -194,7 +194,7 @@ export class LlmRouterService {
           apiStyle: model.apiStyle,
         });
         const finalContent: string[] = [];
-        let totalTokens = 0;
+        const totalTokens = 0;
 
         for await (const delta of stream) {
           finalContent.push(delta);

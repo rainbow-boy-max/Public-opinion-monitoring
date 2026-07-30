@@ -184,7 +184,7 @@ function formatDate(s: string): string {
   return new Date(s).toLocaleString('zh-CN', { hour12: false });
 }
 
-async function onModuleChange(): void {
+async function onModuleChange(): Promise<void> {
   actionFilter.value = '';
   await fetchActions();
   await loadData();

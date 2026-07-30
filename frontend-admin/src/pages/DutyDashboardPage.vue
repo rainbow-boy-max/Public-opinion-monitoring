@@ -147,8 +147,8 @@ const latestEventTime = computed(() => {
 });
 
 let socket: any = null;
-let timeTimer: ReturnType<typeof setInterval> | null = null;
-let refreshTimer: ReturnType<typeof setInterval> | null = null;
+let timeTimer: number | null = null;
+let refreshTimer: number | null = null;
 const feedRef = ref<HTMLElement>();
 
 function connectSocket() {
@@ -221,6 +221,25 @@ async function loadData() {
 function updateTime() {
   const now = new Date();
   currentTime.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+}
+
+function sentimentIcon(s: string): string {
+  return { positive: '+', negative: '-', neutral: '~' }[s] || '~';
+}
+
+function barWidth(count: number): string {
+  const max = Math.max(...Object.values(overview.value.platformBreakdown), 1);
+  return `${(count / max) * 100}%`;
+}
+
+function formatShort(s: string): string {
+  if (!s) return '—';
+  const d = new Date(s);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${mm}-${dd} ${hh}:${mi}`;
 }
 
 function toggleFullscreen() {

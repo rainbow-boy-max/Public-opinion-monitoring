@@ -378,7 +378,7 @@ export class PrReportsService {
   private calcNextRun(freq: 'daily' | 'weekly', time: string): Date {
     const [h, m] = time.split(':').map(Number);
     const now = new Date();
-    let next = new Date(now);
+    const next = new Date(now);
     next.setHours(h, m, 0, 0);
 
     if (next <= now) {

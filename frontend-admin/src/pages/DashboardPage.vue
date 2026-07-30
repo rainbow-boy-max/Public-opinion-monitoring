@@ -2,7 +2,7 @@
   <div class="dashboard-page">
     <div class="dashboard-stats">
       <StatCard
-        v-for="(card, idx) in cards"
+        v-for="card in cards"
         :key="card.label"
         :label="card.label"
         :value="card.value"

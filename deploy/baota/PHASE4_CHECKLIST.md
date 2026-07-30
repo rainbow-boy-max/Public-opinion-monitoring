@@ -2,14 +2,14 @@
 
 ## 已交付文件
 
-| 文件 | 功能 | 状态 |
-|------|------|------|
-| `scripts/backup-database.sh` | MySQL、Redis、配置备份 | ✅ |
-| `scripts/rollback-application.sh` | 前端软链接 + 后端镜像回滚 | ✅ |
-| `scripts/restore-database.sh` | 数据库恢复（恢复前自动快照） | ✅ |
-| `scripts/opinionctl` | 新增 `backup`、`rollback`、`restore` 命令 | ✅ |
-| `console/server.mjs` | 新增备份、回滚、恢复、列表查询 API | ✅ |
-| `console/public/index.html` | 新增「备份与回滚」Tab | ✅ |
+| 文件                              | 功能                                      | 状态 |
+| --------------------------------- | ----------------------------------------- | ---- |
+| `scripts/backup-database.sh`      | MySQL、Redis、配置备份                    | ✅   |
+| `scripts/rollback-application.sh` | 前端软链接 + 后端镜像回滚                 | ✅   |
+| `scripts/restore-database.sh`     | 数据库恢复（恢复前自动快照）              | ✅   |
+| `scripts/opinionctl`              | 新增 `backup`、`rollback`、`restore` 命令 | ✅   |
+| `console/server.mjs`              | 新增备份、回滚、恢复、列表查询 API        | ✅   |
+| `console/public/index.html`       | 新增「备份与回滚」Tab                     | ✅   |
 
 ## 备份机制
 

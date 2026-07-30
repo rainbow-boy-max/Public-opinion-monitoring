@@ -30,7 +30,7 @@
         <el-table-column prop="productIds" label="商品 ID" />
         <el-table-column prop="isActive" label="状态" width="80">
           <template #default="{ row }">
-            <el-switch :model-value="!!row.isActive" @change="(v) => onToggleConfig(row.id, v)" />
+            <el-switch :model-value="!!row.isActive" @change="(v: boolean) => onToggleConfig(row.id, v)" />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="80">

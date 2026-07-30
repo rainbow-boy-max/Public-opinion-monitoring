@@ -127,7 +127,7 @@ async function load(): Promise<void> {
   }
   try {
     const tasks = await http.get('/monitor-tasks');
-    const total = (tasks || []).reduce((sum, t) => sum + (t.eventCount || 0), 0);
+    const total = (tasks || []).reduce((sum: number, t: any) => sum + (t.eventCount || 0), 0);
     cards.value[2].value = String(total);
   } catch (err) {
     /* ignore */

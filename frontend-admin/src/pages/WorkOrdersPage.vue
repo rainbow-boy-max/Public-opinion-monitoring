@@ -375,11 +375,11 @@ function typeLabel(t: string): string {
 }
 
 function priorityTagType(p: string): 'info' | 'warning' | 'danger' | 'success' {
-  return { low: 'info', medium: 'warning', high: 'danger', critical: 'danger' }[p] || 'info';
+  return ({ low: 'info', medium: 'warning', high: 'danger', critical: 'danger' } as const)[p as keyof { low: 'info'; medium: 'warning'; high: 'danger'; critical: 'danger' }] || 'info';
 }
 
 function statusTagType(s: string): 'info' | 'warning' | 'success' | 'primary' {
-  return { pending: 'info', in_progress: 'warning', resolved: 'success', closed: 'primary' }[s] || 'info';
+  return ({ pending: 'info', in_progress: 'warning', resolved: 'success', closed: 'primary' } as const)[s as keyof { pending: 'info'; in_progress: 'warning'; resolved: 'success'; closed: 'primary' }] || 'info';
 }
 
 function formatDate(s: string): string {
@@ -454,7 +454,7 @@ async function onChangeStatus(): Promise<void> {
     }
     const res = await http.post(`/work-orders/${detail.value.id}/status`, payload);
     detail.value = res.data;
-    detail.value.comments = detail.value?.comments || [];
+    detail.value!.comments = detail.value?.comments || [];
     await loadList();
     await loadStats();
   } catch (err) {

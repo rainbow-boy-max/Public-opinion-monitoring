@@ -4,17 +4,34 @@
 <template>
   <span class="platform-tag" :class="`platform-tag--${platform}`">
     <span class="platform-tag__dot" />
-    {{ label }}
+    {{ labelText }}
   </span>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 interface Props {
   platform: string;
-  label: string;
+  label?: string;
 }
 
-defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  label: '',
+});
+
+const labelText = computed(() => props.label || LABELS[props.platform] || props.platform);
+
+const LABELS: Record<string, string> = {
+  weixin: '微信',
+  weixin_video: '视频号',
+  douyin: '抖音',
+  xiaohongshu: '小红书',
+  kuaishou: '快手',
+  weibo: '微博',
+  baijiahao: '百家号',
+  webhook_ingest: 'Webhook',
+  test: '测试',
+};
 
 const COLORS: Record<string, string> = {
   weixin: '#10B981',

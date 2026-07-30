@@ -56,6 +56,7 @@ import { PredictionModule } from './modules/prediction/prediction.module';
 import { AttributionModule } from './modules/attribution/attribution.module';
 import { AlertAdvancedModule } from './modules/alert-advanced/alert-advanced.module';
 import { ReportTemplatesModule } from './modules/report-templates/report-template.module';
+import { GovReportModule } from './modules/gov-report/gov-report.module';
 
 @Module({
   imports: [
@@ -112,6 +113,7 @@ import { ReportTemplatesModule } from './modules/report-templates/report-templat
     PredictionModule,
     AttributionModule,
     AlertAdvancedModule,
+    GovReportModule,
   ],
   providers: [
     {
