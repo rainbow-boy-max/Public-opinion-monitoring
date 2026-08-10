@@ -1,14 +1,10 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, LessThanOrEqual, MoreThanOrEqual, LessThan, MoreThan } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { QueryCacheService } from '../../common/cache/query-cache.service';
+import { cursorPaginate } from '../../common/utils/cursor-pagination';
 import {
   MonitorTaskEntity,
   OpinionEventEntity,
@@ -44,6 +40,7 @@ export class MonitorTasksService {
     @InjectRepository(OpinionEventEntity)
     private eventRepo: Repository<OpinionEventEntity>,
     @InjectQueue('task-queue') private taskQueue: Queue,
+    private readonly queryCache: QueryCacheService,
   ) {}
 
   async createTask(userId: number, dto: CreateMonitorTaskDto): Promise<MonitorTaskEntity> {
@@ -160,8 +157,11 @@ export class MonitorTasksService {
       startDate?: string;
       endDate?: string;
       platform?: string;
+      cursor?: string;
+      cursorDirection?: 'forward' | 'backward';
+      useCursor?: boolean;
     },
-  ): Promise<{ items: OpinionEventEntity[]; total: number }> {
+  ): Promise<{ items: OpinionEventEntity[]; total?: number; nextCursor?: string | null; previousCursor?: string | null }> {
     const task = await this.getTask(userId, taskId);
     const where: any = { taskId: task.id, status: 0 };
     if (options?.startDate) {
@@ -173,6 +173,23 @@ export class MonitorTasksService {
     if (options?.platform) {
       where.platform = options.platform;
     }
+
+    if (options?.useCursor) {
+      const cacheKey = `events:cursor:${taskId}:${options.cursor || 'start'}:${pageSize}:${options.platform || ''}:${options.startDate || ''}:${options.endDate || ''}`;
+      return this.queryCache.wrap(cacheKey, 15, async () => {
+        const result = await cursorPaginate({
+          repo: this.eventRepo,
+          where,
+          order: { matchedAt: 'DESC' },
+          cursorField: 'matchedAt',
+          cursorValue: options.cursor ? new Date(options.cursor) : undefined,
+          limit: pageSize,
+          direction: options.cursorDirection,
+        });
+        return { items: result.items, nextCursor: result.nextCursor, previousCursor: result.previousCursor };
+      });
+    }
+
     const [items, total] = await this.eventRepo.findAndCount({
       where,
       order: { matchedAt: 'DESC' },

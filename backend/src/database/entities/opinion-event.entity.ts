@@ -23,6 +23,11 @@ export type Sentiment = 'positive' | 'negative' | 'neutral';
 @Entity('opinion_events')
 @Index('idx_task_time', ['taskId', 'matchedAt'])
 @Index('idx_publish_time', ['publishTime'])
+@Index('idx_events_matched_at', ['matchedAt'])
+@Index('idx_events_sentiment_time', ['sentiment', 'matchedAt'])
+@Index('idx_events_platform_time', ['platform', 'matchedAt'])
+@Index('idx_events_task_publish', ['taskId', 'publishTime'])
+@Index('idx_events_status_time', ['status', 'matchedAt'])
 export class OpinionEventEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: number;
@@ -101,4 +106,7 @@ export class OpinionEventEntity {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @Column({ name: 'archived_at', type: 'datetime', nullable: true })
+  archivedAt: Date | null;
 }

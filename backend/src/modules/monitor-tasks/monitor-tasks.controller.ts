@@ -180,11 +180,16 @@ export class MonitorTasksController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('platform') platform?: string,
+    @Query('cursor') cursor?: string,
+    @Query('useCursor') useCursor: string | boolean = false,
   ) {
+    const cursorEnabled = useCursor === true || useCursor === 'true';
     return this.tasksService.listEvents(userId, id, page, pageSize, {
       startDate,
       endDate,
       platform,
+      cursor,
+      useCursor: cursorEnabled,
     });
   }
 }

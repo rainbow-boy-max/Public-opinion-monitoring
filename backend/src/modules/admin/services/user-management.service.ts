@@ -5,6 +5,7 @@ import { UserEntity, AuthStatus, UserRole } from '../../../database/entities';
 import { RedisService } from '../../../redis/redis.service';
 import { SmsService } from '../../sms/sms.service';
 import { AuditService } from '../audit.service';
+import { PasswordValidatorService } from '../../auth/password-validator.service';
 
 @Injectable()
 export class UserManagementService {
@@ -13,6 +14,7 @@ export class UserManagementService {
     private redisService: RedisService,
     private smsService: SmsService,
     private auditService: AuditService,
+    private passwordValidator: PasswordValidatorService,
   ) {}
 
   async listUsers(params: {
@@ -154,9 +156,13 @@ export class UserManagementService {
     if (!payload.username || !payload.phone || !payload.password) {
       throw new BadRequestException('用户名、手机号、密码必填');
     }
-    if (payload.password.length < 6) {
-      throw new BadRequestException('密码至少 6 位');
+    
+    // P0-2: 统一密码策略 - 使用 PasswordValidatorService
+    const passwordResult = this.passwordValidator.validate(payload.password);
+    if (!passwordResult.valid) {
+      throw new BadRequestException(`密码强度不足：${passwordResult.errors.join('；')}`);
     }
+    
     const existing = await this.userRepo.findOne({
       where: [{ username: payload.username }, { phone: payload.phone }],
     });

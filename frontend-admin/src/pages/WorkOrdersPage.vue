@@ -570,7 +570,7 @@ async function onCreate(): Promise<void> {
 
 async function loadAdminUsers(): Promise<void> {
   try {
-    const res = await http.get('/users?role=admin');
+    const res = await http.get('/admin/users?role=admin');
     adminUsers.value = Array.isArray(res) ? res : res.items || res.data || [];
   } catch (err) {
     console.error(err);

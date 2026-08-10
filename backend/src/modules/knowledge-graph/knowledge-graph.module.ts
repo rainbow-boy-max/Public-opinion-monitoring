@@ -5,6 +5,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { OpinionEventEntity, LlmModelEntity, AlertLogEntity, AlertRuleEntity } from '../../database/entities';
 import { KnowledgeGraphService } from './knowledge-graph.service';
 import { KnowledgeGraphController } from './knowledge-graph.controller';
+import { IndustryKnowledgeService } from './industry-knowledge.service';
+import { IndustryKnowledgeController } from './industry-knowledge.controller';
 import { KgWarningService } from './kg-warning.service';
 import { AlertRuleService } from '../alert/alert-rule.service';
 
@@ -19,8 +21,8 @@ import { AlertRuleService } from '../alert/alert-rule.service';
       }),
     }),
   ],
-  controllers: [KnowledgeGraphController],
-  providers: [KnowledgeGraphService, KgWarningService, AlertRuleService],
+  controllers: [KnowledgeGraphController, IndustryKnowledgeController],
+  providers: [KnowledgeGraphService, KgWarningService, AlertRuleService, IndustryKnowledgeService],
   exports: [KnowledgeGraphService, KgWarningService],
 })
 export class KnowledgeGraphModule {}

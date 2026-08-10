@@ -106,18 +106,18 @@ let smsTimer: ReturnType<typeof setInterval> | null = null;
 const form = reactive({ username: '', phone: '', password: '', code: '' });
 
 const rules: Record<string, any> = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入用户名', trigger: 'change' }],
   phone: [
-    { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
+    { required: true, message: '请输入手机号', trigger: 'change' },
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'change' },
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码至少6位', trigger: 'blur' },
+    { required: true, message: '请输入密码', trigger: 'change' },
+    { min: 6, message: '密码至少6位', trigger: 'change' },
   ],
   code: [
-    { required: true, message: '请输入验证码', trigger: 'blur' },
-    { min: 6, max: 6, message: '验证码为6位数字', trigger: 'blur' },
+    { required: true, message: '请输入验证码', trigger: 'change' },
+    { min: 6, max: 6, message: '验证码为6位数字', trigger: 'change' },
   ],
 };
 
@@ -190,6 +190,32 @@ async function onLogin(): Promise<void> {
   justify-content: center;
   padding: 24px;
   overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .login-page {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px;
+  }
+  .login-card {
+    padding: 20px 12px !important;
+    width: 100%;
+  }
+  .login-card :deep(.el-tabs__item) {
+    font-size: 13px;
+    padding: 0 8px;
+  }
+  .login-card :deep(.code-row) {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .login-card :deep(.code-row .el-input) {
+    width: 100% !important;
+  }
+  .login-card :deep(.code-row .el-button) {
+    width: 100%;
+  }
 }
 
 .login-bg {

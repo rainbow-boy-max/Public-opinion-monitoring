@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { OpinionEventEntity } from '../../database/entities';
 import { SentimentAnalysisService } from './sentiment.service';
+import { SentimentCalibratorService } from './sentiment-calibrator.service';
 import { SentimentController } from './sentiment.controller';
 
 @Module({
@@ -18,7 +19,7 @@ import { SentimentController } from './sentiment.controller';
     }),
   ],
   controllers: [SentimentController],
-  providers: [SentimentAnalysisService],
+  providers: [SentimentAnalysisService, SentimentCalibratorService],
   exports: [SentimentAnalysisService],
 })
 export class SentimentModule {}

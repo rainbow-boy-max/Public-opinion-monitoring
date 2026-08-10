@@ -36,7 +36,6 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             if (
               id.includes('/element-plus/') ||
-              id.includes('/element-plus/') ||
               id.includes('@element-plus/icons-vue')
             ) {
               return 'vendor-element-plus';

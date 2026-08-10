@@ -1,4 +1,5 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, OnModuleInit } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { RedisService } from '../../redis/redis.service';
 import { throwBusiness } from '../errors/business.exception';
@@ -11,8 +12,7 @@ function extractToken(request: any): string | null {
   const cookies = parseCookies(request.headers?.cookie);
   if (cookies['admin_token']) return cookies['admin_token'];
   if (cookies['auth_token']) return cookies['auth_token'];
-  const qs = request.query?.token || request.query?.access_token;
-  if (typeof qs === 'string' && qs.length > 0) return qs;
+  // P1-8: 移除 Query String Token 提取，防止 Token 泄露到浏览器历史和日志中
   return null;
 }
 
@@ -28,11 +28,17 @@ function parseCookies(cookieHeader: string | undefined): Record<string, string> 
 }
 
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class JwtAuthGuard implements CanActivate, OnModuleInit {
+  private jwtService: JwtService;
+
   constructor(
-    private jwtService: JwtService,
+    private moduleRef: ModuleRef,
     private redisService: RedisService,
   ) {}
+
+  onModuleInit() {
+    this.jwtService = this.moduleRef.get(JwtService, { strict: false });
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();

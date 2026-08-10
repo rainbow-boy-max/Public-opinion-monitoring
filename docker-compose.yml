@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: opinion-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-opinionpass}
+      MYSQL_DATABASE: ${DB_DATABASE:-opinion_monitor}
+      MYSQL_USER: ${DB_USERNAME:-opinion}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-opinionpass}
+    expose:
+      - "3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./deploy/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: opinion-redis
+    restart: unless-stopped
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      target: backend
+    container_name: opinion-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-opinion}
+      DB_PASSWORD: ${DB_PASSWORD:-opinionpass}
+      DB_DATABASE: ${DB_DATABASE:-opinion_monitor}
+      DB_SYNC: "false"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-random-secret}
+      JWT_EXPIRES_IN: 2h
+      INIT_ADMIN_PASSWORD: ${INIT_ADMIN_PASSWORD:-Admin@123456}
+      ES_NODE: ${ES_NODE:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - backend-logs:/app/logs
+
+  frontend-admin:
+    build:
+      context: .
+      target: frontend-admin
+    container_name: opinion-admin
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "80"
+
+  frontend-user:
+    build:
+      context: .
+      target: frontend-user
+    container_name: opinion-user
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "80"
+
+  nginx:
+    image: nginx:alpine
+    container_name: opinion-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend-admin
+      - frontend-user
+      - backend
+
+volumes:
+  mysql-data:
+  redis-data:
+  backend-logs:

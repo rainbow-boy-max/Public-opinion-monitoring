@@ -105,6 +105,7 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, Download } from '@element-plus/icons-vue'
 import { marked } from 'marked'
 import request from '@/utils/request'
+import { sanitize } from '@/utils/sanitize'
 
 const route = useRoute()
 const router = useRouter()
@@ -114,7 +115,8 @@ const report = ref<any>(null)
 
 const renderedContent = computed(() => {
   if (!report.value?.content) return ''
-  return marked.parse(report.value.content)
+  // P1-13: XSS 防护 - 使用 DOMPurify 消毒
+  return sanitize(marked.parse(report.value.content) as string)
 })
 
 const getReportTypeText = (type?: string) => {

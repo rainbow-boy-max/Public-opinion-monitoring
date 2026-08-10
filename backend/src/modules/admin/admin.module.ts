@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -26,6 +26,7 @@ import { SystemLogsModule } from '../system-logs/system-logs.module';
 import { SmsModule } from '../sms/sms.module';
 import { WebSearchModule } from './web-search.module';
 import { TtsModule } from '../tts/tts.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { TtsModule } from '../tts/tts.module';
     SmsModule,
     WebSearchModule,
     TtsModule,
+    forwardRef(() => AuthModule),
   ],
   controllers: [AdminController, AuditController, DashboardController],
   providers: [

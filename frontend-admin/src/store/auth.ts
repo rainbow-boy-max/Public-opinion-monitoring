@@ -18,7 +18,7 @@ export const useAdminAuthStore = defineStore('adminAuth', () => {
 
   const isAuthenticated = computed(() => !!token.value);
 
-  async function login(username: string, password: string): Promise<{ passwordChangeRequired: boolean }> {
+  async function login(username: string, password: string): Promise<any> {
     const data = await http.post('/auth/login', { username, password });
     token.value = data.token;
     user.value = {

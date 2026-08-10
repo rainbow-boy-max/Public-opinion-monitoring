@@ -1,18 +1,49 @@
 @import './theme.css';
 
 /* ============================================================
-   全局响应式覆盖 - 舆情监测系统
+   全局响应式覆盖 - 舆情监测系统（用户端）
    三断点：mobile ≤ 767px | tablet 768-1023px | desktop ≥ 1024px
    ============================================================ */
 
-/* ---- 断点变量（用于 base 主题） ---- */
+/* ---- 断点变量 ---- */
 :root {
-  --sidebar-width: 240px;
-  --sidebar-collapsed-width: 64px;
   --dialog-width-pc: 60%;
   --dialog-width-tablet: 85%;
   --dialog-width-mobile: 95%;
   --grid-min-card: 260px;
+}
+
+/* ---- 平板 (≤ 1023px) ---- */
+@media (max-width: 1023px) {
+  .user-main {
+    padding: 16px !important;
+    max-width: 100% !important;
+  }
+  .dashboard-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ---- 手机 (≤ 767px) ---- */
+@media (max-width: 767px) {
+  .user-main {
+    padding: 12px !important;
+  }
+  .dashboard-stats {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .dashboard-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .glass-card {
+    padding: 12px !important;
+  }
+  .glass-card__header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
 }
 
 /* ---- 平板 (≤ 1023px) ---- */

@@ -63,8 +63,8 @@
               v-model="form.username"
               placeholder="请输入账号"
               size="large"
-              clearable
               autocomplete="username"
+              @input="errorMessage = ''"
             >
               <template #prefix>
                 <span class="login-input-icon">👤</span>
@@ -79,12 +79,16 @@
               size="large"
               show-password
               autocomplete="current-password"
+              @input="errorMessage = ''"
             >
               <template #prefix>
                 <span class="login-input-icon">🔒</span>
               </template>
             </el-input>
           </el-form-item>
+
+          <!-- 阿里云验证码 2.0 -->
+          <div v-if="captchaEnabled" id="captcha-element" class="captcha-wrapper"></div>
 
           <el-alert
             v-if="errorMessage"
@@ -110,46 +114,170 @@
           <span>默认账号 </span>
           <code>admin</code>
           <span> 密码 </span>
-          <code>123456</code>
+          <code>Admin@123456</code>
         </div>
       </div>
     </div>
+
+    <!-- P1-14: MFA 验证对话框 -->
+    <el-dialog
+      v-model="mfaDialogVisible"
+      title="MFA 双因素认证"
+      width="400px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+    >
+      <div class="mfa-dialog-content">
+        <p>请输入您的 MFA 验证码（6 位数字）</p>
+        <el-input
+          v-model="mfaToken"
+          placeholder="000000"
+          maxlength="6"
+          size="large"
+          style="margin-top: 16px"
+          @keyup.enter="onMfaVerify"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="mfaDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="mfaLoading" @click="onMfaVerify">
+          验证
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus';
 import { useAdminAuthStore } from '@/store/auth';
+import http from '@/utils/http';
 
 const router = useRouter();
 const auth = useAdminAuthStore();
 const formRef = ref<FormInstance>();
 const loading = ref(false);
 const errorMessage = ref('');
+const captchaEnabled = ref(false);
+const captchaVerifyParam = ref('');
+let captchaInstance: any = null;
+
+// P1-14: MFA 验证相关
+const mfaDialogVisible = ref(false);
+const mfaUserId = ref(0);
+const mfaToken = ref('');
+const mfaLoading = ref(false);
 
 const form = reactive({ username: '', password: '' });
 
 const rules = {
   username: [
-    { required: true, message: '请输入账号', trigger: 'blur' },
-    { min: 3, max: 64, message: '账号长度 3-64 字符', trigger: 'blur' },
+    { required: true, message: '请输入账号', trigger: 'change' },
+    { min: 3, max: 64, message: '账号长度 3-64 字符', trigger: 'change' },
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 64, message: '密码长度 6-64 字符', trigger: 'blur' },
+    { required: true, message: '请输入密码', trigger: 'change' },
+    { min: 6, max: 64, message: '密码长度 6-64 字符', trigger: 'change' },
   ],
 };
+
+async function loadCaptchaConfig(): Promise<void> {
+  try {
+    const cfg = await http.get('/captcha/config') as any;
+    if (cfg.isEnabled && cfg.prefix && cfg.sceneId) {
+      captchaEnabled.value = true;
+      initAliyunCaptchaSDK(cfg);
+    }
+  } catch {
+    // captcha 不可用时不阻塞登录
+  }
+}
+
+function initAliyunCaptchaSDK(cfg: any): void {
+  setWindowAliyunCaptchaConfig(cfg);
+  loadAliyunCaptchaScript(cfg);
+}
+
+function setWindowAliyunCaptchaConfig(cfg: any): void {
+  (window as any).AliyunCaptchaConfig = {
+    region: cfg.region || 'cn',
+    prefix: cfg.prefix,
+  };
+}
+
+function loadAliyunCaptchaScript(cfg: any): void {
+  if ((window as any).initAliyunCaptcha) {
+    initCaptcha(cfg);
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = 'https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js';
+  script.onload = () => {
+    setTimeout(() => initCaptcha(cfg), 500);
+  };
+  document.head.appendChild(script);
+}
+
+function initCaptcha(cfg: any): void {
+  if ((window as any).initAliyunCaptcha) {
+    (window as any).initAliyunCaptcha({
+      SceneId: cfg.sceneId,
+      mode: 'popup',
+      element: '#captcha-element',
+      button: '#captcha-element',
+      slideStyle: { width: 320, height: 40 },
+      language: 'cn',
+      success: function (param: string) {
+        captchaVerifyParam.value = param;
+      },
+      fail: function (err: any) {
+        console.error('Captcha fail:', err);
+      },
+      getInstance: function (instance: any) {
+        captchaInstance = instance;
+      },
+    });
+  }
+}
 
 async function onLogin(): Promise<void> {
   errorMessage.value = '';
   if (!formRef.value) return;
   await formRef.value.validate(async (valid) => {
     if (!valid) return;
+
+    if (captchaEnabled.value && !captchaVerifyParam.value) {
+      captchaInstance?.show();
+      captchaInstance?.startTracelessVerification();
+      return;
+    }
+
+    if (captchaEnabled.value && captchaVerifyParam.value) {
+      const verifyResult = await http.post('/captcha/verify', {
+        captchaVerifyParam: captchaVerifyParam.value,
+      }) as any;
+      if (!verifyResult.success) {
+        errorMessage.value = '验证码验证失败，请重试';
+        captchaVerifyParam.value = '';
+        captchaInstance?.show();
+        return;
+      }
+    }
+
     loading.value = true;
     try {
       const result = await auth.login(form.username, form.password);
+      
+      // P1-14: 处理 MFA 验证
+      if (result.mfaRequired) {
+        loading.value = false;
+        mfaUserId.value = result.user.id;
+        mfaDialogVisible.value = true;
+        return;
+      }
+      
       if (result.passwordChangeRequired) {
         await ElMessageBox.alert(
           '检测到您使用的是初始密码，为保障账号安全，请立即修改密码。',
@@ -169,19 +297,44 @@ async function onLogin(): Promise<void> {
         router.push('/dashboard');
       }
     } catch (err: any) {
-      // http.ts 拦截器已自动弹窗提示完整错误（含双语文案 + 解决按钮）
-      // 这里只在表单内显示一条精简双语提示
       const lang = (navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'zh';
       errorMessage.value = err?.messageEn
         ? lang === 'en'
           ? err.messageEn
           : err.message
         : err?.message || (lang === 'en' ? 'Login failed' : '登录失败');
+      captchaVerifyParam.value = '';
     } finally {
       loading.value = false;
     }
   });
 }
+
+async function onMfaVerify(): Promise<void> {
+  if (!mfaToken.value || mfaToken.value.length !== 6) {
+    ElMessage.warning('请输入 6 位验证码');
+    return;
+  }
+  mfaLoading.value = true;
+  try {
+    const result = await http.post('/auth/verify-mfa', {
+      userId: mfaUserId.value,
+      token: mfaToken.value,
+    }) as any;
+    if (result.token) {
+      ElMessage.success('登录成功');
+      router.push('/dashboard');
+    } else {
+      ElMessage.error('验证码错误');
+    }
+  } catch (err: any) {
+    ElMessage.error(err?.message || '验证失败');
+  } finally {
+    mfaLoading.value = false;
+  }
+}
+
+onMounted(loadCaptchaConfig);
 </script>
 
 <style scoped>
@@ -193,6 +346,13 @@ async function onLogin(): Promise<void> {
   justify-content: center;
   padding: 24px;
   overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .login-page {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .login-bg {
@@ -371,6 +531,18 @@ async function onLogin(): Promise<void> {
   margin: 0 2px;
 }
 
+.captcha-wrapper {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.mfa-dialog-content p {
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
 @media (max-width: 900px) {
   .login-container {
     grid-template-columns: 1fr;
@@ -378,6 +550,18 @@ async function onLogin(): Promise<void> {
   }
   .login-brand__features {
     display: none;
+  }
+  .login-brand {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .login-container {
+    gap: 16px;
+  }
+  .login-form {
+    padding: 24px 16px;
   }
 }
 </style>

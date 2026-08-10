@@ -9,6 +9,8 @@ import {
 
 export enum UserRole {
   ADMIN = 'admin',
+  OPERATOR = 'operator',
+  AUDITOR = 'auditor',
   USER = 'user',
 }
 
@@ -66,6 +68,9 @@ export class UserEntity {
 
   @Column({ name: 'locked_until', type: 'datetime', nullable: true })
   lockedUntil: Date | null;
+
+  @Column({ name: 'password_updated_at', type: 'datetime', nullable: true })
+  passwordUpdatedAt: Date | null;
 
   @Column({ name: 'last_login_at', type: 'datetime', nullable: true })
   lastLoginAt: Date | null;

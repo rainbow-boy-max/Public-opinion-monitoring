@@ -75,7 +75,7 @@ cp ../.env.example .env
 # 生成 AES 密钥: openssl rand -base64 32
 pnpm install
 pnpm migration:run
-pnpm seed          # 创建 admin 账号（默认 admin/123456）
+pnpm seed          # 创建 admin 账号（默认 admin/Admin@123456）
 pnpm dev           # http://localhost:3000
 ```
 
@@ -95,7 +95,7 @@ pnpm dev           # http://localhost:5173
 
 ### 4. 默认账号
 
-- **管理端**：`http://localhost:5174`，使用 `admin / 123456` 登录
+- **管理端**：`http://localhost:5174`，使用 `admin / Admin@123456` 登录
 - **首次登录**：系统强制要求修改默认密码
 
 ## 零外部依赖模式（SQLite）
@@ -404,6 +404,22 @@ WEIXIN_API_KEY=sk-xxxxxx
 - 实时大屏（WebSocket + Redis Pub/Sub）
 - 关键词监控任务（7 大平台，端到端 < 3 秒）
 
+### 2026-08-02 — Phase 11 政务场景增强 + Phase 12 性能优化
+
+- **政务简报模块**：简报生成（LLM+模板降级）、Word/PDF 导出、批量上报
+- **官网监测**：定时 URL 轮询检测、动态 `checkFrequency` 阈值、变更记录追踪
+- **领导批示**：批示下发、已读确认、列表分页
+- **查询性能**：`opinion_events` 5 个复合索引，dashboard widget 30s Redis 缓存
+- **采集队列**：Bull 并发配置化（`COLLECTOR_CONCURRENCY`）、`setIfAbsent` 原子去重、`Promise.all` 多平台并发拉取、指数退避重试
+- **分页优化**：游标分页工具（`cursorPaginate`），`listEvents` 支持 `useCursor` 参数
+- **监控埋点**：`/api/ops/healthz` 健康探针、`/api/ops/metrics` 性能指标、全局 `MetricsInterceptor`
+- **统一缓存**：`QueryCacheService` 全局注入，采集后自动失效 dashboard 缓存
+- **全文搜索**：MariaDB FULLTEXT 索引替代 ES，`GET /api/search?q=...` 跨事件/视频/工单搜索
+- **数据归档**：`ArchiveService` 每日凌晨归档 90 天前事件，`GET /api/archive/*` 管理
+- **分区表**：`opinion_events` 按月 RANGE 分区，支持历史/当月/未来分区
+- **读写分离**：`DB_REPLICA_HOST` 环境变量启用 TypeORM 读写分离配置
+- **Prometheus 指标**：`GET /api/ops/prometheus` 文本格式指标，兼容 Prometheus 抓取
+
 ---
 
-_README 最后更新: 2026-07-19_
+_README 最后更新: 2026-08-02_

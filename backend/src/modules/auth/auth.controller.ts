@@ -7,10 +7,10 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
+import { IsString, MinLength, MaxLength, Matches, IsOptional, IsNumber } from 'class-validator';
 
 interface LoginResult {
   token: string;
@@ -104,6 +104,14 @@ class RefreshTokenDto {
   oldJti: string;
 }
 
+class VerifyMfaDto {
+  @IsNumber()
+  userId: number;
+
+  @IsString()
+  token: string;
+}
+
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
 export class AuthController {
@@ -111,6 +119,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ auth: { limit: 10, ttl: 60000 } })
   async login(@Body() dto: LoginDto): Promise<LoginResult> {
     return this.authService.login(dto);
   }
@@ -156,8 +165,14 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@CurrentUser('jti') jti: string) {
-    await this.authService.logout(jti);
+  async logout(@CurrentUser('jti') jti: string, @CurrentUser('id') userId: number) {
+    await this.authService.logout(jti, userId);
     return { message: 'Logged out successfully' };
+  }
+
+  @Post('verify-mfa')
+  @HttpCode(HttpStatus.OK)
+  async verifyMfa(@Body() dto: VerifyMfaDto) {
+    return this.authService.verifyMfaAndIssueToken(dto.userId, dto.token);
   }
 }

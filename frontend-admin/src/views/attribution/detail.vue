@@ -91,6 +91,7 @@ import { ElMessage } from 'element-plus'
 import { marked } from 'marked'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
+import { sanitize } from '@/utils/sanitize'
 
 const route = useRoute()
 const loading = ref(false)
@@ -104,7 +105,8 @@ const queryForm = ref({
 
 const renderedContent = computed(() => {
   if (!analysis.value?.analysisContent) return ''
-  return marked.parse(analysis.value.analysisContent)
+  // P1-13: XSS 防护 - 使用 DOMPurify 消毒
+  return sanitize(marked.parse(analysis.value.analysisContent) as string)
 })
 
 const getNodeTypeText = (type: string) => {

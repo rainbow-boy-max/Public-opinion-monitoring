@@ -157,6 +157,7 @@ import { Plus } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
 import PlatformTag from '@shared/components/PlatformTag.vue';
+import { sanitize } from '@/utils/sanitize';
 
 const PLATFORM_LABELS: Record<string, string> = {
   weixin: '微信', weibo: '微博', douyin: '抖音', xiaohongshu: '小红书',
@@ -236,7 +237,8 @@ function renderMarkdown(md: string): string {
   h = h.replace(/^- (.+)$/gm, '<li>$1</li>');
   h = h.replace(/(<li>(.|\n)+?<\/li>)+/g, m => `<ul>${m}</ul>`);
   h = h.replace(/\n\n/g, '</p><p>');
-  return `<p>${h}</p>`;
+  // P1-13: XSS 防护 - 使用 DOMPurify 消毒
+  return sanitize(`<p>${h}</p>`);
 }
 
 function loadMockReport() {

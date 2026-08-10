@@ -301,7 +301,7 @@ function sourceLabel(s: string): string {
 
 async function loadModels(): Promise<void> {
   try {
-    const r: any = await http.get('/llm-models?pageSize=100');
+    const r: any = await http.get('/admin/llm-models?pageSize=100');
     models.value = (r.items || []).filter((m: LlmModel) => m.isEnabled);
   } catch { /* ignore */ }
 }

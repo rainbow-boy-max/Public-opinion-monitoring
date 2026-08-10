@@ -1,21 +1,26 @@
 <template>
   <div class="user-layout">
     <header class="user-topbar">
-      <div class="user-topbar__brand">
-        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-          <defs>
-            <linearGradient id="userBrandGrad" x1="0" y1="0" x2="36" y2="36">
-              <stop offset="0%" stop-color="#5E72E4" />
-              <stop offset="100%" stop-color="#7C3AED" />
-            </linearGradient>
-          </defs>
-          <rect width="36" height="36" rx="10" fill="url(#userBrandGrad)" />
-          <path d="M9 22.5L16.5 13.5L21 18L27 12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <circle cx="27" cy="12" r="2" fill="white" />
-        </svg>
-        <div class="user-topbar__title">
-          <div class="user-topbar__title-main">舆情监测</div>
-          <div class="user-topbar__title-sub">User Panel</div>
+      <div class="user-topbar__left">
+        <el-icon class="user-topbar__menu-btn" @click="drawerVisible = true" size="22">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </el-icon>
+        <div class="user-topbar__brand">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <defs>
+              <linearGradient id="userBrandGrad" x1="0" y1="0" x2="36" y2="36">
+                <stop offset="0%" stop-color="#5E72E4" />
+                <stop offset="100%" stop-color="#7C3AED" />
+              </linearGradient>
+            </defs>
+            <rect width="36" height="36" rx="10" fill="url(#userBrandGrad)" />
+            <path d="M9 22.5L16.5 13.5L21 18L27 12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="27" cy="12" r="2" fill="white" />
+          </svg>
+          <div class="user-topbar__title">
+            <div class="user-topbar__title-main">舆情监测</div>
+            <div class="user-topbar__title-sub">User Panel</div>
+          </div>
         </div>
       </div>
 
@@ -43,7 +48,7 @@
         </el-tooltip>
         <div v-if="auth.user?.authStatus !== 'verified'" class="user-topbar__warning" @click="$router.push('/verify')">
           <span>⚠️</span>
-          <span>未实名认证</span>
+          <span class="user-topbar__warning-text">未实名认证</span>
         </div>
         <el-dropdown @command="onCommand">
           <div class="user-topbar__user">
@@ -72,11 +77,41 @@
     <main class="user-main">
       <router-view />
     </main>
+
+    <!-- 手机抽屉菜单 -->
+    <el-drawer v-model="drawerVisible" :size="drawerSize" direction="ltr" :with-header="false">
+      <template #default>
+        <div class="user-drawer__content">
+          <div class="user-drawer__header">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <defs><linearGradient id="drawerGrad" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#5E72E4" /><stop offset="100%" stop-color="#7C3AED" /></linearGradient></defs>
+              <rect width="32" height="32" rx="8" fill="url(#drawerGrad)" />
+              <path d="M8 20L14 12L18 16L24 10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <circle cx="24" cy="10" r="2" fill="white" />
+            </svg>
+            <div class="user-drawer__title">导航菜单</div>
+          </div>
+          <nav class="user-drawer__nav">
+            <div
+              v-for="item in menuItems"
+              :key="item.path"
+              class="user-drawer__item"
+              :class="{ 'user-drawer__item--active': $route.path.startsWith(item.path) }"
+              @click="router.push(item.path); drawerVisible = false"
+            >
+              <span class="user-drawer__icon" v-html="item.icon" />
+              <span>{{ item.label }}</span>
+            </div>
+          </nav>
+        </div>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useUserAuthStore } from '@/store/auth';
 import { useTheme } from '@/composables/useTheme';
 import { Sunny, Moon } from '@element-plus/icons-vue';
@@ -84,6 +119,15 @@ import { Sunny, Moon } from '@element-plus/icons-vue';
 const router = useRouter();
 const auth = useUserAuthStore();
 const { isDark, toggleTheme } = useTheme();
+const drawerVisible = ref(false);
+const drawerSize = ref(260);
+
+function updateDrawerSize(): void {
+  drawerSize.value = Math.min(280, Math.max(200, window.innerWidth - 40));
+}
+
+onMounted(updateDrawerSize);
+window.addEventListener('resize', updateDrawerSize);
 
 interface MenuItem {
   path: string;
@@ -365,5 +409,96 @@ function onCommand(cmd: string): void {
   .user-nav {
     display: none;
   }
+  .user-topbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .user-topbar__left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .user-topbar__menu-btn {
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+  .user-topbar__brand svg {
+    width: 28px;
+    height: 28px;
+  }
+  .user-topbar__title-sub {
+    display: none;
+  }
+  .user-topbar__right {
+    gap: 6px;
+  }
+  .user-topbar__warning-text {
+    display: none;
+  }
+  .user-topbar__name {
+    display: none;
+  }
+  .user-main {
+    padding: 12px;
+  }
+}
+
+.user-topbar__menu-btn {
+  display: none;
+}
+@media (max-width: 768px) {
+  .user-topbar__menu-btn {
+    display: flex;
+  }
+}
+
+.user-drawer__content {
+  padding: 20px 0;
+  background: var(--bg-cosmic, #0f132f);
+  height: 100%;
+}
+.user-drawer__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 20px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  margin-bottom: 8px;
+}
+.user-drawer__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+}
+.user-drawer__nav {
+  display: flex;
+  flex-direction: column;
+}
+.user-drawer__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+  color: var(--text-secondary, #9DA8E5);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.user-drawer__item:hover {
+  background: rgba(94, 114, 228, 0.1);
+  color: #fff;
+}
+.user-drawer__item--active {
+  background: rgba(94, 114, 228, 0.15);
+  color: #5E72E4;
+  font-weight: 600;
+}
+.user-drawer__icon {
+  display: flex;
+  align-items: center;
+  width: 20px;
+  height: 20px;
 }
 </style>

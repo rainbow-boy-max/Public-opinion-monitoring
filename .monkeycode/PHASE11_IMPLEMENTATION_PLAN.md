@@ -224,10 +224,10 @@ PUT /api/gov/instruction/:id
 ### Phase 11.4：前端页面（1 周）
 
 **页面设计**：
-1. 简报生成页面
-2. 简报列表页面
-3. 领导批示管理页面
-4. 官网监测配置页面
+1. 简报生成页面（GovBriefingPage.vue）
+2. 领导批示管理页面（LeaderInstructionPage.vue）
+3. 官网监测配置页面（GovMonitorPage.vue）
+4. 路由与菜单注册
 
 ---
 
@@ -235,11 +235,11 @@ PUT /api/gov/instruction/:id
 
 | 阶段 | 任务 | 工期 | 状态 |
 |------|------|------|------|
-| 11.1 | 数据模型与基础服务 | 1 周 | ⏳ 待开始 |
-| 11.2 | 简报生成服务 | 1 周 | ⏳ 待开始 |
-| 11.3 | 上报与官网监测 | 1 周 | ⏳ 待开始 |
-| 11.4 | 前端页面 | 1 周 | ⏳ 待开始 |
-| **总计** | - | **4 周** | - |
+| 11.1 | 数据模型与基础服务 | 1 周 | 已完成 |
+| 11.2 | 简报生成服务 | 1 周 | 已完成 |
+| 11.3 | 上报与官网监测 | 1 周 | 已完成 |
+| 11.4 | 前端页面 | 1 周 | 已完成 |
+| **总计** | - | **4 周** | **已完成** |
 
 **人力需求**：
 - 后端开发：1 人
@@ -293,7 +293,17 @@ PUT /api/gov/instruction/:id
 
 ---
 
-**文档版本**：v1.0  
-**更新日期**：2026-07-23  
-**预计完成时间**：4 周  
-**状态**：准备开始
+**文档版本**：v1.1  
+**更新日期**：2026-08-02  
+**状态**：已完成
+
+## 实施总结
+
+Phase 11 政务场景增强已全部落地，覆盖以下能力：
+
+- **数据模型**：`gov_briefings`、`leader_instructions`、`gov_monitor_sites`、`gov_monitor_changes` 表与对应实体已创建。
+- **后端服务**：`GovReportModule` 含简报生成（LLM + 模板双模式）、Word/PDF 导出、钉钉/飞书 Webhook 上报、领导批示全生命周期流转、官网定时抓取与变更检测（`@Cron(EVERY_MINUTE)`）。
+- **API**：`/api/gov/briefing/*`、`/api/gov/instruction/*`、`/api/gov/monitor/*` 共 22 个端点，全部挂载在 `GovReportController`。
+- **前端**：`GovBriefingPage.vue`、`LeaderInstructionPage.vue`、`GovMonitorPage.vue` 三个页面，路由 `/gov-briefing`、`/gov-instruction`、`/gov-monitor` 已注册，侧边栏菜单与页面 Meta 已配置。
+- **测试**：`gov-briefing.service.spec.ts`、`gov-monitor.service.spec.ts`、`leader-instruction.service.spec.ts` 共 19 个用例全部通过。
+- **类型与构建**：后端 `nest build`、前端 `vue-tsc --noEmit` 均无错误。

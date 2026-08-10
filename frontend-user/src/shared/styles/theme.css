@@ -208,6 +208,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* 让根 DOM 与 #app 也继承 */
@@ -215,6 +216,7 @@ body {
   background: transparent !important;
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Element Plus 暗黑主题覆盖 */

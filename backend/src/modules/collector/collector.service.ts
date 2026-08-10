@@ -119,36 +119,38 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
 
   async processJob(job: Job<TaskJobData>): Promise<void> {
     const { taskId, userId, keywords, excludeKeywords, platforms, matchMode } = job.data;
-    const allRaw: Array<{ platform: string; raw: any }> = [];
 
-    for (const platform of platforms) {
-      const adapter = this.adapterRegistry.get(platform);
-      if (!adapter) {
-        this.logger.warn(`No adapter for platform ${platform}`);
-        continue;
-      }
-      if (!this.adapterRegistry.isHealthy(platform)) {
-        this.logger.warn(`Adapter for ${platform} is unhealthy, skipping`);
-        continue;
-      }
-      try {
-        const raw = await adapter.fetchByKeywords(keywords, {
-          since: new Date(Date.now() - 60 * 60 * 1000),
-          limit: 100,
-          timeoutMs: 10000,
-        });
-        this.adapterRegistry.markSuccess(platform);
-        for (const r of raw) allRaw.push({ platform, raw: r });
-      } catch (err) {
-        this.adapterRegistry.markFailure(platform);
-        this.logger.warn(`Adapter ${platform} failed: ${(err as Error).message}`);
-        const fallback = this.getMockFallback(platform, keywords, {
-          since: new Date(Date.now() - 60 * 60 * 1000),
-          limit: 100,
-        });
-        for (const r of fallback) allRaw.push({ platform, raw: r });
-      }
-    }
+    const fetchResults = await Promise.all(
+      platforms.map(async (platform) => {
+        const adapter = this.adapterRegistry.get(platform);
+        if (!adapter) {
+          this.logger.warn(`No adapter for platform ${platform}`);
+          return [];
+        }
+        if (!this.adapterRegistry.isHealthy(platform)) {
+          this.logger.warn(`Adapter for ${platform} is unhealthy, skipping`);
+          return [];
+        }
+        try {
+          const raw = await adapter.fetchByKeywords(keywords, {
+            since: new Date(Date.now() - 60 * 60 * 1000),
+            limit: 100,
+            timeoutMs: 10000,
+          });
+          this.adapterRegistry.markSuccess(platform);
+          return raw.map((r) => ({ platform, raw: r }));
+        } catch (err) {
+          this.adapterRegistry.markFailure(platform);
+          this.logger.warn(`Adapter ${platform} failed: ${(err as Error).message}`);
+          const fallback = this.getMockFallback(platform, keywords, {
+            since: new Date(Date.now() - 60 * 60 * 1000),
+            limit: 100,
+          });
+          return fallback.map((r) => ({ platform, raw: r }));
+        }
+      }),
+    );
+    const allRaw = fetchResults.flat();
 
     let savedCount = 0;
     for (const { raw } of allRaw) {
@@ -163,9 +165,8 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
 
       const urlHash = Buffer.from(raw.url || '').toString('base64').substring(0, 64);
       const dedupeKey = `bloom:event:${taskId}:${raw.platform}:${urlHash}`;
-      const alreadySeen = await this.redisService.exists(dedupeKey);
-      if (alreadySeen) continue;
-      await this.redisService.set(dedupeKey, '1', 900);
+      const acquired = await this.redisService.setIfAbsent(dedupeKey, '1', 900);
+      if (!acquired) continue;
 
       const entity = this.normalizer.normalize(raw, taskId, matchResult.matchedKeywords);
       if (!entity) continue;
@@ -173,12 +174,24 @@ export class CollectorService implements OnModuleInit, OnApplicationShutdown {
       const saved = await this.eventRepo.save(entity);
       savedCount++;
       await this.publishNewOpinion(userId, taskId, saved);
+      await this.invalidateDashboardCache(userId);
     }
 
     await this.taskRepo.update(taskId, { lastRunAt: new Date() });
     this.logger.debug(
       `Task ${taskId}: collected ${allRaw.length} raw, saved ${savedCount} matched`,
     );
+  }
+
+  private async invalidateDashboardCache(userId: number): Promise<void> {
+    try {
+      const deleted = await this.redisService.scanDelete(`dashboard:widget:${userId}:`);
+      if (deleted > 0) {
+        this.logger.debug(`Invalidated ${deleted} dashboard cache keys for user ${userId}`);
+      }
+    } catch (err) {
+      this.logger.warn(`Cache invalidation failed: ${(err as Error).message}`);
+    }
   }
 
   private getMockFallback(

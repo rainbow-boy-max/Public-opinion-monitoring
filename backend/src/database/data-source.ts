@@ -29,6 +29,10 @@ import { AlertConfigEntity } from './entities/alert-config.entity';
 import { AlertRecordEntity } from './entities/alert-record.entity';
 import { GovBriefingEntity } from './entities/gov-briefing.entity';
 import { LeaderInstructionEntity } from './entities/leader-instruction.entity';
+import { GovMonitorSiteEntity, GovMonitorChangeEntity } from './entities/gov-monitor-site.entity';
+import { CaptchaConfigEntity } from './entities/captcha-config.entity';
+import { FeatureFlagEntity } from './entities/feature-flag.entity';
+import { PasswordHistoryEntity } from './entities/password-history.entity';
 
 const entities = [
   UserEntity,
@@ -68,6 +72,11 @@ const entities = [
   AlertRecordEntity,
   GovBriefingEntity,
   LeaderInstructionEntity,
+  GovMonitorSiteEntity,
+  GovMonitorChangeEntity,
+  CaptchaConfigEntity,
+  FeatureFlagEntity,
+  PasswordHistoryEntity,
 ];
 
 const dbType = (process.env.DB_TYPE || 'mysql').toLowerCase();

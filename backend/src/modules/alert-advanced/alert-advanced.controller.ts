@@ -4,7 +4,7 @@ import { AlertConfigService } from './alert-config.service';
 import { AlertRecordService } from './alert-record.service';
 import { UpdateAlertConfigDto, QueryAlertRecordsDto, ConfirmAlertDto } from './dto/alert-advanced.dto';
 
-@Controller('api/alert')
+@Controller('alert-advanced')
 @UseGuards(JwtAuthGuard)
 export class AlertAdvancedController {
   constructor(

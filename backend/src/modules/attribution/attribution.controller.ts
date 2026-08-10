@@ -3,7 +3,7 @@ import { AttributionService } from './attribution.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateAttributionDto } from './dto/attribution.dto';
 
-@Controller('api/analysis')
+@Controller('analysis')
 @UseGuards(JwtAuthGuard)
 export class AttributionController {
   constructor(private readonly attributionService: AttributionService) {}

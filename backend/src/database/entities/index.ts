@@ -72,3 +72,5 @@ export { ApiKeyEntity } from './api-key.entity';
 export { ApiUsageLogEntity } from './api-usage.entity';
 export { OcrConfigEntity } from './ocr-config.entity';
 export { TtsConfigEntity } from './tts-config.entity';
+export { PasswordHistoryEntity } from './password-history.entity';
+export { UserMfaEntity } from './user-mfa.entity';

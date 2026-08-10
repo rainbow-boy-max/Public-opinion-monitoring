@@ -1,19 +1,26 @@
 import {
   Controller,
   Get,
+  Post,
   Query,
+  Body,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuditService } from './audit.service';
+import { AuditChainService } from './audit-chain.service';
 
 @Controller('audit')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 export class AuditController {
-  constructor(private readonly auditService: AuditService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly auditChainService: AuditChainService,
+  ) {}
 
   @Get('logs')
   async query(
@@ -48,5 +55,28 @@ export class AuditController {
   @Get('actions')
   async getActions(@Query('module') module?: string) {
     return this.auditService.getActions(module);
+  }
+
+  @Post('navigation')
+  async recordNavigation(
+    @Body() body: { title: string; content?: string },
+    @CurrentUser('id') userId: number,
+  ) {
+    await this.auditService.recordNavigation({
+      actorId: userId,
+      title: body.title,
+      content: body.content,
+    });
+    return { message: 'ok' };
+  }
+
+  @Get('chain/verify')
+  async verifyChain() {
+    return this.auditChainService.verifyChainIntegrity();
+  }
+
+  @Get('chain/hash')
+  async getChainHash() {
+    return this.auditChainService.calculateChainHash();
   }
 }

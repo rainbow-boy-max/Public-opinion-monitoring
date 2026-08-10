@@ -3,7 +3,7 @@ import { PredictionService } from './prediction.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreatePredictionDto, QueryPredictionDto } from './dto/prediction.dto';
 
-@Controller('api/prediction')
+@Controller('prediction')
 @UseGuards(JwtAuthGuard)
 export class PredictionController {
   constructor(private readonly predictionService: PredictionService) {}

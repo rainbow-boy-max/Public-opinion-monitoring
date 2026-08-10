@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import { CollectorService } from './collector.service';
 import { CollectorProcessor } from './collector.processor';
+import { MetricsService } from './metrics.service';
+import { OpsController } from './ops.controller';
+import { MetricsInterceptor } from '../../common/interceptors/metrics.interceptor';
+import { DanmakuCollectorService } from './danmaku-collector.service';
+import { DanmakuController } from './danmaku.controller';
 import { KeywordMatcherService } from './keyword-matcher.service';
 import { OpinionNormalizerService } from './opinion-normalizer.service';
 import { AdapterRegistry } from './adapters/adapter-registry';
@@ -22,6 +28,7 @@ import {
 } from '../../database/entities';
 
 @Module({
+  controllers: [OpsController, DanmakuController],
   imports: [
     TypeOrmModule.forFeature([MonitorTaskEntity, OpinionEventEntity]),
     BullModule.registerQueue({
@@ -29,7 +36,11 @@ import {
       defaultJobOptions: {
         removeOnComplete: 100,
         removeOnFail: 500,
-        attempts: 1,
+        attempts: 2,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
       },
     }),
     ScheduleModule.forRoot(),
@@ -49,7 +60,13 @@ import {
     BaijiahaoAdapter,
     WeixinVideoAdapter,
     MockAdapter,
+    MetricsService,
+    DanmakuCollectorService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: MetricsInterceptor,
+    },
   ],
-  exports: [CollectorService, KeywordMatcherService, AdapterRegistry],
+  exports: [CollectorService, KeywordMatcherService, AdapterRegistry, MetricsService],
 })
 export class CollectorModule {}

@@ -1,16 +1,19 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { UserEntity } from '../../database/entities';
+import { PasswordValidatorService } from './password-validator.service';
+import { MfaService } from './mfa.service';
+import { MfaController } from './mfa.controller';
+import { UserEntity, PasswordHistoryEntity, UserMfaEntity } from '../../database/entities';
 import { SmsModule } from '../sms/sms.module';
 import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity]),
+    TypeOrmModule.forFeature([UserEntity, PasswordHistoryEntity, UserMfaEntity]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -20,10 +23,10 @@ import { AdminModule } from '../admin/admin.module';
       }),
     }),
     SmsModule,
-    AdminModule,
+    forwardRef(() => AdminModule),
   ],
-  controllers: [AuthController],
-  providers: [AuthService],
-  exports: [AuthService, JwtModule],
+  controllers: [AuthController, MfaController],
+  providers: [AuthService, PasswordValidatorService, MfaService],
+  exports: [AuthService, JwtModule, PasswordValidatorService, MfaService],
 })
 export class AuthModule {}

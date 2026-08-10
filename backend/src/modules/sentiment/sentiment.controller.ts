@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { SentimentAnalysisService, type SentimentAnalysisConfig } from './sentiment.service';
+import { SentimentCalibratorService } from './sentiment-calibrator.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { IsString, IsOptional, IsArray, IsNumber, Min, IsBoolean, IsEnum } from 'class-validator';
 
@@ -66,7 +67,22 @@ class UpdateConfigDto {
 @Controller('sentiment')
 @UseGuards(JwtAuthGuard)
 export class SentimentController {
-  constructor(private sentimentService: SentimentAnalysisService) {}
+  constructor(
+    private sentimentService: SentimentAnalysisService,
+    private calibrator: SentimentCalibratorService,
+  ) {}
+
+  @Post('calibrate/:eventId')
+  @HttpCode(HttpStatus.OK)
+  async calibrateEvent(@Param('eventId', ParseIntPipe) eventId: number) {
+    return this.calibrator.calibrateEvent(eventId);
+  }
+
+  @Post('calibrate-task')
+  @HttpCode(HttpStatus.OK)
+  async calibrateTask(@Body() dto: ReanalyzeTaskDto) {
+    return this.calibrator.calibrateTask(dto.taskId);
+  }
 
   @Post('analyze')
   @HttpCode(HttpStatus.OK)

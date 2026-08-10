@@ -7,6 +7,7 @@ import { AuditEventEntity } from '../../database/entities';
 import { AuditService } from './audit.service';
 import { AuditController } from './audit.controller';
 import { AuditInterceptor } from './audit.interceptor';
+import { AuditChainService } from './audit-chain.service';
 
 @Module({
   imports: [
@@ -23,11 +24,12 @@ import { AuditInterceptor } from './audit.interceptor';
   providers: [
     AuditService,
     AuditInterceptor,
+    AuditChainService,
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
     },
   ],
-  exports: [AuditService, AuditInterceptor],
+  exports: [AuditService, AuditInterceptor, AuditChainService],
 })
 export class AuditModule {}

@@ -104,6 +104,7 @@ import { ElMessage } from 'element-plus';
 import { Refresh, SuccessFilled, Loading } from '@element-plus/icons-vue';
 import http from '@/utils/http';
 import GlassCard from '@shared/components/GlassCard.vue';
+import { sanitize } from '@/utils/sanitize';
 
 const query = ref('');
 const running = ref(false);
@@ -161,7 +162,8 @@ function renderMarkdown(md: string): string {
   html = html.replace(/(<li>(.|\n)+?<\/li>)+/g, (m) => `<ul>${m}</ul>`);
   html = html.replace(/\n\n/g, '</p><p>');
   html = `<p>${html}</p>`;
-  return html;
+  // P1-13: XSS 防护 - 使用 DOMPurify 消毒
+  return sanitize(html);
 }
 
 async function startAnalysis() {

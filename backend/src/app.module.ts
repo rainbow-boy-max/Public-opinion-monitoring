@@ -4,13 +4,15 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
+import { ElasticsearchModule } from './elasticsearch/elasticsearch.module';
 import { BullQueueModule } from './bull-queue/bull-queue.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -57,6 +59,15 @@ import { AttributionModule } from './modules/attribution/attribution.module';
 import { AlertAdvancedModule } from './modules/alert-advanced/alert-advanced.module';
 import { ReportTemplatesModule } from './modules/report-templates/report-template.module';
 import { GovReportModule } from './modules/gov-report/gov-report.module';
+import { FulltextSearchModule } from './modules/fulltext-search/fulltext-search.module';
+import { ArchiveModule } from './modules/archive/archive.module';
+import { EventsModule } from './modules/events/events.module';
+import { AiSearchModule } from './modules/ai-search/ai-search.module';
+import { CrossBorderModule } from './modules/cross-border/cross-border.module';
+import { EvidenceModule } from './modules/evidence/evidence.module';
+import { CaptchaModule } from './modules/captcha/captcha.module';
+import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module';
+import { OpsMonitorModule } from './modules/ops-monitor/ops-monitor.module';
 
 @Module({
   imports: [
@@ -65,11 +76,38 @@ import { GovReportModule } from './modules/gov-report/gov-report.module';
       envFilePath: [path.resolve(__dirname, '..', '.env')],
     }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 60 }]),
+    ThrottlerModule.forRoot([{ 
+      name: 'default', ttl: 60000, limit: 60 
+    }, {
+      name: 'auth', ttl: 60000, limit: 10 
+    }]),
     DatabaseModule,
     TypeOrmModule.forFeature([UserEntity]),
     RedisModule,
+    ElasticsearchModule,
     BullQueueModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const jwtSecret = config.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
+        
+        // P0-1: JWT Secret 强制检查 - 禁止使用默认值
+        if (!jwtSecret || jwtSecret === 'default' || jwtSecret.length < 32) {
+          throw new Error(
+            'JWT_SECRET 未配置或使用默认值！请在 .env 文件中配置强随机密钥（至少 32 字符）。\n' +
+            '生成方法：openssl rand -hex 32'
+          );
+        }
+        
+        return {
+          secret: jwtSecret,
+          signOptions: { 
+            expiresIn: config.get<string>('JWT_EXPIRES_IN') || process.env.JWT_EXPIRES_IN || '2h' 
+          },
+        };
+      },
+    }),
     AuthModule,
     UsersModule,
     AdminModule,
@@ -114,6 +152,15 @@ import { GovReportModule } from './modules/gov-report/gov-report.module';
     AttributionModule,
     AlertAdvancedModule,
     GovReportModule,
+    FulltextSearchModule,
+    ArchiveModule,
+    EventsModule,
+    AiSearchModule,
+    CrossBorderModule,
+    EvidenceModule,
+    CaptchaModule,
+    FeatureFlagsModule,
+    OpsMonitorModule,
   ],
   providers: [
     {

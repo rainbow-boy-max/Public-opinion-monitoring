@@ -17,6 +17,7 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/layouts/AdminLayout.vue'),
+      redirect: '/dashboard',
       children: [
         {
           path: 'dashboard',
@@ -156,6 +157,18 @@ const router = createRouter({
           component: () => import('@/pages/OcrConfigPage.vue'),
         },
         {
+          path: 'ops-monitor',
+          component: () => import('@/pages/OpsMonitorPage.vue'),
+        },
+        {
+          path: 'mfa-settings',
+          component: () => import('@/pages/MfaSettingsPage.vue'),
+        },
+        {
+          path: 'config/captcha',
+          component: () => import('@/pages/CaptchaConfigPage.vue'),
+        },
+        {
           path: 'ecommerce',
           component: () => import('@/pages/EcommerceConfigPage.vue'),
         },
@@ -211,6 +224,18 @@ const router = createRouter({
           path: 'alert-history',
           component: () => import('@/views/alert-history/index.vue'),
         },
+        {
+          path: 'gov-briefing',
+          component: () => import('@/pages/GovBriefingPage.vue'),
+        },
+        {
+          path: 'gov-instruction',
+          component: () => import('@/pages/LeaderInstructionPage.vue'),
+        },
+        {
+          path: 'gov-monitor',
+          component: () => import('@/pages/GovMonitorPage.vue'),
+        },
       ],
     },
   ],
@@ -219,7 +244,7 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const auth = useAdminAuthStore();
 
-  // 强制改密守卫：已登录且有强制改密标记，拦截所有非改密页跳转
+  // 强制改密守卫
   if (auth.isAuthenticated && localStorage.getItem('forceChangePassword') === '1') {
     if (to.path !== '/change-password') {
       return next('/change-password?force=1');
@@ -235,6 +260,21 @@ router.beforeEach((to, _from, next) => {
   }
   
   next();
+});
+
+router.afterEach((to) => {
+  // 异步记录导航日志，不阻塞页面跳转
+  if (to.meta.public) return;
+  setTimeout(() => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) return;
+    const title = (to.meta as any)?.title || to.name || to.path;
+    fetch('/api/audit/navigation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ title: `查看页面: ${title}`, content: to.path }),
+    }).catch(() => {});
+  }, 500);
 });
 
 export default router;

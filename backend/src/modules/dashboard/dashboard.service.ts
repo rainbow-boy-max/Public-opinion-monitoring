@@ -3,6 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { CustomDashboardEntity, OpinionEventEntity } from '../../database/entities';
 import { HotTopicsService } from '../hot-topics/hot-topics.service';
+import { QueryCacheService } from '../../common/cache/query-cache.service';
+
+const WIDGET_CACHE_TTL = 30;
 
 @Injectable()
 export class DashboardService {
@@ -14,6 +17,7 @@ export class DashboardService {
     @InjectRepository(OpinionEventEntity)
     private eventRepo: Repository<OpinionEventEntity>,
     private hotTopicsService: HotTopicsService,
+    private readonly queryCache: QueryCacheService,
   ) {}
 
   async findAll(userId: number): Promise<CustomDashboardEntity[]> {
@@ -67,16 +71,19 @@ export class DashboardService {
   }
 
   async getWidgetData(userId: number, widgetType: string, config: Record<string, any> = {}): Promise<any> {
-    switch (widgetType) {
-      case 'sentiment_trend': return this.getSentimentTrend(userId, config);
-      case 'platform_breakdown': return this.getPlatformBreakdown(userId, config);
-      case 'volume_over_time': return this.getVolumeOverTime(userId, config);
-      case 'top_keywords': return this.getTopKeywords(userId, config);
-      case 'recent_events': return this.getRecentEvents(userId, config);
-      case 'sentiment_gauge': return this.getSentimentGauge(userId, config);
-      case 'hot_topics': return this.getHotTopics(userId, config);
-      default: throw new NotFoundException(`Unknown widget type: ${widgetType}`);
-    }
+    const cacheKey = `dashboard:widget:${userId}:${widgetType}:${JSON.stringify(config)}`;
+    return this.queryCache.wrap(cacheKey, WIDGET_CACHE_TTL, () => {
+      switch (widgetType) {
+        case 'sentiment_trend': return this.getSentimentTrend(userId, config);
+        case 'platform_breakdown': return this.getPlatformBreakdown(userId, config);
+        case 'volume_over_time': return this.getVolumeOverTime(userId, config);
+        case 'top_keywords': return this.getTopKeywords(userId, config);
+        case 'recent_events': return this.getRecentEvents(userId, config);
+        case 'sentiment_gauge': return this.getSentimentGauge(userId, config);
+        case 'hot_topics': return this.getHotTopics(userId, config);
+        default: throw new NotFoundException(`Unknown widget type: ${widgetType}`);
+      }
+    });
   }
 
   private getTimeRange(config: Record<string, any>): { start: Date; end: Date } {

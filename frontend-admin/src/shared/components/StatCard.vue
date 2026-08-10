@@ -130,6 +130,15 @@ watch(
   z-index: 1;
 }
 
+@media (max-width: 767px) {
+  .stat-card__icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    border-radius: 10px;
+  }
+}
+
 .stat-card__content {
   flex: 1;
   min-width: 0;

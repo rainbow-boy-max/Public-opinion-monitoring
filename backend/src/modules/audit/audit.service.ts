@@ -113,4 +113,22 @@ export class AuditService {
     const rows = await qb.getRawMany();
     return rows.map((r) => r.action);
   }
+
+  async recordNavigation(params: {
+    actorId: number | null;
+    title: string;
+    content?: string;
+    ipAddress?: string | null;
+  }): Promise<void> {
+    await this.log({
+      actorId: params.actorId,
+      actorType: 'admin',
+      module: 'navigation',
+      action: 'view',
+      resourceType: 'page',
+      title: params.title,
+      content: params.content || null,
+      ipAddress: params.ipAddress || null,
+    });
+  }
 }

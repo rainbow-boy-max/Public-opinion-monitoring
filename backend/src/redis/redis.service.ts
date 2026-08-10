@@ -116,6 +116,29 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
     await this.client.del(key);
   }
 
+  async setIfAbsent(key: string, value: string, ttlSeconds?: number): Promise<boolean> {
+    if (ttlSeconds) {
+      const result = await this.client.set(key, value, { NX: true, EX: ttlSeconds });
+      return result === 'OK';
+    }
+    const result = await this.client.set(key, value, { NX: true });
+    return result === 'OK';
+  }
+
+  async scanDelete(prefix: string, limit = 500): Promise<number> {
+    let deleted = 0;
+    let cursor = '0';
+    do {
+      const reply = await this.client.scan(cursor, { MATCH: `${prefix}*`, COUNT: limit });
+      cursor = reply.cursor;
+      if (reply.keys.length > 0) {
+        await this.client.del(reply.keys);
+        deleted += reply.keys.length;
+      }
+    } while (cursor !== '0' && deleted < limit * 10);
+    return deleted;
+  }
+
   async incr(key: string): Promise<number> {
     return this.client.incr(key);
   }

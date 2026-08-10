@@ -28,6 +28,41 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
             ...common,
           } as TypeOrmModuleOptions;
         }
+
+        const replicationHost = configService.get<string>('DB_REPLICA_HOST') || process.env.DB_REPLICA_HOST;
+
+        if (replicationHost) {
+          const master: any = {
+            host: configService.get<string>('DB_HOST') || process.env.DB_HOST || '127.0.0.1',
+            port: parseInt(
+              (configService.get<string>('DB_PORT') || process.env.DB_PORT) || '3306',
+              10,
+            ),
+            username: configService.get<string>('DB_USERNAME') || process.env.DB_USERNAME || 'root',
+            password: configService.get<string>('DB_PASSWORD') || process.env.DB_PASSWORD || '',
+            database: configService.get<string>('DB_DATABASE') || process.env.DB_DATABASE || 'opinion_monitor',
+          };
+          const slave: any = {
+            host: replicationHost,
+            port: parseInt(
+              (configService.get<string>('DB_REPLICA_PORT') || process.env.DB_REPLICA_PORT) || '3306',
+              10,
+            ),
+            username: configService.get<string>('DB_REPLICA_USERNAME') || configService.get<string>('DB_USERNAME') || process.env.DB_REPLICA_USERNAME || process.env.DB_USERNAME || 'root',
+            password: configService.get<string>('DB_REPLICA_PASSWORD') || configService.get<string>('DB_PASSWORD') || process.env.DB_REPLICA_PASSWORD || process.env.DB_PASSWORD || '',
+            database: configService.get<string>('DB_DATABASE') || process.env.DB_DATABASE || 'opinion_monitor',
+          };
+          return {
+            type: 'mysql',
+            replication: {
+              master,
+              slaves: [slave],
+            },
+            ...common,
+            synchronize: process.env.DB_SYNC === 'true' || process.env.DB_SYNCHRONIZE === 'true',
+          } as TypeOrmModuleOptions;
+        }
+
         return {
           type: 'mysql',
           host: configService.get<string>('DB_HOST') || process.env.DB_HOST,

@@ -7,16 +7,20 @@ import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
-import { UserEntity, UserRole, AuthStatus } from '../../database/entities';
+import { UserEntity, UserRole, AuthStatus, PasswordHistoryEntity } from '../../database/entities';
+import { PasswordValidatorService } from './password-validator.service';
+import { MfaService } from './mfa.service';
 import { RedisService } from '../../redis/redis.service';
 import { SmsService } from '../sms/sms.service';
 import { throwBusiness } from '../../common/errors/business.exception';
 import { AuditService } from '../admin/audit.service';
 
-interface LoginResult {
+export interface LoginResult {
   token: string;
   user: { id: number; username: string; role: string; authStatus: string };
   passwordChangeRequired?: boolean;
+  passwordExpired?: boolean;
+  mfaRequired?: boolean;
 }
 
 @Injectable()
@@ -27,6 +31,9 @@ export class AuthService {
 
   constructor(
     @InjectRepository(UserEntity) private userRepo: Repository<UserEntity>,
+    @InjectRepository(PasswordHistoryEntity) private historyRepo: Repository<PasswordHistoryEntity>,
+    private passwordValidator: PasswordValidatorService,
+    private mfaService: MfaService,
     private jwtService: JwtService,
     private redisService: RedisService,
     private smsService: SmsService,
@@ -63,7 +70,15 @@ export class AuthService {
       }
       throwBusiness('AUTH_USER_LOCKED', { minutesLeft: this.LOCK_DURATION_MIN });
     }
-    return this.finalizeLogin(user);
+
+    // 检查密码是否过期（90 天）
+    const passwordExpired = this.isPasswordExpired(user);
+
+    // P1-14: 检查 MFA 是否启用
+    const mfaRequired = await this.mfaService.isMfaEnabled(user.id);
+
+    const result = await this.finalizeLogin(user);
+    return { ...result, passwordExpired, mfaRequired };
   }
 
   private async loginByPhonePassword(phone: string, password: string): Promise<LoginResult> {
@@ -104,6 +119,22 @@ export class AuthService {
     user.lastLoginAt = new Date();
     await this.userRepo.save(user);
 
+    // P1-14: 如果 MFA 已启用，不发放 token，等待二次验证
+    const mfaRequired = await this.mfaService.isMfaEnabled(user.id);
+    if (mfaRequired) {
+      return {
+        token: '',
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          authStatus: user.authStatus,
+        },
+        passwordChangeRequired: user.firstLogin === 1,
+        mfaRequired: true,
+      };
+    }
+
     const token = await this.issueToken(user);
     await this.auditService.record({
       actorId: user.id,
@@ -135,10 +166,40 @@ export class AuthService {
       );
     }
     await this.userRepo.save(user);
+    
+    // P1-9: 记录登录失败审计日志
+    await this.auditService.record({
+      actorId: user.id,
+      actorType: user.role === UserRole.ADMIN ? 'admin' : 'user',
+      module: 'auth',
+      action: 'login-failed',
+      resourceType: 'user',
+      resourceId: user.id,
+      title: `登录失败：${user.username}（剩余尝试次数：${this.MAX_LOGIN_ATTEMPTS - user.loginAttempts}）`,
+    });
+  }
+
+  private isPasswordExpired(user: UserEntity): boolean {
+    if (!user.passwordUpdatedAt) return false;
+    const daysSinceUpdate = (Date.now() - user.passwordUpdatedAt.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceUpdate > 90;
   }
 
   private async issueToken(user: UserEntity): Promise<string> {
     const jti = randomBytes(16).toString('hex');
+
+    // 并发会话控制：限制每个用户最多 5 个活跃会话
+    const sessionKey = `user:sessions:${user.id}`;
+    const sessions = await this.redisService.client.lRange(sessionKey, 0, -1);
+    if (sessions.length >= 5) {
+      // 移除最早的会话
+      const oldest = sessions[0];
+      await this.redisService.client.lPop(sessionKey);
+      await this.redisService.set(`blacklist:jti:${oldest}`, '1', 7 * 24 * 3600);
+    }
+    await this.redisService.client.rPush(sessionKey, jti);
+    await this.redisService.client.expire(sessionKey, 7 * 24 * 3600);
+
     return this.jwtService.sign({
       sub: user.id,
       role: user.role,
@@ -158,12 +219,30 @@ export class AuthService {
     if (!valid) {
       throwBusiness('AUTH_INVALID_CREDENTIALS', { scene: 'change_password' });
     }
-    if (newPassword.length < 6) {
-      throwBusiness('PASSWORD_TOO_WEAK', { length: newPassword.length });
+
+    // 校验新密码策略
+    const result = this.passwordValidator.validate(newPassword);
+    if (!result.valid) {
+      throwBusiness('PASSWORD_TOO_WEAK', { errors: result.errors });
     }
 
+    // 校验密码历史
+    const history = await this.historyRepo.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      take: 5,
+    });
+    for (const h of history) {
+      if (await bcrypt.compare(newPassword, h.passwordHash)) {
+        throwBusiness('PASSWORD_HISTORY_CONFLICT');
+      }
+    }
+
+    // 更新密码哈希
+    await this.historyRepo.save({ userId, passwordHash: user.passwordHash });
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     user.firstLogin = 0;
+    user.passwordUpdatedAt = new Date();
     await this.userRepo.save(user);
   }
 
@@ -204,8 +283,11 @@ export class AuthService {
     if (exists) {
       throwBusiness('USER_ALREADY_EXISTS', { username, phone });
     }
-    if (password.length < 6) {
-      throwBusiness('PASSWORD_TOO_WEAK', { length: password.length });
+    
+    // P0-2: 统一密码策略 - 使用 PasswordValidatorService
+    const passwordResult = this.passwordValidator.validate(password);
+    if (!passwordResult.valid) {
+      throwBusiness('PASSWORD_TOO_WEAK', { errors: passwordResult.errors });
     }
 
     const user = this.userRepo.create({
@@ -244,14 +326,46 @@ export class AuthService {
     const user = await this.userRepo.findOne({ where: { phone } });
     if (!user) throwBusiness('USER_NOT_FOUND', { phone });
 
-    if (newPassword.length < 6) {
-      throwBusiness('PASSWORD_TOO_WEAK', { length: newPassword.length });
+    // P0-2: 统一密码策略 - 使用 PasswordValidatorService
+    const passwordResult = this.passwordValidator.validate(newPassword);
+    if (!passwordResult.valid) {
+      throwBusiness('PASSWORD_TOO_WEAK', { errors: passwordResult.errors });
     }
 
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     user.loginAttempts = 0;
     user.lockedUntil = null;
     await this.userRepo.save(user);
+  }
+
+  async verifyMfaAndIssueToken(userId: number, mfaToken: string): Promise<LoginResult> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throwBusiness('USER_NOT_FOUND', { userId });
+
+    const verified = await this.mfaService.verifyMfa(userId, mfaToken);
+    if (!verified) {
+      throwBusiness('AUTH_MFA_INVALID', { reason: 'invalid_mfa_token' });
+    }
+
+    const token = await this.issueToken(user);
+    await this.auditService.record({
+      actorId: user.id,
+      actorType: user.role === UserRole.ADMIN ? 'admin' : 'user',
+      module: 'auth',
+      action: 'mfa-verified',
+      resourceType: 'user',
+      resourceId: user.id,
+      title: `${user.username} MFA 验证通过`,
+    });
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        authStatus: user.authStatus,
+      },
+    };
   }
 
   async verifySmsCode(phone: string, scene: string, code: string): Promise<void> {
@@ -262,8 +376,13 @@ export class AuthService {
     await this.redisService.del(`sms:code:${phone}:${scene}`);
   }
 
-  async logout(jti: string): Promise<void> {
+  async logout(jti: string, userId?: number): Promise<void> {
     await this.redisService.set(`blacklist:jti:${jti}`, '1', 7 * 24 * 3600);
+
+    if (userId) {
+      const sessionKey = `user:sessions:${userId}`;
+      await this.redisService.client.lRem(sessionKey, 0, jti);
+    }
   }
 
   async refreshToken(userId: number, oldJti: string): Promise<{ token: string }> {

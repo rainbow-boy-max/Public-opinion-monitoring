@@ -5,6 +5,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -23,20 +24,33 @@ interface UploadedFileType {
 @UseGuards(JwtAuthGuard)
 export class UploadController {
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10 MB
+      },
+      fileFilter: (req, file, callback) => {
+        const allowedTypes = [
+          'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+          'video/mp4', 'video/quicktime',
+          'application/pdf', 'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'text/plain', 'text/csv',
+          'application/json', 'application/octet-stream',
+        ];
+        if (allowedTypes.includes(file.mimetype)) {
+          callback(null, true);
+        } else {
+          callback(new BadRequestException('不支持的文件类型'), false);
+        }
+      },
+    }),
+  )
   async upload(@UploadedFile() file: UploadedFileType) {
-    const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'video/mp4', 'video/quicktime',
-      'application/pdf', 'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain', 'text/javascript', 'text/html', 'text/csv',
-      'application/json', 'application/octet-stream',
-    ];
-    if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('不支持的文件类型');
+    if (!file) {
+      throw new BadRequestException('文件上传失败');
     }
     const filename = `${Date.now()}-${file.originalname}`;
     const filepath = `/data/uploads/${filename}`;

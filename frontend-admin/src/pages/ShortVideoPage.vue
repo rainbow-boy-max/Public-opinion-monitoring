@@ -181,7 +181,7 @@ async function fetchTasks(): Promise<void> {
   const params: Record<string, unknown> = {};
   if (userId.value) params.userId = userId.value;
   try {
-    const data = await http.get('/admin/monitor-tasks', { params }) as Task[];
+    const data = await http.get('/monitor-tasks', { params }) as Task[];
     tasks.value = data;
     if (data.length > 0 && !taskId.value) taskId.value = data[0].id;
   } catch { /* ignore */ }
