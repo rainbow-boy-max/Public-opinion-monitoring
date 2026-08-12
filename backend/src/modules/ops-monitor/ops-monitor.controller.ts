@@ -10,6 +10,16 @@ import { OpsMonitorService } from './ops-monitor.service';
 export class OpsMonitorController {
   constructor(private readonly monitor: OpsMonitorService) {}
 
+  @Get('metrics')
+  async getMetrics() {
+    return {
+      cpu: process.cpuUsage(),
+      memory: process.memoryUsage(),
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   @Get('check-all')
   async checkAll() {
     return this.monitor.checkAll();

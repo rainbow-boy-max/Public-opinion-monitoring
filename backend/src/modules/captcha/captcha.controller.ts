@@ -9,9 +9,20 @@ export class CaptchaController {
   constructor(private readonly captcha: CaptchaService) {}
 
   @Get('config')
+  async getPublicConfig(): Promise<Partial<CaptchaConfig>> {
+    const config = await this.captcha.getConfig();
+    return {
+      isEnabled: config.isEnabled,
+      prefix: config.prefix,
+      sceneId: config.sceneId,
+      region: config.region,
+    };
+  }
+
+  @Get('admin/config')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  async getConfig(): Promise<CaptchaConfig> {
+  async getAdminConfig(): Promise<CaptchaConfig> {
     return this.captcha.getConfig();
   }
 

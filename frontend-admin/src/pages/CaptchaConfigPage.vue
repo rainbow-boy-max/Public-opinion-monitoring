@@ -80,7 +80,7 @@ const saving = ref(false);
 
 async function loadConfig(): Promise<void> {
   try {
-    const data = await http.get('/captcha/config') as CaptchaConfig;
+    const data = await http.get('/captcha/admin/config') as CaptchaConfig;
     Object.assign(form, data);
   } catch (err) {
     console.error('Failed to load captcha config', err);
