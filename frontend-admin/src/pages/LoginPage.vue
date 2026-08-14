@@ -63,11 +63,29 @@
               v-model="form.username"
               placeholder="请输入账号"
               size="large"
-              autocomplete="username"
-              @input="errorMessage = ''"
+              name="username"
+              autocomplete="off"
+              @focus="errorMessage = ''"
             >
               <template #prefix>
                 <span class="login-input-icon">👤</span>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item prop="password">
+            <el-input
+              v-model="form.password"
+              type="password"
+              placeholder="请输入密码"
+              size="large"
+              name="password"
+              show-password
+              autocomplete="off"
+              @focus="errorMessage = ''"
+            >
+              <template #prefix>
+                <span class="login-input-icon">🔒</span>
               </template>
             </el-input>
           </el-form-item>
@@ -541,6 +559,26 @@ onMounted(loadCaptchaConfig);
   margin: 0 0 8px;
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+/* 防止移动端浏览器自动填充干扰输入 */
+.login-form :deep(.el-input__wrapper) {
+  transition: none !important;
+}
+
+.login-form :deep(.el-input__inner) {
+  transition: none !important;
+}
+
+/* 移动端优化：防止键盘弹起时布局错乱 */
+@media (max-width: 767px) {
+  .login-form :deep(.el-input__wrapper) {
+    min-height: 44px;
+  }
+  
+  .login-form :deep(.el-input__inner) {
+    font-size: 16px !important; /* 防止 iOS Safari 自动缩放 */
+  }
 }
 
 @media (max-width: 900px) {

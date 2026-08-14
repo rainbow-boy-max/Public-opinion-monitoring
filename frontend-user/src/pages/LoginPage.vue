@@ -24,12 +24,26 @@
           <el-tab-pane label="账号密码" name="account">
             <el-form ref="formRef" :model="form" :rules="rules" @keyup.enter="onLogin">
               <el-form-item prop="username">
-                <el-input v-model="form.username" size="large" placeholder="用户名">
+                <el-input 
+                  v-model="form.username" 
+                  size="large" 
+                  placeholder="用户名"
+                  name="username"
+                  autocomplete="off"
+                >
                   <template #prefix><el-icon><User /></el-icon></template>
                 </el-input>
               </el-form-item>
               <el-form-item prop="password">
-                <el-input v-model="form.password" type="password" size="large" show-password placeholder="密码">
+                <el-input 
+                  v-model="form.password" 
+                  type="password" 
+                  size="large" 
+                  show-password 
+                  placeholder="密码"
+                  name="password"
+                  autocomplete="off"
+                >
                   <template #prefix><el-icon><Lock /></el-icon></template>
                 </el-input>
               </el-form-item>
@@ -39,14 +53,63 @@
           <el-tab-pane label="手机密码" name="phone-pwd">
             <el-form ref="formRef" :model="form" :rules="rules" @keyup.enter="onLogin">
               <el-form-item prop="phone">
-                <el-input v-model="form.phone" size="large" maxlength="11" placeholder="手机号">
+                <el-input 
+                  v-model="form.phone" 
+                  size="large" 
+                  maxlength="11" 
+                  placeholder="手机号"
+                  name="phone"
+                  autocomplete="off"
+                >
                   <template #prefix><el-icon><Iphone /></el-icon></template>
                 </el-input>
               </el-form-item>
               <el-form-item prop="password">
-                <el-input v-model="form.password" type="password" size="large" show-password placeholder="密码">
+                <el-input 
+                  v-model="form.password" 
+                  type="password" 
+                  size="large" 
+                  show-password 
+                  placeholder="密码"
+                  name="password"
+                  autocomplete="off"
+                >
                   <template #prefix><el-icon><Lock /></el-icon></template>
                 </el-input>
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+
+          <el-tab-pane label="手机验证码" name="phone-code">
+            <el-form ref="formRef" :model="form" :rules="rules" @keyup.enter="onLogin">
+              <el-form-item prop="phone">
+                <el-input 
+                  v-model="form.phone" 
+                  size="large" 
+                  maxlength="11" 
+                  placeholder="手机号"
+                  name="phone-code"
+                  autocomplete="off"
+                >
+                  <template #prefix><el-icon><Iphone /></el-icon></template>
+                </el-input>
+              </el-form-item>
+              <el-form-item prop="code">
+                <div style="display: flex; gap: 8px;">
+                  <el-input 
+                    v-model="form.code" 
+                    size="large" 
+                    maxlength="6" 
+                    placeholder="验证码"
+                    name="smscode"
+                    autocomplete="off"
+                  >
+                    <template #prefix><el-icon><Message /></el-icon></template>
+                  </el-input>
+                  <el-button class="code-btn" :disabled="smsCountdown > 0" @click="sendLoginCode">
+                    {{ smsCountdown > 0 ? `${smsCountdown}s` : '获取验证码' }}
+                  </el-button>
+                </div>
               </el-form-item>
             </el-form>
           </el-tab-pane>
@@ -348,5 +411,38 @@ async function onLogin(): Promise<void> {
 .login-actions a:hover {
   color: var(--color-primary);
   text-decoration: underline;
+}
+
+/* 防止移动端浏览器自动填充干扰输入 */
+.login-card :deep(.el-input__wrapper) {
+  transition: none !important;
+}
+
+.login-card :deep(.el-input__inner) {
+  transition: none !important;
+}
+
+/* 移动端优化 */
+@media (max-width: 767px) {
+  .login-container {
+    padding: 20px 16px;
+  }
+  
+  .login-card {
+    padding: 24px 20px;
+  }
+  
+  .login-card :deep(.el-input__wrapper) {
+    min-height: 44px;
+  }
+  
+  .login-card :deep(.el-input__inner) {
+    font-size: 16px !important; /* 防止 iOS Safari 自动缩放 */
+  }
+  
+  .code-btn {
+    width: 110px;
+    font-size: 13px;
+  }
 }
 </style>
