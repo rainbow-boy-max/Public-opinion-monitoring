@@ -89,21 +89,6 @@
               </template>
             </el-input>
           </el-form-item>
-          <el-form-item prop="password">
-            <el-input
-              v-model="form.password"
-              type="password"
-              placeholder="请输入密码"
-              size="large"
-              show-password
-              autocomplete="current-password"
-              @input="errorMessage = ''"
-            >
-              <template #prefix>
-                <span class="login-input-icon">🔒</span>
-              </template>
-            </el-input>
-          </el-form-item>
 
           <!-- 阿里云验证码 2.0 -->
           <div v-if="captchaEnabled" id="captcha-element" class="captcha-wrapper"></div>
@@ -315,12 +300,7 @@ async function onLogin(): Promise<void> {
         router.push('/dashboard');
       }
     } catch (err: any) {
-      const lang = (navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'zh';
-      errorMessage.value = err?.messageEn
-        ? lang === 'en'
-          ? err.messageEn
-          : err.message
-        : err?.message || (lang === 'en' ? 'Login failed' : '登录失败');
+      errorMessage.value = err?.message || '登录失败';
       captchaVerifyParam.value = '';
     } finally {
       loading.value = false;

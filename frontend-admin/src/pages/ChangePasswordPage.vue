@@ -79,7 +79,7 @@ async function onSubmit(): Promise<void> {
       ElMessage.success('密码修改成功');
       router.push('/dashboard');
     } catch (err: any) {
-      ElMessage.error(err?.message || '修改失败');
+      // http.ts 已经显示错误通知，这里不需要重复
     } finally {
       loading.value = false;
     }

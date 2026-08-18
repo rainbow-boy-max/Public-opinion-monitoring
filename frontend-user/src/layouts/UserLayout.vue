@@ -28,7 +28,7 @@
         <router-link
           v-for="item in menuItems"
           :key="item.path"
-          :to="item.path"
+          :to="item.path!"
           custom
           v-slot="{ navigate, isActive }"
         >
@@ -74,6 +74,43 @@
       </div>
     </header>
 
+    <aside class="user-sidebar">
+      <nav class="user-sidebar__nav">
+        <template v-for="item in sidebarItems" :key="item.label">
+          <div v-if="item.children?.length" class="user-sidebar__group">
+            <button class="user-sidebar__group-title" type="button" @click="toggleGroup(item.label)">
+              <span class="user-sidebar__icon" v-html="item.icon" />
+              <span>{{ item.label }}</span>
+              <span class="user-sidebar__arrow" :class="{ 'is-open': openGroups.includes(item.label) }">⌄</span>
+            </button>
+            <div v-show="openGroups.includes(item.label)" class="user-sidebar__children">
+              <button
+                v-for="child in item.children"
+                :key="child.path"
+                type="button"
+                class="user-sidebar__item user-sidebar__item--child"
+                :class="{ 'user-sidebar__item--active': isMenuActive(child.path) }"
+                @click="navigateTo(child.path)"
+              >
+                <span class="user-sidebar__icon" v-html="child.icon" />
+                <span>{{ child.label }}</span>
+              </button>
+            </div>
+          </div>
+          <button
+            v-else
+            type="button"
+            class="user-sidebar__item"
+            :class="{ 'user-sidebar__item--active': isMenuActive(item.path) }"
+            @click="navigateTo(item.path)"
+          >
+            <span class="user-sidebar__icon" v-html="item.icon" />
+            <span>{{ item.label }}</span>
+          </button>
+        </template>
+      </nav>
+    </aside>
+
     <main class="user-main">
       <router-view />
     </main>
@@ -96,8 +133,8 @@
               v-for="item in menuItems"
               :key="item.path"
               class="user-drawer__item"
-              :class="{ 'user-drawer__item--active': $route.path.startsWith(item.path) }"
-              @click="router.push(item.path); drawerVisible = false"
+              :class="{ 'user-drawer__item--active': isMenuActive(item.path) }"
+              @click="navigateTo(item.path); drawerVisible = false"
             >
               <span class="user-drawer__icon" v-html="item.icon" />
               <span>{{ item.label }}</span>
@@ -110,13 +147,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useUserAuthStore } from '@/store/auth';
 import { useTheme } from '@/composables/useTheme';
 import { Sunny, Moon } from '@element-plus/icons-vue';
 
 const router = useRouter();
+const route = useRoute();
 const auth = useUserAuthStore();
 const { isDark, toggleTheme } = useTheme();
 const drawerVisible = ref(false);
@@ -126,13 +164,40 @@ function updateDrawerSize(): void {
   drawerSize.value = Math.min(280, Math.max(200, window.innerWidth - 40));
 }
 
-onMounted(updateDrawerSize);
-window.addEventListener('resize', updateDrawerSize);
+onMounted(() => {
+  updateDrawerSize();
+  window.addEventListener('resize', updateDrawerSize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateDrawerSize);
+});
 
 interface MenuItem {
-  path: string;
+  path?: string;
   label: string;
   icon: string;
+  children?: MenuItem[];
+}
+
+const openGroups = ref<string[]>(['监测分析', '分析洞察']);
+
+function toggleGroup(label: string): void {
+  const index = openGroups.value.indexOf(label);
+  if (index >= 0) {
+    openGroups.value.splice(index, 1);
+  } else {
+    openGroups.value.push(label);
+  }
+}
+
+function isMenuActive(path?: string): boolean {
+  if (!path) return false;
+  return route.path === path || route.path.startsWith(`${path}/`);
+}
+
+function navigateTo(path?: string): void {
+  if (path && route.path !== path) router.push(path);
 }
 
 const menuItems: MenuItem[] = [
@@ -215,6 +280,20 @@ const menuItems: MenuItem[] = [
     path: '/ecommerce',
     label: '电商口碑',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
+  },
+];
+
+const sidebarItems: MenuItem[] = [
+  menuItems[0],
+  {
+    label: '监测分析',
+    icon: menuItems[1].icon,
+    children: [menuItems[1], menuItems[2], menuItems[3]],
+  },
+  {
+    label: '分析洞察',
+    icon: menuItems[4].icon,
+    children: menuItems.slice(4),
   },
 ];
 
@@ -405,8 +484,91 @@ function onCommand(cmd: string): void {
   align-self: center;
 }
 
+.user-sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 90;
+  width: 248px;
+  padding: 86px 12px 24px;
+  overflow-y: auto;
+  background: rgba(15, 19, 47, 0.92);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.user-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-sidebar__item,
+.user-sidebar__group-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-sidebar__item:hover,
+.user-sidebar__group-title:hover {
+  background: rgba(94, 114, 228, 0.12);
+  color: var(--text-primary);
+}
+
+.user-sidebar__item--active {
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.user-sidebar__group-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.user-sidebar__children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 6px 18px;
+}
+
+.user-sidebar__item--child {
+  min-height: 38px;
+  font-size: 13px;
+}
+
+.user-sidebar__icon {
+  display: inline-flex;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-sidebar__arrow {
+  margin-left: auto;
+  transition: transform var(--transition-fast);
+}
+
+.user-sidebar__arrow.is-open {
+  transform: rotate(180deg);
+}
+
+
 @media (max-width: 768px) {
-  .user-nav {
+  .user-nav,
+  .user-sidebar {
     display: none;
   }
   .user-topbar {

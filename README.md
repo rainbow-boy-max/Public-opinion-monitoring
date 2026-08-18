@@ -422,4 +422,20 @@ WEIXIN_API_KEY=sk-xxxxxx
 
 ---
 
-_README 最后更新: 2026-08-02_
+## 近期更新
+
+### 2026-08-15: 登录界面与预览系统修复
+- 修复管理端登录页密码框重复、用户端验证码 Tab 重复
+- 修复预览系统 CORS 配置，允许 `*.monkeycode-ai.online` 域名
+- 优化用户端桌面导航，增加侧边栏分组菜单
+- 统一错误提示机制，避免重复显示错误通知
+- 修复密码修改页面双重错误提示问题
+- 详见：[LOGIN_UI_FIX.md](./.monkeycode/LOGIN_UI_FIX.md)
+
+### 2026-08-10: 移动端登录修复
+- 修复移动端登录页面输入框内容消失问题
+- 详见：[MOBILE_LOGIN_FIX.md](./.monkeycode/MOBILE_LOGIN_FIX.md)
+
+---
+
+_README 最后更新: 2026-08-15_

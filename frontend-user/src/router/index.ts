@@ -22,6 +22,7 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/layouts/UserLayout.vue'),
+      redirect: '/dashboard',
       meta: { requiresAuth: true },
       children: [
         {
@@ -104,7 +105,11 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const auth = useUserAuthStore();
   if (to.meta.public) {
-    next();
+    if (auth.token) {
+      next('/dashboard');
+    } else {
+      next();
+    }
     return;
   }
   if (!auth.token) {

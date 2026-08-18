@@ -114,25 +114,6 @@
             </el-form>
           </el-tab-pane>
 
-          <el-tab-pane label="手机验证码" name="phone-code">
-            <el-form ref="formRef" :model="form" :rules="rules" @keyup.enter="onLogin">
-              <el-form-item prop="phone">
-                <el-input v-model="form.phone" size="large" maxlength="11" placeholder="手机号">
-                  <template #prefix><el-icon><Iphone /></el-icon></template>
-                </el-input>
-              </el-form-item>
-              <el-form-item prop="code">
-                <div class="code-row">
-                  <el-input v-model="form.code" size="large" maxlength="6" placeholder="验证码">
-                    <template #prefix><el-icon><Message /></el-icon></template>
-                  </el-input>
-                  <el-button class="code-btn" :disabled="smsCountdown > 0" @click="sendLoginCode">
-                    {{ smsCountdown > 0 ? `${smsCountdown}s` : '获取验证码' }}
-                  </el-button>
-                </div>
-              </el-form-item>
-            </el-form>
-          </el-tab-pane>
         </el-tabs>
 
         <el-alert v-if="errorMessage" :title="errorMessage" type="error" :closable="false" show-icon style="margin-bottom: 16px" />
@@ -149,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue';
+import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance } from 'element-plus';
 import { User, Lock, Iphone, Message } from '@element-plus/icons-vue';

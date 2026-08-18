@@ -354,9 +354,7 @@ function toggleGroup(label: string): void {
 function isMenuActive(path: string | undefined): boolean {
   if (!path) return false;
   if (path === route.path) return true;
-  if (path !== '/' && route.path.startsWith(path + '/')) return true;
-  if (path !== '/' && route.path.startsWith(path)) return true;
-  return false;
+  return path !== '/' && route.path.startsWith(path + '/');
 }
 
 function updateDrawerSize(): void {
